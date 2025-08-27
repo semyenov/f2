@@ -1,0 +1,23 @@
+{
+  "entryPoints": ["src/index.ts"],
+  "out": "docs",
+  "theme": "default",
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeExternals": true,
+  "readme": "README.md",
+  "name": "Apollo Federation v2 Framework",
+  "tsconfig": "tsconfig.json",
+  "gitRevision": "main",
+  "sort": ["source-order"],
+  "categoryOrder": ["Core", "Federation", "Schema", "Builders", "Patterns", "Examples"],
+  "navigationLinks": {
+    "GitHub": "https://github.com/cqrs/federation",
+    "NPM": "https://www.npmjs.com/package/@cqrs/federation-v2"
+  },
+  "sidebarLinks": {
+    "Migration Guide": "https://github.com/cqrs/federation/blob/main/MIGRATION.md",
+    "Security": "./security-checklist.md"
+  }
+}

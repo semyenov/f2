@@ -1,0 +1,193 @@
+{
+  "name": "@cqrs/federation-v2",
+  "version": "2.0.0",
+  "description": "Complete Apollo Federation 2.x framework with Effect-TS, ultra-strict TypeScript patterns, schema-first development, and enterprise-grade resilience features",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./core": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./core/entity-builder": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./core/ultra-strict": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./core/schema-first": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./federation": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./federation/subgraph": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./federation/error-boundaries": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./federation/performance": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./schema": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./schema/ast-conversion": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "build:tsc": "tsc --project tsconfig.build.json",
+    "build:watch": "tsdown --watch",
+    "clean": "rm -rf dist",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:unit": "bun test tests/unit",
+    "test:integration": "bun test tests/integration",
+    "test:complete": "node test-complete.ts",
+    "test:coverage": "bun test --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx --max-warnings 0",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "format": "prettier --write 'src/**/*.{ts,tsx,json,md}'",
+    "format:check": "prettier --check 'src/**/*.{ts,tsx,json,md}'",
+    "audit": "npm audit --audit-level moderate",
+    "audit:fix": "npm audit fix",
+    "security": "npm audit && npm run lint",
+    "demo": "bun src/examples/simple-entity.ts",
+    "demo:advanced": "bun src/examples/advanced-federation.ts",
+    "demo:ultra-strict": "bun src/examples/ultra-strict-entity-example.ts",
+    "demo:schema-first": "bun src/examples/schema-first-workflow-example.ts",
+    "demo:complete": "bun src/examples/complete-federation-v2-demo.ts",
+    "dev": "bun --watch src/examples/basic-entity.ts",
+    "validate": "bun run typecheck && bun run lint && bun run test:complete",
+    "prepare": "husky",
+    "docs:generate": "typedoc src/index.ts --out docs --theme default"
+  },
+  "dependencies": {
+    "@effect/schema": "^0.75.5",
+    "@graphql-tools/schema": "^10.0.25",
+    "@graphql-tools/utils": "^10.0.25",
+    "dataloader": "^2.2.3",
+    "effect": "^3.17.9",
+    "graphql": "^16.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.17.0",
+    "@typescript-eslint/parser": "^8.17.0",
+    "bun-types": "^1.2.21",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-functional": "^7.0.2",
+    "fast-check": "^4.2.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.3.0",
+    "prettier": "^3.4.2",
+    "tsdown": "^0.14.1",
+    "typedoc": "^0.27.4",
+    "typescript": "^5.7.2"
+  },
+  "peerDependencies": {
+    "graphql": "^16.11.0"
+  },
+  "keywords": [
+    "graphql",
+    "federation",
+    "apollo",
+    "apollo-federation-2",
+    "effect-ts",
+    "typescript",
+    "ultra-strict",
+    "functional-programming",
+    "pattern-matching",
+    "phantom-types",
+    "schema-first",
+    "ast-conversion",
+    "circuit-breaker",
+    "error-boundaries",
+    "performance-optimization",
+    "dataloader",
+    "caching",
+    "resilience",
+    "enterprise",
+    "production-ready",
+    "cqrs",
+    "event-sourcing"
+  ],
+  "author": "CQRS Federation Team",
+  "license": "MIT",
+  "homepage": "https://github.com/cqrs/federation#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cqrs/federation.git",
+    "directory": "packages/f2"
+  },
+  "bugs": {
+    "url": "https://github.com/cqrs/federation/issues"
+  },
+  "funding": {
+    "type": "sponsorship",
+    "url": "https://github.com/sponsors/cqrs-federation"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "bun": ">=1.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "browserslist": [
+    "node >= 20"
+  ],
+  "lint-staged": {
+    "src/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  }
+}
