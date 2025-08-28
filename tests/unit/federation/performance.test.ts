@@ -8,14 +8,14 @@ import {
   createBasicOptimizedExecutor,
   createProductionOptimizedExecutor,
   createDevelopmentOptimizedExecutor
-} from '../../../src/federation/performance.js'
+} from '@federation'
 import type {
   PerformanceConfig,
   QueryPlanCacheConfig,
   DataLoaderConfig,
   MetricsConfig,
   FederatedSchema
-} from '../../../src/core/types.js'
+} from '@core'
 // Test helper functions inline
 const expectEffectSuccess = async <A, E>(effect: Effect.Effect<A, E>): Promise<A> => {
   return Effect.runPromise(effect)
@@ -159,7 +159,7 @@ describe('Performance Optimizations and Caching', () => {
       for (let i = 0; i < plans.length; i++) {
         await expectEffectSuccess(cache.set(`query-${i}`, plans[i]!))
         // Add small delay to ensure different timestamps
-        await delay(1)
+        await Effect.runPromise(delay(1))
       }
 
       const stats = await expectEffectSuccess(cache.getStats())

@@ -35,6 +35,84 @@ const IMPORT_REPLACEMENTS: ImportReplacement[] = [
     pattern: /from\s+['"]\.\.\/experimental\/index\.js['"]/g,
     replacement: "from '@experimental'",
     description: 'Convert ../experimental/index.js → @experimental'
+  },
+  // Test-specific patterns - going up multiple levels from tests/
+  {
+    pattern: /from\s+['"]\.\.\/\.\.\/\.\.\/src\/core\/builders\/entity-builder\.js['"]/g,
+    replacement: "from '@core'",
+    description: 'Convert ../../../src/core/builders/entity-builder.js → @core'
+  },
+  {
+    pattern: /from\s+['"]\.\.\/\.\.\/\.\.\/src\/core\/errors\.js['"]/g,
+    replacement: "from '@core'",
+    description: 'Convert ../../../src/core/errors.js → @core'
+  },
+  {
+    pattern: /from\s+['"]\.\.\/\.\.\/\.\.\/src\/core\/types\.js['"]/g,
+    replacement: "from '@core'",
+    description: 'Convert ../../../src/core/types.js → @core'
+  },
+  {
+    pattern: /from\s+['"]\.\.\/\.\.\/\.\.\/src\/federation\/[^'"]+\.js['"]/g,
+    replacement: "from '@federation'",
+    description: 'Convert ../../../src/federation/*.js → @federation'
+  },
+  {
+    pattern: /from\s+['"]\.\.\/\.\.\/\.\.\/src\/experimental\/[^'"]+\.js['"]/g,
+    replacement: "from '@experimental'",
+    description: 'Convert ../../../src/experimental/*.js → @experimental'
+  },
+  {
+    pattern: /from\s+['"]\.\.\/\.\.\/\.\.\/src\/schema\/[^'"]+\.js['"]/g,
+    replacement: "from '@schema'",
+    description: 'Convert ../../../src/schema/*.js → @schema'
+  },
+  // Integration test patterns (../../src/)
+  {
+    pattern: /from\s+['"]\.\.\/\.\.\/src\/core\/builders\/entity-builder\.js['"]/g,
+    replacement: "from '@core'",
+    description: 'Convert ../../src/core/builders/entity-builder.js → @core'
+  },
+  {
+    pattern: /from\s+['"]\.\.\/\.\.\/src\/core\/schema-first-patterns\.js['"]/g,
+    replacement: "from '@core'",
+    description: 'Convert ../../src/core/schema-first-patterns.js → @core'
+  },
+  {
+    pattern: /from\s+['"]\.\.\/\.\.\/src\/core\/types\.js['"]/g,
+    replacement: "from '@core'",
+    description: 'Convert ../../src/core/types.js → @core'
+  },
+  {
+    pattern: /from\s+['"]\.\.\/\.\.\/src\/core\/services\/layers\.js['"]/g,
+    replacement: "from '@core'",
+    description: 'Convert ../../src/core/services/layers.js → @core'
+  },
+  {
+    pattern: /from\s+['"]\.\.\/\.\.\/src\/index\.js['"]/g,
+    replacement: "from '@/'",
+    description: 'Convert ../../src/index.js → @/'
+  },
+  {
+    pattern: /from\s+['"]\.\.\/\.\.\/src\/federation\/[^'"]+\.js['"]/g,
+    replacement: "from '@federation'",
+    description: 'Convert ../../src/federation/*.js → @federation'
+  },
+  {
+    pattern: /from\s+['"]\.\.\/\.\.\/src\/experimental\/[^'"]+\.js['"]/g,
+    replacement: "from '@experimental'",
+    description: 'Convert ../../src/experimental/*.js → @experimental'
+  },
+  // Additional specific patterns
+  {
+    pattern: /from\s+['"]\.\.\/\.\.\/\.\.\/src\/core\/schema-first-patterns\.js['"]/g,
+    replacement: "from '@core'",
+    description: 'Convert ../../../src/core/schema-first-patterns.js → @core'
+  },
+  {
+    pattern: /from\s+['"]\.\.\/\.\.\/\.\.\/src\/index\.js['"]/g,
+    replacement: "from '@/'",
+    description: 'Convert ../../../src/index.js → @/'
   }
 ]
 
@@ -88,11 +166,11 @@ async function convertImportsInFile(filePath: string): Promise<{ modified: boole
 }
 
 async function main() {
-  const srcDir = resolve(process.cwd(), 'src')
+  const targetDir = process.argv[2] ? resolve(process.cwd(), process.argv[2]) : resolve(process.cwd(), 'src')
   console.log('🔄 Converting relative imports to barrel exports...')
-  console.log(`📁 Scanning directory: ${srcDir}`)
+  console.log(`📁 Scanning directory: ${targetDir}`)
   
-  const tsFiles = await getAllTypeScriptFiles(srcDir)
+  const tsFiles = await getAllTypeScriptFiles(targetDir)
   console.log(`📄 Found ${tsFiles.length} TypeScript files`)
   
   let totalModified = 0

@@ -47,14 +47,6 @@
       "@schema/*": ["./src/schema/*"]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "src/examples/**/*",
-    "tests/**/*",
-    "**/*.test.*",
-    "**/*.spec.*",
-    "path-mapping-example.ts"
-  ]
+  "include": ["src/**/*", "tests/**/*", "tests/tsconfig.json"],
+  "exclude": ["node_modules", "dist"]
 }

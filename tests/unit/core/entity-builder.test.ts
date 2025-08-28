@@ -1,7 +1,7 @@
 import * as Effect from 'effect/Effect'
 import * as Schema from 'effect/Schema'
 import { describe, expect, it } from 'vitest'
-import { createEntityBuilder } from '../../../src/core/builders/entity-builder.js'
+import { createEntityBuilder } from '@core'
 
 describe('FederationEntityBuilder', () => {
   const UserSchema = Schema.Struct({

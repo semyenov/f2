@@ -6,14 +6,14 @@ import {
   FederationErrorBoundaries,
   createStrictBoundary,
   createResilientBoundary,
-  createProductionBoundary,
-  ErrorContext
-} from '../../../src/federation/error-boundaries.js'
+  createProductionBoundary
+} from '@federation'
+import type { ErrorContext } from '@federation'
 import type { 
   ErrorBoundaryConfig, 
   CircuitBreakerConfig,
   PartialFailureConfig
-} from '../../../src/core/types.js'
+} from '@core'
 import { type GraphQLResolveInfo, GraphQLObjectType, GraphQLSchema } from 'graphql'
 import { TestServicesLive } from '../../utils/test-layers.js'
 // Simple test data factories inline (removed unused createTestService)
@@ -69,10 +69,10 @@ const timeEffect = async <A, E>(effect: Effect.Effect<A, E>): Promise<{ result: 
   return { result, duration }
 }
 import { TestLayers, MockCircuitBreaker } from '../../utils/test-layers.js'
-import { ErrorFactory, RegistrationError } from '../../../src/index.js'
+import { ErrorFactory, RegistrationError } from '@core'
 
 describe('Error Boundaries and Circuit Breakers', () => {
-  let mockInfo: any
+  let mockInfo: GraphQLResolveInfo
 
   beforeEach(() => {
     mockInfo = createMockResolveInfo()
@@ -707,7 +707,7 @@ describe('Error Boundaries and Circuit Breakers', () => {
       
       const resolver = async (_parent: unknown, args: unknown) => {
         const typedArgs = args as {id?: string}
-        await delay(10) // Small delay
+        await Effect.runPromise(delay(10)) // Small delay
         return `result-${typedArgs.id}`
       }
       

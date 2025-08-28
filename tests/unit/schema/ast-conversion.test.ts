@@ -14,7 +14,7 @@ import {
 import {
   ASTConversion,
   createConversionContext,
-} from "../../../src/schema/ast-conversion.js";
+} from '@schema';
 
 describe("AST Conversion", () => {
   describe("Basic Type Conversion", () => {

@@ -7,7 +7,7 @@ import functional from 'eslint-plugin-functional'
 export default [
   js.configs.recommended,
   {
-    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    files: ['src/**/*.ts', 'src/**/*.tsx', 'tests/**/*.ts', 'tests/**/*.tsx'],
     languageOptions: {
       parser: tsparser,
       parserOptions: {

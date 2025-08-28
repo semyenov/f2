@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import * as Effect from 'effect/Effect'
 import DataLoader from 'dataloader'
-import { PerformanceOptimizations } from '../../../src/federation/performance.js'
-import type { DataLoaderConfig } from '../../../src/core/types.js'
+import { PerformanceOptimizations } from '@federation'
+import type { DataLoaderConfig } from '@core'
 
 // Test helper functions
 const expectEffectSuccess = async <A, E>(effect: Effect.Effect<A, E>): Promise<A> => {
@@ -223,15 +223,13 @@ describe('Comprehensive DataLoader Tests', () => {
         dataLoader.getLoader('users-service', batchLoadFn)
       )
 
-      // Load keys with delays
-      loader.load('user-1')
-      await delay(10)
-      loader.load('user-2')
-      await delay(10)
-      loader.load('user-3')
+      // Load keys without awaiting - let them batch naturally
+      const promise1 = loader.load('user-1')
+      const promise2 = loader.load('user-2')
+      const promise3 = loader.load('user-3')
       
-      // Wait for batch to execute
-      await delay(100)
+      // Wait for all promises to resolve
+      await Promise.all([promise1, promise2, promise3])
 
       // Should batch all together due to longer window
       expect(batchCalls).toHaveLength(1)
@@ -274,7 +272,7 @@ describe('Comprehensive DataLoader Tests', () => {
 
       // Should only load unique keys
       expect(batchCalls).toHaveLength(1)
-      expect([...batchCalls[0] || []].sort()).toEqual(['user-1', 'user-2', 'user-3'])
+      expect([...(batchCalls[0] ?? [])].sort()).toEqual(['user-1', 'user-2', 'user-3'])
     })
   })
 
@@ -592,7 +590,9 @@ describe('Comprehensive DataLoader Tests', () => {
       )
 
       // Simulate entity reference resolution
-      const resolveUserReferences = async (references: readonly { id: string }[]): Promise<readonly any[]> => {
+      const resolveUserReferences = async (references: readonly { id: string }[]): Promise<
+        readonly { id: string, name: string, email: string }[]
+      > => {
         return references.map(ref => ({
           id: ref.id,
           name: `User ${ref.id}`,
@@ -628,12 +628,16 @@ describe('Comprehensive DataLoader Tests', () => {
       )
 
       // String keys for users
-      const userBatchFn = async (userIds: readonly string[]): Promise<readonly any[]> => {
+      const userBatchFn = async (userIds: readonly string[]): Promise<
+        readonly { id: string, type: string, name: string }[]
+      > => {
         return userIds.map(id => ({ id, type: 'user', name: `User ${id}` }))
       }
 
       // Number keys for orders
-      const orderBatchFn = async (orderIds: readonly number[]): Promise<readonly any[]> => {
+      const orderBatchFn = async (orderIds: readonly number[]): Promise<
+        readonly { id: number, type: string, total: number }[]
+      > => {
         return orderIds.map(id => ({ id, type: 'order', total: id * 10 }))
       }
 

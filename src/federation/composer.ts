@@ -198,6 +198,7 @@ import { CompositionError, ErrorFactory, type ValidationError } from '@core'
 import type {
   FederatedSchema,
   FederationCompositionConfig,
+  FederationEntity,
   SchemaMetadata,
   ServiceDefinition,
 } from '@core'
@@ -287,7 +288,9 @@ const makeComposer = Effect.gen(function* () {
       // Step 5: Create the final federated schema
       const federatedSchema: FederatedSchema = {
         schema,
-        entities: validatedConfig.entities,
+        entities: validatedConfig.entities as ReadonlyArray<
+          FederationEntity<unknown, unknown, unknown, unknown>
+        >,
         services: validatedConfig.services,
         version: '2.0.0',
         metadata: composedConfig.metadata,

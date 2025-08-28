@@ -49,7 +49,11 @@
  * @since 2.0.0
  * @category Core API
  */
-export { createEntityBuilder, FederationEntityBuilder } from './builders/entity-builder.js'
+export {
+  createEntityBuilder,
+  FederationEntityBuilder,
+  toFederationEntity,
+} from './builders/entity-builder.js'
 export {
   BaseDomainError,
   CircuitBreakerError,

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import * as Effect from 'effect/Effect'
 import { Duration, Either } from 'effect'
-import { SubgraphManagement } from '../../../src/federation/subgraph.js'
-import type { HealthStatus } from '../../../src/core/types.js'
+import { SubgraphManagement } from '@federation'
+import type { HealthStatus, ServiceDefinition } from '@core'
 
 // Simple test data factories inline
 const createTestServices = (count: number) =>
@@ -14,7 +14,7 @@ const createTestServices = (count: number) =>
     metadata: { team: "test", criticality: "medium" as const }
   }))
 
-const createServiceDefinition = (overrides: any = {}) => ({
+const createServiceDefinition = (overrides: Partial<ServiceDefinition> = {}) => ({
   id: "test-service",
   url: "http://localhost:4001",
   name: "Test Service",
@@ -420,7 +420,7 @@ describe('Subgraph Registry and Service Discovery', () => {
     it('should track service registration metrics', async () => {
       const services = createTestServices(3)
 
-      const { result, logs: _logs } = await Effect.runPromise(
+      const { result } = await Effect.runPromise(
         TestLayers.captureLogs(
           Effect.gen(function* () {
             const registry = yield* MockSubgraphRegistry

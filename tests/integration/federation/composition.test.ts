@@ -9,7 +9,7 @@ import {
   withResolvers,
   validateEntityBuilder,
   UltraStrictEntityBuilder,
-} from '../../../src/experimental/ultra-strict-entity-builder.js'
+} from '@experimental'
 
 describe('Federation Composition Integration', () => {
   describe('Multi-Entity Federation', () => {

@@ -13,7 +13,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `bun test:integration` - Run integration tests only (tests/integration)
 - `bun test:coverage` - Generate coverage reports with v8 provider
 - `bun test:complete` - Run comprehensive integration test (test-complete.ts)
-- `vitest --ui` - Run tests with interactive UI
+- `bun test:ui` - Run tests with interactive UI (Vitest UI)
+- `vitest` - Run tests in watch mode using Vitest directly
+- `vitest --ui` - Alternative command for interactive UI
 
 ### Development
 
@@ -30,13 +32,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Code Quality
 
-- `bun run typecheck` - Type checking for source files only
-- `bun run typecheck:tests` - Type checking for tests with relaxed rules
+- `bun run typecheck` - Type checking without emitting files (uses main tsconfig.json)
 - `bun run lint` - ESLint checking
 - `bun run lint:fix` - ESLint with automatic fixing
 - `bun run format` - Prettier code formatting
 - `bun run format:check` - Check formatting without changes
-- `bun run validate` - Full validation: typecheck + typecheck:tests + lint + test:complete
+- `bun run validate` - Full validation: typecheck + lint + test:complete
 
 ### Documentation
 
@@ -97,12 +98,18 @@ Match.value(error).pipe(
 
 **Type Safety Rules**:
 
-- Never use `any` - use proper type assertions or unknown
+- **NEVER use `any`** - use `unknown` or proper type assertions through double assertion pattern
 - All imports use `.js` extension (ESM requirement)
 - Entity builders use phantom types for compile-time validation
 - HealthStatus has `timestamp` and `responseTime` fields (not `lastCheck`/`metrics`)
 - ValidatedEntity structure uses `keys` array not single `key` property
-- When using `any` is unavoidable (e.g., generic entity mocks), document the reason
+- **Type Conversion Pattern**: Use double assertion through `unknown` for complex type conversions:
+  ```typescript
+  // Correct pattern for type conversions
+  entity as unknown as TargetType
+  ```
+- **FederationEntity Generics**: Default to `<unknown, unknown, unknown, unknown>` for untyped entities
+- **FederationCompositionConfig**: Expects `ReadonlyArray<FederationEntity<unknown, unknown, unknown, unknown>>`
 
 ### Testing Patterns
 
@@ -187,9 +194,8 @@ const mockEntity: ValidatedEntity<unknown, unknown, unknown> = {
 
 ### TypeScript Configuration Structure
 
-- **`tsconfig.json`** - Main configuration for source files only (strict rules, includes `@/*` path mapping)
-- **`tsconfig.build.json`** - Production build configuration (extends main)
-- **`tsconfig.test.json`** - Test-specific configuration (relaxed unused variable rules, test type definitions)
+- **`tsconfig.json`** - Main configuration for all TypeScript files (strict rules, includes `@/*` path mapping)
+- **`tsconfig.build.json`** - Production build configuration (extends main, excludes test files)
 
 ### Path Mappings & Barrel Exports
 
@@ -229,13 +235,45 @@ import { specificUtility } from '@/core/utils/helper.js'
 - Only create files when absolutely necessary for functionality
 - Maintain existing code conventions and patterns
 
+### Entity Conversion Patterns
+
+**ValidatedEntity to FederationEntity Conversion**:
+
+The entity builder returns `ValidatedEntity` which must be converted to `FederationEntity` for use in federation composition:
+
+```typescript
+// 1. Build entity with entity builder
+const entityEffect = createEntityBuilder('User', UserSchema, ['id'])
+  .withReferenceResolver(resolver)
+  .build()
+
+// 2. Run the effect to get ValidatedEntity
+const validatedEntity = await Effect.runPromise(entityEffect)
+
+// 3. Convert to FederationEntity using toFederationEntity helper
+const federationEntity = toFederationEntity(
+  validatedEntity as unknown as typeof validatedEntity & { key: string[] },
+  referenceResolver
+)
+
+// 4. Use asUntypedEntity for composition config
+const config: FederationCompositionConfig = {
+  entities: [asUntypedEntity(federationEntity)],
+}
+```
+
+**Key Functions**:
+
+- `toFederationEntity(validatedEntity, referenceResolver)` - Converts ValidatedEntity to FederationEntity
+- `asUntypedEntity(entity)` - Converts typed FederationEntity to untyped for composition config
+
 ## Critical Reminders
 
 - Always use Effect.fail for errors in mocks, never throw
 - HealthStatus uses `timestamp` and `responseTime` fields (not `lastCheck`/`metrics`)
 - Test failures should use expectEffectFailure helper
 - DataLoader stats require proper key generation
-- **NEVER use `any` type** - this is strictly enforced. Use `unknown`, proper type parameters, or specific type assertions
+- **NEVER use `any` type** - this is strictly enforced. Use `unknown`, proper type parameters, or specific type assertions through double assertion
 - ValidatedEntity structure uses `keys` array not single `key` property
 - Entity builder's `build()` method returns `Effect.Effect<ValidatedEntity<>, ValidationError>`
 - For compatibility, entity builder adds a `key` property alongside `keys`
@@ -246,3 +284,5 @@ import { specificUtility } from '@/core/utils/helper.js'
 - **Schema Type Casting**: Cast schemas to `Schema.Schema<unknown, unknown, never>` when using with generic builders
 - **EntityValidationResult Casting**: Use `result as EntityValidationResult<unknown, unknown, unknown>` for validation result matching
 - **Match.exhaustive**: Ensure all error types in DomainError union are handled (includes HealthCheckError)
+- **ErrorTransformation Config**: All ErrorBoundaryConfig objects must include `errorTransformation` property with `includeStackTrace` and `sanitizeErrors`
+- **Package.json Exports**: The `types` field must come before `import` and `require` in export definitions

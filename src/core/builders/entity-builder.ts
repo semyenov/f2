@@ -13,6 +13,7 @@ import type {
   EntityResolutionError,
   FederationDirective,
   FederationDirectiveMap,
+  FederationEntity,
   FieldResolutionError,
   FieldResolver,
   FieldResolverMap,
@@ -83,8 +84,8 @@ export class FederationEntityBuilder<
   TSource extends Record<string, unknown> = Record<string, unknown>,
   TContext = Record<string, unknown>,
   TResult = TSource,
-  // Using a type assertion for TReference to maintain GraphQL compatibility
   TReference extends Record<string, unknown> = Record<string, unknown>,
+  TExtensions = Record<string, unknown>,
 > {
   constructor(
     private readonly typename: string,
@@ -393,7 +394,7 @@ export class FederationEntityBuilder<
   /**
    * Set the reference resolver for entity resolution
    */
-  withReferenceResolver(
+  withReferenceResolver<TReference extends Record<string, unknown> = Record<string, unknown>>(
     resolver: EntityReferenceResolver<TResult, TContext, TReference>
   ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     return new FederationEntityBuilder(
@@ -413,7 +414,7 @@ export class FederationEntityBuilder<
   withExtensions(
     extensions: Record<string, unknown>
   ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
-    return new FederationEntityBuilder(
+    return new FederationEntityBuilder<TSource, TContext, TResult, TReference, TExtensions>(
       this.typename,
       this.schema,
       this.keyFields,
@@ -697,4 +698,56 @@ export const createEntityBuilder = <
     schema,
     keyFields
   )
+}
+
+/**
+ * Convert ValidatedEntity to FederationEntity for compatibility
+ */
+export const toFederationEntity = <
+  TSource = Record<string, unknown>,
+  TContext = Record<string, unknown>,
+  TResult = TSource,
+  TReference = Record<string, unknown>,
+>(
+  validatedEntity: ValidatedEntity<TSource, TContext, TResult> & { key: string[] },
+  referenceResolver?: EntityReferenceResolver<TResult, TContext, TReference>
+): FederationEntity<TSource, TContext, TResult, TReference> => {
+  // Build directives map
+  const directivesMap: Record<string, FederationDirective[]> = {}
+
+  for (const directive of validatedEntity.directives) {
+    if (directive.applicableFields) {
+      for (const field of directive.applicableFields) {
+        const directiveType = `@${directive.name}` as FederationDirective['type']
+        directivesMap[field] = [
+          ...(directivesMap[field] ?? ([] as FederationDirective[])),
+          {
+            type: directiveType,
+            args: directive.args,
+          },
+        ]
+      }
+    }
+  }
+
+  // Convert to readonly FederationDirectiveMap
+  const directives: FederationDirectiveMap =
+    Object.keys(directivesMap).length > 0
+      ? Object.fromEntries(
+          Object.entries(directivesMap).map(([key, value]) => [
+            key,
+            value as ReadonlyArray<FederationDirective>,
+          ])
+        )
+      : {}
+
+  return {
+    typename: validatedEntity.typename,
+    key: validatedEntity.key,
+    schema: validatedEntity.schema as unknown as Schema.Schema<TSource, TResult>,
+    resolveReference: referenceResolver ?? (() => Effect.succeed({} as TResult)),
+    fields: undefined,
+    directives: Object.keys(directives).length > 0 ? directives : undefined,
+    extensions: undefined,
+  }
 }

@@ -65,6 +65,7 @@ export interface FederationEntity<
   TContext = Record<string, unknown>,
   TResult = Partial<TSource>,
   TReference = Partial<TSource>,
+  TExtensions = Record<string, unknown>,
 > {
   /** GraphQL type name - must match the type name in your schema */
   readonly typename: string
@@ -85,7 +86,7 @@ export interface FederationEntity<
   readonly directives: FederationDirectiveMap | undefined
 
   /** Additional metadata for tooling and extensions */
-  readonly extensions: Record<string, unknown> | undefined
+  readonly extensions: TExtensions | undefined
 }
 
 /**
@@ -213,7 +214,7 @@ export interface FederationCompositionConfig {
 export const asUntypedEntity = <TSource, TContext, TResult, TReference>(
   entity: FederationEntity<TSource, TContext, TResult, TReference>
 ): FederationEntity<unknown, unknown, unknown, unknown> =>
-  entity as FederationEntity<unknown, unknown, unknown, unknown>
+  entity as unknown as FederationEntity<unknown, unknown, unknown, unknown>
 
 /**
  * Error boundary configuration for circuit breakers and fault tolerance

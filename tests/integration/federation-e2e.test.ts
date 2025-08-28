@@ -3,11 +3,11 @@ import * as Effect from 'effect/Effect'
 import * as Either from 'effect/Either'
 import type { GraphQLResolveInfo, GraphQLSchema } from 'graphql'
 import { describe, expect, it } from 'vitest'
-import { SchemaFirst } from '../../src/core/schema-first-patterns.js'
-import type { ErrorBoundaryConfig, FederatedSchema, PerformanceConfig, SchemaMetadata, ServiceDefinition } from '../../src/core/types.js'
-import { FederationErrorBoundaries } from '../../src/federation/error-boundaries.js'
-import { PerformanceOptimizations } from '../../src/federation/performance.js'
-import { SubgraphManagement } from '../../src/federation/subgraph.js'
+import { SchemaFirst } from '@core'
+import type { ErrorBoundaryConfig, FederatedSchema, PerformanceConfig, SchemaMetadata, ServiceDefinition } from '@core'
+import { FederationErrorBoundaries } from '@federation'
+import { PerformanceOptimizations } from '@federation'
+import { SubgraphManagement } from '@federation'
 import { MockSubgraphRegistry, TestLayers } from '../utils/test-layers.js'
 
 // Test helper functions
@@ -122,6 +122,10 @@ describe('End-to-End Federation Integration Tests', () => {
             partialFailureHandling: {
               allowPartialFailure: true,
               criticalSubgraphs: ['users-service', 'orders-service']
+            },
+            errorTransformation: {
+              includeStackTrace: false,
+              sanitizeErrors: true
             }
           }
 
@@ -232,6 +236,10 @@ describe('End-to-End Federation Integration Tests', () => {
             partialFailureHandling: {
               allowPartialFailure: true,
               criticalSubgraphs: ['orders-service'] // Only orders is critical
+            },
+            errorTransformation: {
+              includeStackTrace: false,
+              sanitizeErrors: true
             }
           }
 
@@ -286,6 +294,10 @@ describe('End-to-End Federation Integration Tests', () => {
         partialFailureHandling: {
           allowPartialFailure: true,
           criticalSubgraphs: ['users-service'] // Users is critical
+        },
+        errorTransformation: {
+          includeStackTrace: false,
+          sanitizeErrors: true
         }
       }
 
@@ -546,10 +558,14 @@ describe('End-to-End Federation Integration Tests', () => {
             partialFailureHandling: {
               allowPartialFailure: true,
               criticalSubgraphs: ['users-service']
+            },
+            errorTransformation: {
+              includeStackTrace: false,
+              sanitizeErrors: true
             }
           }
 
-          const _errorBoundary = FederationErrorBoundaries.createBoundary(errorBoundaryConfig)
+          FederationErrorBoundaries.createBoundary(errorBoundaryConfig)
 
           const performanceConfig: PerformanceConfig = {
             queryPlanCache: {
@@ -669,7 +685,7 @@ describe('End-to-End Federation Integration Tests', () => {
             }
           }
 
-          const _registry = yield* SubgraphManagement.createRegistry(registryConfig)
+          yield* SubgraphManagement.createRegistry(registryConfig)
 
           const performanceConfig: PerformanceConfig = {
             queryPlanCache: {
@@ -747,6 +763,10 @@ describe('End-to-End Federation Integration Tests', () => {
         partialFailureHandling: {
           allowPartialFailure: true,
           criticalSubgraphs: []
+        },
+        errorTransformation: {
+          includeStackTrace: false,
+          sanitizeErrors: true
         }
       }
 
@@ -832,6 +852,10 @@ describe('End-to-End Federation Integration Tests', () => {
             partialFailureHandling: {
               allowPartialFailure: true,
               criticalSubgraphs: ['users-service', 'orders-service']
+            },
+            errorTransformation: {
+              includeStackTrace: false,
+              sanitizeErrors: true
             }
           }
 

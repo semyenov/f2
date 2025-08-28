@@ -2,18 +2,17 @@ import { describe, it, expect } from 'vitest'
 import * as Effect from 'effect/Effect'
 import * as Schema from 'effect/Schema'
 import { Duration, Layer } from 'effect'
-import { createEntityBuilder } from '../../src/core/builders/entity-builder.js'
-import { createFederatedSchema, FederationComposerLive } from '../../src/federation/composer.js'
-import { TestLayerLive } from '../../src/core/services/layers.js'
-import { asUntypedEntity } from '../../src/core/types.js'
-import type { FederationEntity } from '../../src/core/types.js'
+import { createEntityBuilder, toFederationEntity, asUntypedEntity } from '@core'
+import { createFederatedSchema, FederationComposerLive } from '@federation'
+import { TestLayerLive } from '@core'
+import type { FederationCompositionConfig, FederationEntity } from '@core'
 
 describe('Federation Composer Integration', () => {
   // Ensure all required services are explicitly provided with correct dependency order
   const testLayers = TestLayerLive.pipe(
     Layer.provide(FederationComposerLive)
   )
-  
+
   const UserSchema = Schema.Struct({
     id: Schema.String,
     email: Schema.String,
@@ -27,32 +26,37 @@ describe('Federation Composer Integration', () => {
   })
 
   it('should compose federation with multiple entities', async () => {
+    const userReferenceResolver = (ref: { id: string }) =>
+      Effect.succeed({
+        id: ref.id as string,
+        email: `user${ref.id}@example.com`,
+        name: `User ${ref.id}`,
+      })
+
+    const productReferenceResolver = (ref: { id: string }) =>
+      Effect.succeed({
+        id: ref.id,
+        name: `Product ${ref.id}`,
+        price: 99.99,
+      })
+
     const userEntityEffect = createEntityBuilder('User', UserSchema, ['id'])
       .withShareableField('email')
-      .withReferenceResolver((ref: any) =>
-        Effect.succeed({
-          id: ref.id as string,
-          email: `user${ref.id}@example.com`,
-          name: `User ${ref.id}`,
-        })
-      )
+      .withReferenceResolver(userReferenceResolver)
       .build()
 
     const productEntityEffect = createEntityBuilder('Product', ProductSchema, ['id'])
       .withShareableField('name')
-      .withReferenceResolver((ref: any) =>
-        Effect.succeed({
-          id: ref.id as string,
-          name: `Product ${ref.id}`,
-          price: 99.99,
-        })
-      )
+      .withReferenceResolver(productReferenceResolver)
       .build()
 
-    const entities = await Effect.runPromise(Effect.all([userEntityEffect, productEntityEffect]) as any)
+    const [userValidated, productValidated] = await Effect.runPromise(Effect.all([userEntityEffect, productEntityEffect]))
 
-    const config = {
-      entities: [asUntypedEntity((entities as any)[0] as any), asUntypedEntity((entities as any)[1] as any)],
+    const config: FederationCompositionConfig = {
+      entities: [
+        asUntypedEntity(toFederationEntity(userValidated as unknown as (typeof userValidated & { key: string[] }), userReferenceResolver)),
+        asUntypedEntity(toFederationEntity(productValidated as unknown as (typeof productValidated & { key: string[] }), productReferenceResolver)),
+      ],
       services: [
         { id: 'users', url: 'http://localhost:4001' },
         { id: 'products', url: 'http://localhost:4002' },
@@ -68,6 +72,10 @@ describe('Federation Composer Integration', () => {
         },
         partialFailureHandling: {
           allowPartialFailure: true,
+        },
+        errorTransformation: {
+          includeStackTrace: false,
+          sanitizeErrors: false,
         },
       },
       performance: {
@@ -93,20 +101,23 @@ describe('Federation Composer Integration', () => {
   })
 
   it('should handle composition with error boundaries', async () => {
+    const userReferenceResolver = (ref: unknown) => {
+      const { id } = ref as { id: string }
+      return Effect.succeed({
+        id,
+        email: `user${id}@example.com`,
+        name: `User ${id}`,
+      })
+    }
+
     const userEntityEffect = createEntityBuilder('User', UserSchema, ['id'])
-      .withReferenceResolver((ref: any) =>
-        Effect.succeed({
-          id: ref.id as string,
-          email: `user${ref.id}@example.com`,
-          name: `User ${ref.id}`,
-        })
-      )
+      .withReferenceResolver(userReferenceResolver)
       .build()
 
-    const entities = await Effect.runPromise(Effect.all([userEntityEffect]) as any)
+    const [userValidated] = await Effect.runPromise(Effect.all([userEntityEffect]))
 
-    const config = {
-      entities: [asUntypedEntity((entities as any)[0] as any)],
+    const config: FederationCompositionConfig = {
+      entities: [asUntypedEntity(toFederationEntity(userValidated as unknown as (typeof userValidated & { key: string[] }), userReferenceResolver))],
       services: [{ id: 'users', url: 'http://localhost:4001' }],
       errorBoundaries: {
         subgraphTimeouts: {
@@ -119,6 +130,10 @@ describe('Federation Composer Integration', () => {
         partialFailureHandling: {
           allowPartialFailure: true,
           criticalSubgraphs: ['users'],
+        },
+        errorTransformation: {
+          includeStackTrace: false,
+          sanitizeErrors: false,
         },
       },
       performance: {
@@ -143,15 +158,15 @@ describe('Federation Composer Integration', () => {
     const invalidEntity = {
       typename: '', // Invalid empty typename
       key: ['id'],
-      schema: UserSchema,
+      schema: UserSchema as unknown as Schema.Schema<Record<string, unknown>, Partial<Record<string, unknown>>>,
       resolveReference: () => Effect.succeed({}),
       fields: undefined,
       directives: undefined,
       extensions: undefined,
-    }
+    } as FederationEntity
 
-    const config = {
-      entities: [invalidEntity as FederationEntity<unknown, unknown, unknown, unknown>],
+    const config: FederationCompositionConfig = {
+      entities: [asUntypedEntity(invalidEntity)],
       services: [{ id: 'users', url: 'http://localhost:4001' }],
       errorBoundaries: {
         subgraphTimeouts: {
@@ -163,6 +178,10 @@ describe('Federation Composer Integration', () => {
         },
         partialFailureHandling: {
           allowPartialFailure: true,
+        },
+        errorTransformation: {
+          includeStackTrace: false,
+          sanitizeErrors: false,
         },
       },
       performance: {

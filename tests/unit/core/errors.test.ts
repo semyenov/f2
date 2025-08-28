@@ -15,8 +15,8 @@ import {
   CompositionError,
   TypeConversionError,
   ErrorFactory
-} from '../../../src/core/errors.js'
-import type { DomainError } from '../../../src/core/types.js'
+} from '@core'
+import type { DomainError } from '@core'
 
 describe('Core Error System', () => {
   describe('BaseDomainError', () => {

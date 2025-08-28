@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Context from "effect/Context"
-import * as Types from "../../src/core/types.js"
+import * as Types from '@core'
 
 /**
  * Test layer compositions and service mocks for testing

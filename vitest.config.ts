@@ -10,7 +10,18 @@ export default defineConfig({
     environment: 'happy-dom',
 
     // Test file patterns
-    include: ['tests/**/*.test.ts'],
+    include: [
+      'tests/**/*.test.ts',
+      'tests/unit/**/*.test.ts',
+      'tests/integration/**/*.test.ts',
+      'tests/functional/**/*.test.ts',
+      'tests/performance/**/*.test.ts',
+      'tests/e2e/**/*.test.ts',
+      'tests/utils/**/*.test.ts',
+      'tests/fixtures/**/*.test.ts',
+      'tests/helpers/**/*.test.ts',
+      'tests/mocks/**/*.test.ts',
+    ],
 
     environmentOptions: {
       happyDOM: {
@@ -29,9 +40,6 @@ export default defineConfig({
         'dist/**',
         '**/*.test.ts',
         '**/*.config.ts',
-        'test-complete.ts',
-        'functional-patterns-standalone.ts',
-        'comprehensive-functional-demo.ts',
       ],
       thresholds: {
         lines: 75,

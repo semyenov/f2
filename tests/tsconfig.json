@@ -1,5 +1,5 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "../tsconfig.json",
   "compilerOptions": {
     // Test-specific compiler options
     "noEmit": true,
@@ -13,7 +13,7 @@
     "types": ["bun-types", "node", "vitest/globals", "@vitest/ui"],
 
     // Path mapping for cleaner test imports
-    "baseUrl": ".",
+    "baseUrl": "../",
     "paths": {
       "@/*": ["./src/*"],
       "@core": ["./src/core"],
@@ -32,17 +32,6 @@
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true
   },
-
-  // Test-specific includes - only include test files and related config
-  "include": [
-    "tests/**/*",
-    "src/**/*",
-    "vitest.config.ts",
-    "test-complete.ts",
-    "functional-patterns-standalone.ts",
-    "comprehensive-functional-demo.ts"
-  ],
-
-  // Exclude production build artifacts and node_modules
+  "include": ["**/*"],
   "exclude": ["node_modules", "dist", "coverage"]
 }

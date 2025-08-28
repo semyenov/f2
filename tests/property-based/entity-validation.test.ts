@@ -3,7 +3,7 @@ import * as Schema from 'effect/Schema'
 import * as fc from 'fast-check'
 import { GraphQLFloat, GraphQLID, GraphQLInt, GraphQLString } from 'graphql'
 import { describe, test } from 'vitest'
-import { createUltraStrictEntityBuilder, matchEntityValidationResult, UltraStrictEntityBuilder, validateEntityBuilder, withDirectives, withKeys, withResolvers, type EntityValidationResult } from '../../src/experimental/ultra-strict-entity-builder.js'
+import { createUltraStrictEntityBuilder, matchEntityValidationResult, UltraStrictEntityBuilder, validateEntityBuilder, withDirectives, withKeys, withResolvers, type EntityValidationResult } from '@experimental'
 
 // Property-based testing for entity validation
 describe('Property-Based Entity Validation', () => {
