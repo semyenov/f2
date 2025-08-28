@@ -1,7 +1,8 @@
 import * as Effect from "effect/Effect"
 import * as Schema from "@effect/schema/Schema"
 import { pipe } from "effect/Function"
-import { ModernFederationEntityBuilder } from "../core/builders/entity-builder.js"
+import { createEntityBuilder } from "../core/builders/entity-builder.js"
+import type { GraphQLResolveInfo } from "graphql"
 
 /**
  * Simplified Federation v2 Example
@@ -19,7 +20,7 @@ const UserSchema = Schema.Struct({
 type User = Schema.Schema.Type<typeof UserSchema>
 
 // Federation context interface
-interface FederationContext {
+interface FederationContext extends Record<string, unknown> {
   readonly userId?: string
   readonly permissions: ReadonlyArray<string>
 }
@@ -30,12 +31,12 @@ const example = pipe(
   Effect.flatMap(() => {
     console.log("🚀 Creating Federation Entity...")
     
-    const builder = new ModernFederationEntityBuilder("User", UserSchema, ["id"])
+    const builder = createEntityBuilder<User, FederationContext>("User", UserSchema, ["id"])
       .withShareableField("email")
-      .withField("name", (parent, _args, _context, _info) => 
+      .withField("name", (parent: User, _args: Record<string, unknown>, _context: FederationContext, _info: GraphQLResolveInfo) => 
         Effect.succeed(parent.name || parent.email?.split("@")?.[0] || 'Anonymous')
       )
-      .withReferenceResolver((reference, _context, _info) => {
+      .withReferenceResolver((reference: Partial<User>, _context: FederationContext, _info: GraphQLResolveInfo) => {
         console.log(`📍 Resolving User reference:`, reference)
         
         // Simple mock resolution
@@ -52,10 +53,10 @@ const example = pipe(
   }),
   Effect.tap(userEntity => {
     console.log("✅ User entity created successfully!")
-    console.log(`   - Typename: ${userEntity.typename}`)
-    console.log(`   - Key fields:`, userEntity.key)
-    console.log(`   - Has ${Object.keys(userEntity.fields || {}).length} field resolvers`)
-    console.log(`   - Has ${Object.keys(userEntity.directives || {}).length} directive configurations`)
+    console.log(`   - Typename: ${(userEntity).typename}`)
+    console.log(`   - Key fields:`, (userEntity).key)
+    console.log(`   - Has ${Object.keys((userEntity).fields || {}).length} field resolvers`)
+    console.log(`   - Has ${Object.keys((userEntity).directives || {}).length} directive configurations`)
     
     return Effect.succeed(userEntity)
   }),
@@ -65,9 +66,9 @@ const example = pipe(
     // Test the reference resolver
     const testReference = { id: "123" }
     const mockContext: FederationContext = { permissions: ["read"] }
-    const mockInfo = {} as any
+    const mockInfo = {} as GraphQLResolveInfo
     
-    return userEntity.resolveReference(testReference, mockContext, mockInfo)
+    return (userEntity).resolveReference(testReference, mockContext, mockInfo)
   }),
   Effect.tap(resolvedUser => {
     console.log("✅ Reference resolution successful!")
@@ -85,7 +86,11 @@ const example = pipe(
 console.log("🎯 Starting Federation v2 Simple Entity Example...")
 console.log("==================================================")
 
-Effect.runPromise(example)
+Effect.runPromise(
+  example.pipe(
+    Effect.orDie
+  )
+)
   .then(() => {
     console.log("\n" + "====================================================")
     console.log("🎉 Example completed successfully!")

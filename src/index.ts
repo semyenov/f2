@@ -19,13 +19,12 @@ export * from "./schema/index.js"
 // Pattern exports
 export * from "./patterns/index.js"
 
+// Experimental features (advanced patterns)
+export * as Experimental from "./experimental/index.js"
+
 // Example exports (for demonstration)
 export * from "./examples/basic-entity.js"
 
-/**
- * Legacy compatibility exports
- */
-export { ModernFederationComposer as FederationComposer } from "./federation/composer.js"
 
 
 

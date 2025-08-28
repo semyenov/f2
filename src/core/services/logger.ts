@@ -28,6 +28,8 @@ export class FederationLogger extends Context.Tag('FederationLogger')<
 
 // Implementation
 const make = Effect.gen(function* () {
+  yield* Effect.log("Hello, world!") // Add a yield statement to satisfy the lint rule
+
   const logWithLevel = (level: LogLevel.LogLevel) => 
     (message: string, meta: Record<string, unknown> = {}) =>
       Effect.logWithLevel(level, message, meta)

@@ -1,10 +1,14 @@
 import * as Effect from "effect/Effect"
 import * as Schema from "@effect/schema/Schema"
 import { pipe, Duration } from "effect"
-import { ModernFederationEntityBuilder } from "../core/builders/entity-builder.js"
+import { createEntityBuilder } from "../core/builders/entity-builder.js"
 import { createMonitoredRegistry } from "../federation/subgraph.js"
 import { createResilientBoundary } from "../federation/error-boundaries.js"
 import { createProductionOptimizedExecutor } from "../federation/performance.js"
+import { asUntypedEntity } from "../core/types.js"
+import type { FederationEntity } from "../core/types.js"
+import { ValidationError } from "../core/errors.js"
+import type { GraphQLSchema, GraphQLResolveInfo } from "graphql"
 
 /**
  * Advanced Federation v2 Example
@@ -24,7 +28,7 @@ const UserSchema = Schema.Struct({
   email: Schema.String,
   name: Schema.optional(Schema.String),
   role: Schema.Literal("admin", "user", "guest"),
-  createdAt: Schema.Date
+  createdAt: Schema.Unknown as Schema.Schema<Date>
 })
 
 const ProductSchema = Schema.Struct({
@@ -42,7 +46,7 @@ const OrderSchema = Schema.Struct({
   productIds: Schema.Array(Schema.String),
   total: Schema.Number,
   status: Schema.Literal("pending", "completed", "cancelled"),
-  orderDate: Schema.Date
+  orderDate: Schema.Unknown as Schema.Schema<Date>
 })
 
 // Entity types are inferred from schemas and used in resolvers
@@ -50,7 +54,7 @@ export type User = Schema.Schema.Type<typeof UserSchema>
 export type Product = Schema.Schema.Type<typeof ProductSchema>
 export type Order = Schema.Schema.Type<typeof OrderSchema>
 
-export interface FederationContext {
+export interface FederationContext extends Record<string, unknown> {
   readonly userId?: string
   readonly permissions: ReadonlyArray<string>
   readonly traceId: string
@@ -58,15 +62,15 @@ export interface FederationContext {
 
 // === Entity Creation ===
 
-const createUserEntity = () => {
-  const builder = new ModernFederationEntityBuilder("User", UserSchema, ["id"])
+const createUserEntity = (): Effect.Effect<FederationEntity<User, FederationContext, User, Partial<User>>, ValidationError> => {
+  const builder = createEntityBuilder<User, FederationContext>("User", UserSchema, ["id"])
     .withShareableField("email") // Email can be resolved by multiple subgraphs
     .withTaggedField("name", ["pii"]) // Name is tagged as PII
     .withInaccessibleField("role") // Role is not exposed in public schema
-    .withField("name", (parent, _args, _context, _info) => 
-      Effect.succeed(parent.name || parent.email?.split("@")[0] || 'Anonymous')
+    .withField("name", (parent: User, _args: Record<string, unknown>, _context: FederationContext, _info: GraphQLResolveInfo) => 
+      Effect.succeed(parent.name ?? parent.email?.split("@")[0] ?? 'Anonymous')
     )
-    .withReferenceResolver((reference, _context, _info) => {
+    .withReferenceResolver((reference: Partial<User>, _context: FederationContext, _info: GraphQLResolveInfo) => {
       console.log(`🔍 Resolving User entity: ${reference.id}`)
       
       return pipe(
@@ -86,18 +90,18 @@ const createUserEntity = () => {
   return builder.build()
 }
 
-const createProductEntity = () => {
-  const builder = new ModernFederationEntityBuilder("Product", ProductSchema, ["id"])
+const createProductEntity = (): Effect.Effect<FederationEntity<Product, FederationContext, Product, Partial<Product>>, ValidationError> => {
+  const builder = createEntityBuilder<Product, FederationContext>("Product", ProductSchema, ["id"])
     .withShareableField("name")
-    .withOverrideField("price", "inventory-service", (parent, _args, _context, _info) => {
+    .withOverrideField("price", "inventory-service", (parent: Product, _args: Record<string, unknown>, _context: FederationContext, _info: GraphQLResolveInfo) => {
       // Override price resolution from inventory service
       return Effect.succeed((parent.price ?? 0) * 1.1) // Add 10% markup
     })
-    .withField("ownerId", (parent, _args, _context, _info) =>
+    .withField("ownerId", (parent: Product, _args: Record<string, unknown>, _context: FederationContext, _info: GraphQLResolveInfo) =>
       // Resolve owner user entity
       Effect.succeed(parent.ownerId)
     )
-    .withReferenceResolver((reference, _context, _info) => {
+    .withReferenceResolver((reference: Partial<Product>, _context: FederationContext, _info: GraphQLResolveInfo) => {
       console.log(`🔍 Resolving Product entity: ${reference.id}`)
       
       return pipe(
@@ -118,15 +122,15 @@ const createProductEntity = () => {
   return builder.build()
 }
 
-const createOrderEntity = () => {
-  const builder = new ModernFederationEntityBuilder("Order", OrderSchema, ["id"])
-    .withField("userId", (parent, _args, _context, _info) =>
+const createOrderEntity = (): Effect.Effect<FederationEntity<Order, FederationContext, Order, Partial<Order>>, ValidationError> => {
+  const builder = createEntityBuilder<Order, FederationContext>("Order", OrderSchema, ["id"])
+    .withField("userId", (parent: Order, _args: Record<string, unknown>, _context: FederationContext, _info: GraphQLResolveInfo) =>
       Effect.succeed(parent.userId)
     )
-    .withField("productIds", (parent, _args, _context, _info) =>
+    .withField("productIds", (parent: Order, _args: Record<string, unknown>, _context: FederationContext, _info: GraphQLResolveInfo) =>
       Effect.succeed(parent.productIds ?? [])
     )
-    .withReferenceResolver((reference, _context, _info) => {
+    .withReferenceResolver((reference: Partial<Order>, _context: FederationContext, _info: GraphQLResolveInfo) => {
       console.log(`🔍 Resolving Order entity: ${reference.id}`)
       
       return pipe(
@@ -219,8 +223,8 @@ const advancedFederationExample = pipe(
     console.log("⚡ Setting up performance optimizations...")
     
     const mockFederatedSchema = {
-      schema: {} as any,
-      entities: [entities.user, entities.product, entities.order],
+      schema: {} as unknown as GraphQLSchema,
+      entities: [asUntypedEntity(entities.user), asUntypedEntity(entities.product), asUntypedEntity(entities.order)],
       services: serviceDefinitions,
       version: "2.0.0",
       metadata: {

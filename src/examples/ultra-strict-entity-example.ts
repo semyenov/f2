@@ -11,7 +11,6 @@ import { pipe } from "effect/Function"
 import { GraphQLID } from "graphql"
 
 import {
-  UltraStrictEntityBuilder,
   createUltraStrictEntityBuilder,
   withSchema,
   withKeys,
@@ -19,8 +18,9 @@ import {
   withResolvers,
   validateEntityBuilder,
   matchEntityValidationResult,
+  UltraStrictEntityBuilder,
   type EntityValidationResult
-} from "../core/ultra-strict-entity-builder.js"
+} from "../experimental/ultra-strict-entity-builder.js"
 
 // ============================================================================
 // Example Entity Schema
@@ -34,8 +34,8 @@ const UserSchema = Schema.Struct({
 })
 
 const resolvers = {
-  fullName: (parent: any) => `${parent.name || 'Anonymous'}`,
-  isEmailVerified: (parent: any) => Boolean(parent.email?.includes('@'))
+  fullName: (parent: unknown) => `${(parent as {name?: string}).name || 'Anonymous'}`,
+  isEmailVerified: (parent: unknown) => Boolean((parent as {email?: string}).email?.includes('@'))
 }
 
 // ============================================================================
@@ -101,7 +101,7 @@ export const createInvalidSchemaEntity = (): Effect.Effect<EntityValidationResul
       Effect.succeed({
         _tag: "InvalidKeys" as const,
         errors: [],
-        schema: InvalidSchema
+        schema: InvalidSchema as Schema.Schema<unknown, unknown, never>
       })
     )
   )
@@ -119,7 +119,7 @@ export const createInvalidDirectiveEntity = (): Effect.Effect<EntityValidationRe
       UltraStrictEntityBuilder.Key.create("id", GraphQLID, false)
     ]),
     withDirectives([
-      UltraStrictEntityBuilder.Directive.create("invalidDirective", {}), // This will fail
+      { name: "invalidDirective", args: {} }, // This will fail - invalid directive
       UltraStrictEntityBuilder.Directive.override("") // This will fail - empty 'from'
     ]),
     withResolvers(resolvers),
@@ -128,7 +128,7 @@ export const createInvalidDirectiveEntity = (): Effect.Effect<EntityValidationRe
       Effect.succeed({
         _tag: "InvalidDirectives" as const,
         errors: [],
-        schema: UserSchema,
+        schema: UserSchema as Schema.Schema<unknown, unknown, never>,
         keys: []
       })
     )

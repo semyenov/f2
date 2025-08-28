@@ -94,7 +94,7 @@ const handleError = (error: DomainError) =>
 
 The framework provides multiple entity builders:
 
-- **Standard Builder** (`ModernFederationEntityBuilder`) - Legacy v1.x compatibility
+- **Standard Builder** (`FederationEntityBuilder`) - Legacy v1.x compatibility
 - **Ultra-Strict Builder** (`UltraStrictEntityBuilder`) - Phantom types and compile-time validation
 - **Schema-First Builder** - AST-based development workflow
 
@@ -191,7 +191,7 @@ The framework provides multiple entity builders:
 
 ### Framework-Specific Conventions
 
-- **Entity Builders**: Standard (`ModernFederationEntityBuilder`), Ultra-Strict (`UltraStrictEntityBuilder`), Schema-First
+- **Entity Builders**: Standard (`FederationEntityBuilder`), Ultra-Strict (`UltraStrictEntityBuilder`), Schema-First
 - **Error Types**: All errors extend from `DomainError` union type with `_tag` discriminants
 - **Service Layer**: Use Effect Layers for dependency injection (see `src/core/services/`)
 - **Validation Results**: Use discriminated unions like `EntityValidationResult` with exhaustive pattern matching

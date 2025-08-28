@@ -12,18 +12,21 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Match from "effect/Match"
-import { Kind, type DocumentNode, type GraphQLSchema } from "graphql"
+import { Kind, type DocumentNode, type GraphQLOutputType, type GraphQLSchema } from "graphql"
 
+import type { 
+  ValidatedEntity
+} from "../experimental/ultra-strict-entity-builder.js"
 import {
   createUltraStrictEntityBuilder,
-  UltraStrictEntityBuilder,
   validateEntityBuilder,
   withDirectives,
   withKeys,
   withResolvers,
   withSchema,
-  type ValidatedEntity
-} from "./ultra-strict-entity-builder.js"
+  KeyUtils,
+  DirectiveUtils
+} from "../experimental/ultra-strict-entity-builder.js"
 
 
 // ============================================================================
@@ -124,10 +127,14 @@ export const SchemaFirstService = Context.GenericTag<SchemaFirstService>("@feder
 // ============================================================================
 
 export const createSchemaFirstService = (): SchemaFirstService => ({
-  parseSchemaDefinition: (_schemaSource: string) =>
+  parseSchemaDefinition: (schemaSource: string) =>
     pipe(
       Effect.try(() => {
         // Simplified parsing - in real implementation would use graphql-js parser
+        // Check for basic validity
+        if (!schemaSource || !schemaSource.includes('type')) {
+          throw new Error('Invalid GraphQL schema')
+        }
         return {
           kind: Kind.DOCUMENT,
           definitions: []
@@ -216,7 +223,7 @@ export const createSchemaFirstService = (): SchemaFirstService => ({
 // Resolver for ${entity.typename}
 export const ${entity.typename}Resolvers = {
   Query: {
-    ${entity.typename.toLowerCase()}: async (parent: any, args: any, context: any) => {
+    ${entity.typename.toLowerCase()}: async (parent: unknown, args: unknown, context: unknown) => {
       // TODO: Implement ${entity.typename} query resolver
       return Effect.runPromise(
         pipe(
@@ -231,7 +238,7 @@ export const ${entity.typename}Resolvers = {
   ${entity.typename}: {
     // Field resolvers
     ${entity.keys.map(key => `
-    ${key.field}: (parent: any) => parent.${key.field}`).join(',')}
+    ${key.field}: (parent: unknown) => parent.${key.field}`).join(',')}
   }
 }`
         ).join('\n\n')
@@ -283,14 +290,14 @@ const generateUserEntityBuilder = (): Effect.Effect<ValidatedEntity | null, neve
       name: Schema.optional(Schema.String)
     })),
     withKeys([
-      UltraStrictEntityBuilder.Key.create("id", { name: "ID" } as any, false)
+      KeyUtils.create("id", { name: "ID" } as GraphQLOutputType, false)
     ]),
     withDirectives([
-      UltraStrictEntityBuilder.Directive.shareable(),
-      UltraStrictEntityBuilder.Directive.tag("user")
+      DirectiveUtils.shareable(),
+      DirectiveUtils.tag("user")
     ]),
     withResolvers({
-      fullName: (parent: any) => `${parent.name || 'Anonymous'}`
+      fullName: (parent: unknown) => `${(parent as { name?: string }).name ?? 'Anonymous'}`
     }),
     validateEntityBuilder,
     Effect.map(result =>
@@ -312,13 +319,13 @@ const generateProductEntityBuilder = (): Effect.Effect<ValidatedEntity | null, n
       price: Schema.Number
     })),
     withKeys([
-      UltraStrictEntityBuilder.Key.create("id", { name: "ID" } as any, false)
+      KeyUtils.create("id", { name: "ID" } as GraphQLOutputType, false)
     ]),
     withDirectives([
-      UltraStrictEntityBuilder.Directive.shareable()
+      DirectiveUtils.shareable()
     ]),
     withResolvers({
-      formattedPrice: (parent: any) => `$${parent.price.toFixed(2)}`
+      formattedPrice: (parent: unknown) => `$${(parent as { price: number }).price.toFixed(2)}`
     }),
     validateEntityBuilder,
     Effect.map(result =>
@@ -340,13 +347,16 @@ const generateOrderEntityBuilder = (): Effect.Effect<ValidatedEntity | null, nev
       total: Schema.Number
     })),
     withKeys([
-      UltraStrictEntityBuilder.Key.create("id", { name: "ID" } as any, false)
+      KeyUtils.create("id", { name: "ID" } as GraphQLOutputType, false)
     ]),
     withDirectives([
-      UltraStrictEntityBuilder.Directive.requires("userId")
+      DirectiveUtils.requires("userId")
     ]),
     withResolvers({
-      formattedTotal: (parent: any) => `$${parent.total.toFixed(2)}`
+      formattedTotal: (parent: unknown) => {
+        const typedParent = parent as {total: number}
+        return `$${typedParent.total.toFixed(2)}`
+      }
     }),
     validateEntityBuilder,
     Effect.map(result =>

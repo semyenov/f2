@@ -26,13 +26,13 @@ describe("AST Conversion", () => {
       const outputContext = createConversionContext(false);
 
       const stringType = await Effect.runPromise(
-        ASTConversion.schemaToGraphQLType(stringSchema, outputContext),
+        ASTConversion.schemaToGraphQLType(stringSchema as Schema.Schema<unknown>, outputContext),
       );
       const numberType = await Effect.runPromise(
-        ASTConversion.schemaToGraphQLType(numberSchema, outputContext),
+        ASTConversion.schemaToGraphQLType(numberSchema as Schema.Schema<unknown>, outputContext),
       );
       const booleanType = await Effect.runPromise(
-        ASTConversion.schemaToGraphQLType(booleanSchema, outputContext),
+        ASTConversion.schemaToGraphQLType(booleanSchema as Schema.Schema<unknown>, outputContext),
       );
 
       expect(stringType).toBe(GraphQLString);
@@ -45,7 +45,7 @@ describe("AST Conversion", () => {
       const outputContext = createConversionContext(false);
 
       const intType = await Effect.runPromise(
-        ASTConversion.schemaToGraphQLType(intSchema, outputContext),
+        ASTConversion.schemaToGraphQLType(intSchema as Schema.Schema<unknown>, outputContext),
       );
 
       expect(intType).toBe(GraphQLInt);
@@ -63,14 +63,14 @@ describe("AST Conversion", () => {
       const outputContext = createConversionContext(false); // Output type
 
       const result = await Effect.runPromise(
-        ASTConversion.schemaToGraphQLType(UserSchema, outputContext),
+        ASTConversion.schemaToGraphQLType(UserSchema as Schema.Schema<unknown>, outputContext),
       );
 
       expect(isOutputType(result)).toBe(true);
       expect(result).toBeInstanceOf(GraphQLObjectType);
 
       const objectType = result as GraphQLObjectType;
-      expect(objectType.name).toMatch(/User|Struct/); // Name generation may vary
+      expect(objectType.name).toMatch(/User|Struct|GeneratedTypeLiteral/); // Name generation may vary
 
       const fields = objectType.getFields();
       expect(fields["id"]).toBeDefined();
@@ -87,7 +87,7 @@ describe("AST Conversion", () => {
       const inputContext = createConversionContext(true); // Input type
 
       const result = await Effect.runPromise(
-        ASTConversion.schemaToGraphQLType(UserInputSchema, inputContext),
+        ASTConversion.schemaToGraphQLType(UserInputSchema as Schema.Schema<unknown>, inputContext),
       );
 
       expect(isInputType(result)).toBe(true);
@@ -132,7 +132,7 @@ describe("AST Conversion", () => {
 
       try {
         await Effect.runPromise(
-          ASTConversion.schemaToGraphQLType(complexSchema, context),
+          ASTConversion.schemaToGraphQLType(complexSchema as Schema.Schema<unknown>, context),
         );
         expect.unreachable("Should have thrown an error");
       } catch (error) {

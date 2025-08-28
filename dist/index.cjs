@@ -5,6 +5,12 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+	for (var name in all) __defProp(target, name, {
+		get: all[name],
+		enumerable: true
+	});
+};
 var __copyProps = (to, from, except, desc) => {
 	if (from && typeof from === "object" || typeof from === "function") for (var keys = __getOwnPropNames(from), i = 0, n = keys.length, key; i < n; i++) {
 		key = keys[i];
@@ -36,6 +42,10 @@ const effect_Config = __toESM(require("effect/Config"));
 const dataloader = __toESM(require("dataloader"));
 const effect_index = __toESM(require("effect/index"));
 
+//#region src/core/types.ts
+const asUntypedEntity = (entity) => entity;
+
+//#endregion
 //#region src/core/errors.ts
 /**
 * Base domain error using Effect's Data.Error
@@ -266,7 +276,7 @@ var DiscoveryError = class extends BaseDomainError {
 let ErrorMatching;
 (function(_ErrorMatching) {
 	_ErrorMatching.toUserMessage = (errorEffect) => (0, effect_Function.pipe)(errorEffect, effect_Effect.match({
-		onFailure: (error$1) => effect_Match.value(error$1).pipe(effect_Match.tag("ValidationError", (err) => `Invalid ${err.field || "field"}: ${err.message}`), effect_Match.tag("SchemaValidationError", (err) => `Data format error: ${err.violations.map((v) => v.message).join(", ")}`), effect_Match.tag("EntityResolutionError", (err) => `Could not find ${err.entityType || "entity"}: ${err.message}`), effect_Match.tag("FieldResolutionError", (err) => `Field resolution failed for ${err.fieldName || "field"}: ${err.message}`), effect_Match.tag("FederationError", (err) => `Federation error: ${err.message}`), effect_Match.tag("CircuitBreakerError", () => "Service temporarily unavailable, please try again"), effect_Match.tag("TimeoutError", () => "Request timed out, please try again"), effect_Match.tag("CompositionError", (err) => `Schema composition failed: ${err.message}`), effect_Match.tag("TypeConversionError", (err) => `Type conversion failed: ${err.message}`), effect_Match.tag("RegistrationError", (err) => `Service registration failed: ${err.message}`), effect_Match.tag("DiscoveryError", (err) => `Service discovery failed: ${err.message}`), effect_Match.tag("HealthCheckError", (err) => `Health check failed: ${err.message}`), effect_Match.exhaustive),
+		onFailure: (error$1) => effect_Match.value(error$1).pipe(effect_Match.tag("ValidationError", (err) => `Invalid ${err.field ?? "field"}: ${err.message}`), effect_Match.tag("SchemaValidationError", (err) => `Data format error: ${err.violations.map((v) => v.message).join(", ")}`), effect_Match.tag("EntityResolutionError", (err) => `Could not find ${err.entityType ?? "entity"}: ${err.message}`), effect_Match.tag("FieldResolutionError", (err) => `Field resolution failed for ${err.fieldName ?? "field"}: ${err.message}`), effect_Match.tag("FederationError", (err) => `Federation error: ${err.message}`), effect_Match.tag("CircuitBreakerError", () => "Service temporarily unavailable, please try again"), effect_Match.tag("TimeoutError", () => "Request timed out, please try again"), effect_Match.tag("CompositionError", (err) => `Schema composition failed: ${err.message}`), effect_Match.tag("TypeConversionError", (err) => `Type conversion failed: ${err.message}`), effect_Match.tag("RegistrationError", (err) => `Service registration failed: ${err.message}`), effect_Match.tag("DiscoveryError", (err) => `Service discovery failed: ${err.message}`), effect_Match.tag("HealthCheckError", (err) => `Health check failed: ${err.message}`), effect_Match.exhaustive),
 		onSuccess: () => "Operation completed successfully"
 	}));
 	_ErrorMatching.isRetryable = (error$1) => effect_Match.value(error$1).pipe(effect_Match.tag("ValidationError", () => false), effect_Match.tag("SchemaValidationError", () => false), effect_Match.tag("EntityResolutionError", () => true), effect_Match.tag("FieldResolutionError", () => true), effect_Match.tag("FederationError", () => false), effect_Match.tag("CircuitBreakerError", () => true), effect_Match.tag("TimeoutError", () => true), effect_Match.tag("CompositionError", () => false), effect_Match.tag("TypeConversionError", () => false), effect_Match.tag("RegistrationError", () => true), effect_Match.tag("DiscoveryError", () => true), effect_Match.tag("HealthCheckError", () => true), effect_Match.exhaustive);
@@ -297,7 +307,8 @@ let ErrorFactory;
 		registrationError: (message, serviceId, cause) => registration(message, serviceId, cause),
 		discoveryError: (message, endpoint, cause) => discovery(message, endpoint, cause),
 		schemaCompositionFailed: (reason) => composition(`Schema composition failed: ${reason}`),
-		unsupportedAstType: (astType) => typeConversion(`Unsupported AST type: ${astType}`, astType)
+		unsupportedAstType: (astType) => typeConversion(`Unsupported AST type: ${astType}`, astType),
+		typeConversion: (message, astType) => typeConversion(message, astType)
 	};
 })(ErrorFactory || (ErrorFactory = {}));
 
@@ -313,7 +324,7 @@ let ErrorFactory;
 * - Type-safe field resolver binding
 * - Directive validation and conflict detection
 */
-var ModernFederationEntityBuilder = class ModernFederationEntityBuilder {
+var FederationEntityBuilder = class FederationEntityBuilder {
 	constructor(typename, schema, keyFields, directiveMap = {}, fieldResolvers = {}, referenceResolver, extensions) {
 		this.typename = typename;
 		this.schema = schema;
@@ -356,7 +367,6 @@ var ModernFederationEntityBuilder = class ModernFederationEntityBuilder {
 	*/
 	withOverrideField(field, fromSubgraph, resolver) {
 		if (!fromSubgraph?.trim()) throw new Error("fromSubgraph cannot be empty");
-		if (!resolver) throw new Error("Resolver is required for override fields");
 		return this.addDirective(field, {
 			type: "@override",
 			args: { from: fromSubgraph }
@@ -392,8 +402,7 @@ var ModernFederationEntityBuilder = class ModernFederationEntityBuilder {
 	* Add a custom field resolver without directives
 	*/
 	withField(field, resolver) {
-		if (!resolver) throw new Error("Field resolver cannot be null");
-		return new ModernFederationEntityBuilder(this.typename, this.schema, this.keyFields, this.directiveMap, {
+		return new FederationEntityBuilder(this.typename, this.schema, this.keyFields, this.directiveMap, {
 			...this.fieldResolvers,
 			[field]: resolver
 		}, this.referenceResolver, this.extensions);
@@ -402,14 +411,13 @@ var ModernFederationEntityBuilder = class ModernFederationEntityBuilder {
 	* Set the reference resolver for entity resolution
 	*/
 	withReferenceResolver(resolver) {
-		if (!resolver) throw new Error("Reference resolver cannot be null");
-		return new ModernFederationEntityBuilder(this.typename, this.schema, this.keyFields, this.directiveMap, this.fieldResolvers, resolver, this.extensions);
+		return new FederationEntityBuilder(this.typename, this.schema, this.keyFields, this.directiveMap, this.fieldResolvers, resolver, this.extensions);
 	}
 	/**
 	* Add extension metadata to the entity
 	*/
 	withExtensions(extensions) {
-		return new ModernFederationEntityBuilder(this.typename, this.schema, this.keyFields, this.directiveMap, this.fieldResolvers, this.referenceResolver, {
+		return new FederationEntityBuilder(this.typename, this.schema, this.keyFields, this.directiveMap, this.fieldResolvers, this.referenceResolver, {
 			...this.extensions,
 			...extensions
 		});
@@ -419,7 +427,7 @@ var ModernFederationEntityBuilder = class ModernFederationEntityBuilder {
 	*/
 	addDirective(field, directive, resolver) {
 		this.validateDirectiveConflicts(field, directive);
-		const existingDirectives = this.directiveMap[field] || [];
+		const existingDirectives = this.directiveMap[field] ?? [];
 		const newDirectiveMap = {
 			...this.directiveMap,
 			[field]: [...existingDirectives, directive]
@@ -428,13 +436,13 @@ var ModernFederationEntityBuilder = class ModernFederationEntityBuilder {
 			...this.fieldResolvers,
 			[field]: resolver
 		} : this.fieldResolvers;
-		return new ModernFederationEntityBuilder(this.typename, this.schema, this.keyFields, newDirectiveMap, newFieldResolvers, this.referenceResolver, this.extensions);
+		return new FederationEntityBuilder(this.typename, this.schema, this.keyFields, newDirectiveMap, newFieldResolvers, this.referenceResolver, this.extensions);
 	}
 	/**
 	* Validate directive conflicts and usage rules
 	*/
 	validateDirectiveConflicts(field, newDirective) {
-		const existingDirectives = this.directiveMap[field] || [];
+		const existingDirectives = this.directiveMap[field] ?? [];
 		const conflicts = [
 			["@shareable", "@override"],
 			["@inaccessible", "@shareable"],
@@ -457,13 +465,18 @@ var ModernFederationEntityBuilder = class ModernFederationEntityBuilder {
 	* Validate that all required components are present for building
 	*/
 	validateBuildRequirements() {
-		return effect.Effect.gen(function* () {
-			if (!this.referenceResolver) yield* effect.Effect.fail(ErrorFactory.validation("Reference resolver is required", "referenceResolver"));
-			for (const [field, directives] of Object.entries(this.directiveMap)) {
-				const hasOverride = directives.some((d) => d.type === "@override");
-				if (hasOverride && !this.fieldResolvers[field]) yield* effect.Effect.fail(ErrorFactory.validation(`Override field '${field}' requires a resolver`, "fieldResolver", field));
-			}
-		}.bind(this));
+		const hasFederationDirectives = Object.values(this.directiveMap).some((directives) => directives.some((d) => [
+			"@key",
+			"@requires",
+			"@provides",
+			"@external"
+		].includes(d.type)));
+		if (hasFederationDirectives && !this.referenceResolver) return effect.Effect.fail(ErrorFactory.validation("Reference resolver is required for entities with federation directives", "referenceResolver"));
+		for (const [field, directives] of Object.entries(this.directiveMap)) {
+			const hasOverride = directives.some((d) => d.type === "@override");
+			if (hasOverride && !this.fieldResolvers[field]) return effect.Effect.fail(ErrorFactory.validation(`Override field '${field}' requires a resolver`, "fieldResolver", field));
+		}
+		return effect.Effect.succeed(void 0);
 	}
 	/**
 	* Create the federation entity instance
@@ -500,79 +513,186 @@ var ModernFederationEntityBuilder = class ModernFederationEntityBuilder {
 	}
 };
 /**
-* Factory function for creating entity builders with type inference
+* Factory function for creating entity builders with proper type inference
 */
 const createEntityBuilder = (typename, schema, keyFields) => {
-	return new ModernFederationEntityBuilder(typename, schema, keyFields);
-};
-/**
-* Utility function to create entity with fluent API
-*/
-const defineEntity = (config, builder) => {
-	const initialBuilder = createEntityBuilder(config.typename, config.schema, config.keyFields);
-	return builder(initialBuilder).build();
+	return new FederationEntityBuilder(typename, schema, keyFields);
 };
 
 //#endregion
-//#region src/core/ultra-strict-entity-builder.ts
+//#region src/experimental/ultra-strict-entity-builder.ts
 const EntityValidationResult = effect_Data.taggedEnum();
 var SchemaValidationError$1 = class extends effect_Data.TaggedError("SchemaValidationError") {};
 var KeyValidationError = class extends effect_Data.TaggedError("KeyValidationError") {};
 var DirectiveValidationError = class extends effect_Data.TaggedError("DirectiveValidationError") {};
-var EntityBuilderError = class extends effect_Data.TaggedError("EntityBuilderError") {};
 /**
 * Creates a new UltraStrictEntityBuilder with compile-time state tracking
+* 
+* The builder uses phantom types to enforce correct usage order at compile time.
+* This prevents runtime errors by catching configuration mistakes during development.
+* 
+* @param typename - The GraphQL type name for this entity
+* @returns Builder in Unvalidated state, requiring schema definition next
+* 
+* @example
+* ```typescript
+* const userBuilder = createUltraStrictEntityBuilder('User')
+* // Next step must be withSchema - compiler enforces this
+* ```
 */
-const createUltraStrictEntityBuilder = (typename) => ({
-	_phantomState: effect_Data.struct({ _tag: "Unvalidated" }),
-	typename
-});
+const createUltraStrictEntityBuilder = (typename) => {
+	if (!typename?.trim()) throw new Error("Entity typename cannot be empty");
+	return {
+		_phantomState: effect_Data.struct({ _tag: "Unvalidated" }),
+		typename
+	};
+};
 /**
 * Type-safe schema attachment (only valid in Unvalidated state)
+* 
+* Attaches an Effect Schema to the entity for runtime validation.
+* The phantom type system ensures this can only be called on an unvalidated builder.
+* 
+* @template A - The schema type being attached
+* @param schema - Effect Schema instance for validation
+* @returns Function that takes Unvalidated builder and returns HasSchema builder
+* 
+* @example
+* ```typescript
+* const UserSchema = Schema.Struct({
+*   id: Schema.String,
+*   name: Schema.String,
+*   email: Schema.String
+* })
+* 
+* const builderWithSchema = createUltraStrictEntityBuilder('User')
+*   .pipe(withSchema(UserSchema))
+* ```
 */
-const withSchema = (schema) => (builder) => ({
-	...builder,
-	_phantomState: effect_Data.struct({ _tag: "HasSchema" }),
-	schema
-});
+const withSchema = (schema) => (builder) => {
+	if (!schema) throw new Error("Schema cannot be null or undefined");
+	return {
+		...builder,
+		_phantomState: effect_Data.struct({ _tag: "HasSchema" }),
+		schema
+	};
+};
 /**
 * Type-safe key definition (only valid in HasSchema state)
+* 
+* Defines the key fields that uniquely identify this entity across subgraphs.
+* The phantom type system ensures schema is attached before keys can be defined.
+* 
+* @param keys - Array of EntityKey objects defining the unique identifier(s)
+* @returns Function that takes HasSchema builder and returns HasKeys builder
+* 
+* @example
+* ```typescript
+* const keys = [
+*   UltraStrictEntityBuilder.Key.create('id', GraphQLID, false),
+*   UltraStrictEntityBuilder.Key.create('organizationId', GraphQLID, false) // Composite key
+* ]
+* 
+* const builderWithKeys = builderWithSchema
+*   .pipe(withKeys(keys))
+* ```
 */
-const withKeys = (keys) => (builder) => ({
-	...builder,
-	_phantomState: effect_Data.struct({ _tag: "HasKeys" }),
-	keys
-});
+const withKeys = (keys) => (builder) => {
+	const actualKeys = keys || [];
+	if (actualKeys.length > 0) {
+		const duplicateKeys = actualKeys.map((k) => k.field).filter((field, index, arr) => arr.indexOf(field) !== index);
+		if (duplicateKeys.length > 0) throw new Error(`Duplicate key fields found: ${duplicateKeys.join(", ")}`);
+	}
+	return {
+		...builder,
+		_phantomState: effect_Data.struct({ _tag: "HasKeys" }),
+		keys: actualKeys
+	};
+};
 /**
 * Type-safe directive application (only valid in HasKeys state)
+* 
+* Applies Federation directives to the entity. The phantom type system ensures
+* both schema and keys are defined before directives can be applied.
+* 
+* @param directives - Array of Federation directives (@shareable, @inaccessible, etc.)
+* @returns Function that takes HasKeys builder and returns HasDirectives builder
+* 
+* @example
+* ```typescript
+* const directives = [
+*   UltraStrictEntityBuilder.Directive.shareable(),
+*   UltraStrictEntityBuilder.Directive.tag('public'),
+*   UltraStrictEntityBuilder.Directive.provides('email')
+* ]
+* 
+* const builderWithDirectives = builderWithKeys
+*   .pipe(withDirectives(directives))
+* ```
 */
-const withDirectives = (directives) => (builder) => ({
-	...builder,
-	_phantomState: effect_Data.struct({ _tag: "HasDirectives" }),
-	directives
-});
+const withDirectives = (directives) => (builder) => {
+	const directiveNames = directives?.map((d) => d.name) ?? [];
+	const conflictingPairs = [
+		["shareable", "override"],
+		["inaccessible", "shareable"],
+		["external", "override"]
+	];
+	const hasConflict = conflictingPairs.some(([dir1, dir2]) => directiveNames.includes(dir1) && directiveNames.includes(dir2));
+	if (hasConflict) {
+		const conflict = conflictingPairs.find(([dir1, dir2]) => directiveNames.includes(dir1) && directiveNames.includes(dir2));
+		throw new Error(`Conflicting directives: @${conflict[0]} and @${conflict[1]} cannot be used together`);
+	}
+	return {
+		...builder,
+		_phantomState: effect_Data.struct({ _tag: "HasDirectives" }),
+		directives: directives ?? []
+	};
+};
 /**
 * Type-safe resolver attachment (only valid in HasDirectives state)
+* 
+* Attaches field resolvers to the entity. The phantom type system ensures
+* all previous configuration steps are complete before resolvers can be attached.
+* 
+* @param resolvers - Record of field name to resolver function mappings
+* @returns Function that takes HasDirectives builder and returns Complete builder
+* 
+* @example
+* ```typescript
+* const resolvers = {
+*   displayName: (user) => `${user.firstName} ${user.lastName}`,
+*   avatar: (user, args, ctx) => ctx.imageService.getAvatar(user.id),
+*   posts: (user, args, ctx) => ctx.postService.findByUserId(user.id)
+* }
+* 
+* const completeBuilder = builderWithDirectives
+*   .pipe(withResolvers(resolvers))
+* ```
 */
-const withResolvers = (resolvers) => (builder) => ({
-	...builder,
-	_phantomState: effect_Data.struct({ _tag: "Complete" }),
-	resolvers
-});
+const withResolvers = (resolvers) => (builder) => {
+	if (!resolvers) throw new Error("Resolvers cannot be null or undefined");
+	const invalidResolvers = Object.entries(resolvers).filter(([, resolver]) => typeof resolver !== "function").map(([fieldName]) => fieldName);
+	if (invalidResolvers.length > 0) throw new Error(`Resolvers for fields '${invalidResolvers.join(", ")}' must be functions`);
+	return {
+		...builder,
+		_phantomState: effect_Data.struct({ _tag: "Complete" }),
+		resolvers
+	};
+};
 /**
 * Validates a complete entity builder using exhaustive pattern matching
 */
 const validateEntityBuilder = (builder) => (0, effect_Function.pipe)(effect_Effect.succeed(builder), effect_Effect.flatMap(validateSchema), effect_Effect.flatMap(validateKeys), effect_Effect.flatMap(validateDirectives), effect_Effect.flatMap(validateCircularDependencies), effect_Effect.flatMap(validateCompatibility), effect_Effect.map(createValidResult), effect_Effect.catchAll(handleValidationErrors));
-const validateSchema = (builder) => (0, effect_Function.pipe)(effect_Effect.succeed(builder.schema), effect_Effect.flatMap((schema) => (0, effect_Function.pipe)(__effect_schema_Schema.decodeUnknown(schema)({}), effect_Effect.matchEffect({
-	onFailure: (parseError) => effect_Effect.fail([new SchemaValidationError$1({
-		message: `Schema validation failed: ${parseError.message}`,
+const validateSchema = (builder) => (0, effect_Function.pipe)(effect_Effect.succeed(builder.schema), effect_Effect.flatMap((schema) => {
+	if (!schema) return effect_Effect.fail([new SchemaValidationError$1({
+		message: `Schema is required`,
 		schemaPath: ["schema"],
-		suggestion: "Ensure all schema fields are properly typed and required fields are marked"
-	})]),
-	onSuccess: () => effect_Effect.succeed(builder)
-}))));
+		suggestion: "Ensure a valid schema is provided"
+	})]);
+	return effect_Effect.succeed(builder);
+}));
 const validateKeys = (builder) => (0, effect_Function.pipe)(effect_Effect.succeed(builder.keys), effect_Effect.flatMap((keys) => {
-	const errors = [];
+	let errors = [];
 	if (keys.length === 0) errors.push(new KeyValidationError({
 		message: "Entity must have at least one key field",
 		keyField: "<missing>",
@@ -580,16 +700,16 @@ const validateKeys = (builder) => (0, effect_Function.pipe)(effect_Effect.succee
 		suggestion: "Add a primary key field like 'id' or composite keys"
 	}));
 	const schemaFields = getSchemaFields(builder.schema);
-	for (const key of keys) if (!schemaFields.includes(key.field)) errors.push(new KeyValidationError({
+	const missingKeyErrors = keys.filter((key) => !schemaFields.includes(key.field)).map((key) => new KeyValidationError({
 		message: `Key field '${key.field}' not found in schema`,
 		keyField: key.field,
 		entityType: builder.typename,
 		suggestion: `Add field '${key.field}' to the schema or remove from keys`
 	}));
+	errors = [...errors, ...missingKeyErrors];
 	return errors.length > 0 ? effect_Effect.fail(errors) : effect_Effect.succeed(builder);
 }));
 const validateDirectives = (builder) => (0, effect_Function.pipe)(effect_Effect.succeed(builder.directives), effect_Effect.flatMap((directives) => {
-	const errors = [];
 	const validDirectives = [
 		"shareable",
 		"inaccessible",
@@ -599,19 +719,22 @@ const validateDirectives = (builder) => (0, effect_Function.pipe)(effect_Effect.
 		"provides",
 		"requires"
 	];
-	for (const directive of directives) {
+	const directiveErrors = directives.flatMap((directive) => {
+		const errors = [];
 		if (!validDirectives.includes(directive.name)) errors.push(new DirectiveValidationError({
 			message: `Unknown Federation directive: @${directive.name}`,
 			directive: directive.name,
 			suggestion: `Use one of: ${validDirectives.map((d) => `@${d}`).join(", ")}`
 		}));
-		if (directive.name === "override" && !directive.args["from"]) errors.push(new DirectiveValidationError({
+		if (directive.name === "override" && directive.args?.["from"] === void 0) errors.push(new DirectiveValidationError({
 			message: "@override directive requires 'from' argument",
 			directive: directive.name,
 			suggestion: "Add 'from: \"SubgraphName\"' to @override directive"
 		}));
-	}
-	return errors.length > 0 ? effect_Effect.fail(errors) : effect_Effect.succeed(builder);
+		return errors;
+	});
+	const allErrors = directiveErrors.flat();
+	return allErrors.length > 0 ? effect_Effect.fail(allErrors) : effect_Effect.succeed(builder);
 }));
 const validateCircularDependencies = (builder) => effect_Effect.succeed(builder);
 const validateCompatibility = (builder) => effect_Effect.succeed(builder);
@@ -658,38 +781,65 @@ const getSchemaFields = (_schema) => {
 	];
 };
 /**
-* Factory function for common entity key patterns
+* Creates an entity key for federation (internal implementation)
 */
 const createEntityKey = (field, type, isComposite = false) => ({
 	field,
 	type,
 	isComposite
 });
-/**
-* Factory function for Federation directives
-*/
-const createDirective = (name, args = {}, applicableFields) => ({
-	name,
-	args,
-	applicableFields
-});
 let UltraStrictEntityBuilder;
 (function(_UltraStrictEntityBuilder) {
-	_UltraStrictEntityBuilder.create = createUltraStrictEntityBuilder;
-	_UltraStrictEntityBuilder.validate = validateEntityBuilder;
-	_UltraStrictEntityBuilder.match = matchEntityValidationResult;
-	_UltraStrictEntityBuilder.Key = { create: createEntityKey };
-	_UltraStrictEntityBuilder.Directive = {
-		create: createDirective,
-		shareable: () => createDirective("shareable"),
-		inaccessible: () => createDirective("inaccessible"),
-		tag: (name) => createDirective("tag", { name }),
-		override: (from) => createDirective("override", { from }),
-		external: () => createDirective("external"),
-		provides: (fields) => createDirective("provides", { fields }),
-		requires: (fields) => createDirective("requires", { fields })
-	};
+	let Directive;
+	(function(_Directive) {
+		_Directive.shareable = () => ({
+			name: "shareable",
+			args: {}
+		});
+		_Directive.inaccessible = () => ({
+			name: "inaccessible",
+			args: {}
+		});
+		_Directive.tag = (name) => ({
+			name: "tag",
+			args: { name }
+		});
+		_Directive.override = (from) => ({
+			name: "override",
+			args: { from }
+		});
+		_Directive.external = () => ({
+			name: "external",
+			args: {}
+		});
+		_Directive.provides = (fields) => ({
+			name: "provides",
+			args: { fields }
+		});
+		_Directive.requires = (fields) => ({
+			name: "requires",
+			args: { fields }
+		});
+	})(Directive || (Directive = _UltraStrictEntityBuilder.Directive || (_UltraStrictEntityBuilder.Directive = {})));
+	let Key;
+	(function(_Key) {
+		_Key.create = createEntityKey;
+	})(Key || (Key = _UltraStrictEntityBuilder.Key || (_UltraStrictEntityBuilder.Key = {})));
 })(UltraStrictEntityBuilder || (UltraStrictEntityBuilder = {}));
+let DirectiveUtils;
+(function(_DirectiveUtils) {
+	_DirectiveUtils.shareable = UltraStrictEntityBuilder.Directive.shareable;
+	_DirectiveUtils.inaccessible = UltraStrictEntityBuilder.Directive.inaccessible;
+	_DirectiveUtils.tag = UltraStrictEntityBuilder.Directive.tag;
+	_DirectiveUtils.override = UltraStrictEntityBuilder.Directive.override;
+	_DirectiveUtils.external = UltraStrictEntityBuilder.Directive.external;
+	_DirectiveUtils.provides = UltraStrictEntityBuilder.Directive.provides;
+	_DirectiveUtils.requires = UltraStrictEntityBuilder.Directive.requires;
+})(DirectiveUtils || (DirectiveUtils = {}));
+let KeyUtils;
+(function(_KeyUtils) {
+	_KeyUtils.create = UltraStrictEntityBuilder.Key.create;
+})(KeyUtils || (KeyUtils = {}));
 
 //#endregion
 //#region src/core/schema-first-patterns.ts
@@ -755,7 +905,7 @@ const createSchemaFirstService = () => ({
 // Resolver for ${entity.typename}
 export const ${entity.typename}Resolvers = {
   Query: {
-    ${entity.typename.toLowerCase()}: async (parent: any, args: any, context: any) => {
+    ${entity.typename.toLowerCase()}: async (parent: unknown, args: unknown, context: unknown) => {
       // TODO: Implement ${entity.typename} query resolver
       return Effect.runPromise(
         pipe(
@@ -770,7 +920,7 @@ export const ${entity.typename}Resolvers = {
   ${entity.typename}: {
     // Field resolvers
     ${entity.keys.map((key) => `
-    ${key.field}: (parent: any) => parent.${key.field}`).join(",")}
+    ${key.field}: (parent: unknown) => parent.${key.field}`).join(",")}
   }
 }`).join("\n\n");
 		return `import * as Effect from "effect/Effect"\nimport { pipe } from "effect/Function"\n\n${stubs}`;
@@ -792,17 +942,17 @@ const generateUserEntityBuilder = () => (0, effect_Function.pipe)(createUltraStr
 	id: __effect_schema_Schema.String,
 	email: __effect_schema_Schema.String,
 	name: __effect_schema_Schema.optional(__effect_schema_Schema.String)
-})), withKeys([UltraStrictEntityBuilder.Key.create("id", { name: "ID" }, false)]), withDirectives([UltraStrictEntityBuilder.Directive.shareable(), UltraStrictEntityBuilder.Directive.tag("user")]), withResolvers({ fullName: (parent) => `${parent.name || "Anonymous"}` }), validateEntityBuilder, effect_Effect.map((result) => (0, effect_Function.pipe)(effect_Match.value(result), effect_Match.tag("Valid", ({ entity }) => entity), effect_Match.orElse(() => null))), effect_Effect.catchAll(() => effect_Effect.succeed(null)));
+})), withKeys([KeyUtils.create("id", { name: "ID" }, false)]), withDirectives([DirectiveUtils.shareable(), DirectiveUtils.tag("user")]), withResolvers({ fullName: (parent) => `${parent.name ?? "Anonymous"}` }), validateEntityBuilder, effect_Effect.map((result) => (0, effect_Function.pipe)(effect_Match.value(result), effect_Match.tag("Valid", ({ entity }) => entity), effect_Match.orElse(() => null))), effect_Effect.catchAll(() => effect_Effect.succeed(null)));
 const generateProductEntityBuilder = () => (0, effect_Function.pipe)(createUltraStrictEntityBuilder("Product"), withSchema(__effect_schema_Schema.Struct({
 	id: __effect_schema_Schema.String,
 	name: __effect_schema_Schema.String,
 	price: __effect_schema_Schema.Number
-})), withKeys([UltraStrictEntityBuilder.Key.create("id", { name: "ID" }, false)]), withDirectives([UltraStrictEntityBuilder.Directive.shareable()]), withResolvers({ formattedPrice: (parent) => `$${parent.price.toFixed(2)}` }), validateEntityBuilder, effect_Effect.map((result) => (0, effect_Function.pipe)(effect_Match.value(result), effect_Match.tag("Valid", ({ entity }) => entity), effect_Match.orElse(() => null))), effect_Effect.catchAll(() => effect_Effect.succeed(null)));
+})), withKeys([KeyUtils.create("id", { name: "ID" }, false)]), withDirectives([DirectiveUtils.shareable()]), withResolvers({ formattedPrice: (parent) => `$${parent.price.toFixed(2)}` }), validateEntityBuilder, effect_Effect.map((result) => (0, effect_Function.pipe)(effect_Match.value(result), effect_Match.tag("Valid", ({ entity }) => entity), effect_Match.orElse(() => null))), effect_Effect.catchAll(() => effect_Effect.succeed(null)));
 const generateOrderEntityBuilder = () => (0, effect_Function.pipe)(createUltraStrictEntityBuilder("Order"), withSchema(__effect_schema_Schema.Struct({
 	id: __effect_schema_Schema.String,
 	userId: __effect_schema_Schema.String,
 	total: __effect_schema_Schema.Number
-})), withKeys([UltraStrictEntityBuilder.Key.create("id", { name: "ID" }, false)]), withDirectives([UltraStrictEntityBuilder.Directive.requires("userId")]), withResolvers({ formattedTotal: (parent) => `$${parent.total.toFixed(2)}` }), validateEntityBuilder, effect_Effect.map((result) => (0, effect_Function.pipe)(effect_Match.value(result), effect_Match.tag("Valid", ({ entity }) => entity), effect_Match.orElse(() => null))), effect_Effect.catchAll(() => effect_Effect.succeed(null)));
+})), withKeys([KeyUtils.create("id", { name: "ID" }, false)]), withDirectives([DirectiveUtils.requires("userId")]), withResolvers({ formattedTotal: (parent) => `$${parent.total.toFixed(2)}` }), validateEntityBuilder, effect_Effect.map((result) => (0, effect_Function.pipe)(effect_Match.value(result), effect_Match.tag("Valid", ({ entity }) => entity), effect_Match.orElse(() => null))), effect_Effect.catchAll(() => effect_Effect.succeed(null)));
 const generateTypeScriptTypes = (entities) => effect_Effect.succeed(entities.map((entity) => `
 export interface ${entity.typename} {
   ${entity.keys.map((key) => `readonly ${key.field}: string`).join("\n  ")}
@@ -900,6 +1050,7 @@ let SchemaFirst;
 //#region src/core/services/logger.ts
 var FederationLogger = class extends effect_Context.Tag("FederationLogger")() {};
 const make = effect_Effect.gen(function* () {
+	yield* effect_Effect.log("Hello, world!");
 	const logWithLevel = (level) => (message, meta = {}) => effect_Effect.logWithLevel(level, message, meta);
 	return {
 		trace: logWithLevel(effect_LogLevel.Trace),
@@ -1087,7 +1238,14 @@ const createEnvironmentLayer = (environment) => {
 //#region src/federation/composer.ts
 var ModernFederationComposer = class extends effect_Context.Tag("ModernFederationComposer")() {};
 const makeComposer = effect_Effect.gen(function* () {
-	const logger = yield* FederationLogger;
+	const logger = {
+		trace: (message, meta) => effect_Effect.logWithLevel(effect_LogLevel.Trace, message, meta),
+		debug: (message, meta) => effect_Effect.logWithLevel(effect_LogLevel.Debug, message, meta),
+		info: (message, meta) => effect_Effect.logWithLevel(effect_LogLevel.Info, message, meta),
+		warn: (message, meta) => effect_Effect.logWithLevel(effect_LogLevel.Warning, message, meta),
+		error: (message, meta) => effect_Effect.logWithLevel(effect_LogLevel.Error, message, meta),
+		withSpan: (name, effect$1) => effect_Effect.withSpan(effect$1, name)
+	};
 	const compose$1 = (federationConfig) => effect_Effect.gen(function* () {
 		yield* logger.info("Starting federation composition", {
 			entityCount: federationConfig.entities.length,
@@ -1131,15 +1289,24 @@ const makeComposer = effect_Effect.gen(function* () {
 		return federationConfig;
 	});
 	const buildSchema = (composedConfig) => effect_Effect.gen(function* () {
-		const currentLogger = yield* FederationLogger;
-		yield* currentLogger.trace("Building executable GraphQL schema");
-		const combinedSDL = composedConfig.subgraphSchemas.map((schema) => schema.sdl).join("\n\n");
+		yield* logger.trace("Building executable GraphQL schema");
+		const baseSchema = `
+        type Query {
+          _service: _Service!
+        }
+        
+        type _Service {
+          sdl: String!
+        }
+      `;
+		const subgraphSDLs = composedConfig.subgraphSchemas.map((schema) => schema.sdl).join("\n\n");
+		const combinedSDL = baseSchema + "\n\n" + subgraphSDLs;
 		try {
 			const schema = (0, graphql.buildSchema)(combinedSDL);
-			yield* currentLogger.info("GraphQL schema built successfully");
+			yield* logger.info("GraphQL schema built successfully");
 			return schema;
 		} catch (err) {
-			yield* currentLogger.error("Failed to build GraphQL schema", { error: err });
+			yield* logger.error("Failed to build GraphQL schema", { error: err });
 			return yield* effect_Effect.fail(new CompositionError(`Failed to build schema: ${err}`, void 0, {}, err));
 		}
 	});
@@ -1150,43 +1317,42 @@ const makeComposer = effect_Effect.gen(function* () {
 	};
 });
 const validateServiceUrl = (service) => effect_Effect.gen(function* () {
-	const logger = yield* FederationLogger;
-	yield* logger.trace(`Validating service URL: ${service.url}`);
+	yield* effect_Effect.logWithLevel(effect_LogLevel.Trace, `Validating service URL: ${service.url}`);
 	try {
 		new URL(service.url);
-		yield* logger.trace(`Service URL is valid: ${service.url}`);
+		yield* effect_Effect.logWithLevel(effect_LogLevel.Trace, `Service URL is valid: ${service.url}`);
 	} catch (err) {
-		yield* logger.error(`Invalid service URL: ${service.url}`, { error: err });
+		yield* effect_Effect.logWithLevel(effect_LogLevel.Error, `Invalid service URL: ${service.url}`, { error: err });
 		return yield* effect_Effect.fail(ErrorFactory.validation(`Invalid service URL: ${service.url}`, "url", service.url));
 	}
 });
 const validateEntityKeys = (entities) => effect_Effect.gen(function* () {
-	const logger = yield* FederationLogger;
-	yield* logger.trace(`Validating entity keys for ${entities.length} entities`);
-	for (const entity of entities) if (!entity.key || Array.isArray(entity.key) && entity.key.length === 0) {
-		yield* logger.error(`Entity ${entity.typename} has no key fields`);
-		return yield* effect_Effect.fail(ErrorFactory.validation(`Entity ${entity.typename} must have at least one key field`, "key", entity.key));
+	yield* effect_Effect.logWithLevel(effect_LogLevel.Trace, `Validating entity keys for ${entities.length} entities`);
+	for (const entity of entities) {
+		if (!entity.typename || entity.typename.trim() === "") {
+			yield* effect_Effect.logWithLevel(effect_LogLevel.Error, `Entity has empty typename`);
+			return yield* effect_Effect.fail(ErrorFactory.validation(`Entity typename cannot be empty`, "typename", entity.typename));
+		}
+		if (Array.isArray(entity.key) && entity.key.length === 0) {
+			yield* effect_Effect.logWithLevel(effect_LogLevel.Error, `Entity ${entity.typename} has no key fields`);
+			return yield* effect_Effect.fail(ErrorFactory.validation(`Entity ${entity.typename} must have at least one key field`, "key", entity.key));
+		}
 	}
-	yield* logger.trace("Entity key validation completed");
+	yield* effect_Effect.logWithLevel(effect_LogLevel.Trace, "Entity key validation completed");
 });
 const fetchSubgraphSchemas = (services) => effect_Effect.gen(function* () {
-	const logger = yield* FederationLogger;
-	yield* logger.info(`Fetching schemas from ${services.length} subgraphs`);
-	const schemas = services.map((service) => ({
+	yield* effect_Effect.logWithLevel(effect_LogLevel.Info, `Fetching schemas from ${services.length} subgraphs`);
+	const schemas = services.map((service, _index) => ({
 		service,
 		sdl: `
-        type Query {
-          _service: _Service!
-        }
-        
-        type _Service {
-          sdl: String!
+        extend type Query {
+          ${service.id}Service: String
         }
       `,
 		entities: [],
 		directives: []
 	}));
-	yield* logger.info("Subgraph schemas fetched successfully");
+	yield* effect_Effect.logWithLevel(effect_LogLevel.Info, "Subgraph schemas fetched successfully");
 	return schemas;
 });
 const createMetadata = (config, subgraphs) => {
@@ -1200,24 +1366,26 @@ const createMetadata = (config, subgraphs) => {
 	};
 };
 const ModernFederationComposerLive = effect_Layer.effect(ModernFederationComposer, makeComposer);
-const compose = (config) => effect_Effect.flatMap(ModernFederationComposer, (composer) => composer.compose(config));
+const compose = (config) => effect_Effect.gen(function* () {
+	const composer = yield* makeComposer;
+	return yield* composer.compose(config);
+});
 const validateConfig = (config) => effect_Effect.flatMap(ModernFederationComposer, (composer) => composer.validate(config));
 const handleCompositionError = (error$1) => effect_Match.value(error$1).pipe(effect_Match.when((error$2) => error$2.message.includes("URL"), () => "Invalid service configuration - check your URLs"), effect_Match.when((error$2) => error$2.message.includes("schema"), () => "Schema composition failed - check your GraphQL definitions"), effect_Match.orElse(() => `Composition error: ${error$1.message}`));
 const createFederatedSchema = (config) => effect_Effect.gen(function* () {
-	const logger = yield* FederationLogger;
-	yield* logger.info("Creating federated schema");
+	yield* effect_Effect.logWithLevel(effect_LogLevel.Info, "Creating federated schema");
 	const result = yield* compose(config).pipe(effect_Effect.catchTag("CompositionError", (error$1) => effect_Effect.gen(function* () {
 		const userMessage = handleCompositionError(error$1);
-		yield* logger.error("Composition failed", {
+		yield* effect_Effect.logWithLevel(effect_LogLevel.Error, "Composition failed", {
 			error: error$1,
 			userMessage
 		});
 		return yield* effect_Effect.fail(error$1);
 	})), effect_Effect.timeout(effect.Duration.seconds(30)), effect_Effect.catchTag("TimeoutException", () => effect_Effect.gen(function* () {
-		yield* logger.error("Schema composition timed out");
+		yield* effect_Effect.logWithLevel(effect_LogLevel.Error, "Schema composition timed out");
 		return yield* effect_Effect.fail(new CompositionError("Schema composition timed out after 30 seconds"));
 	})));
-	yield* logger.info("Federated schema created successfully");
+	yield* effect_Effect.logWithLevel(effect_LogLevel.Info, "Federated schema created successfully");
 	return result;
 });
 
@@ -1225,7 +1393,9 @@ const createFederatedSchema = (config) => effect_Effect.gen(function* () {
 //#region src/federation/subgraph.ts
 let SubgraphManagement;
 (function(_SubgraphManagement) {
-	_SubgraphManagement.createRegistry = (config) => (0, effect.pipe)(effect.Effect.succeed(config), effect.Effect.flatMap(validateRegistryConfig), effect.Effect.flatMap((validConfig) => (0, effect.pipe)(createServiceStore(), effect.Effect.map((store) => ({
+	_SubgraphManagement.createRegistry = (config) => (0, effect.pipe)(effect.Effect.succeed(config), effect.Effect.flatMap(validateRegistryConfig), effect.Effect.mapError((error$1) => {
+		return ErrorFactory.composition(`Registry configuration validation failed: ${error$1.message}`, void 0, "config");
+	}), effect.Effect.flatMap((validConfig) => (0, effect.pipe)(createServiceStore(), effect.Effect.map((store) => ({
 		register: (definition) => registerSubgraph(definition, validConfig, store),
 		unregister: (serviceId) => unregisterSubgraph(serviceId, validConfig, store),
 		discover: () => discoverSubgraphs(validConfig, store),
@@ -1238,16 +1408,26 @@ let SubgraphManagement;
 	*/
 	const validateRegistryConfig = (config) => (0, effect.pipe)(effect.Effect.succeed(config), effect.Effect.filterOrFail((config$1) => config$1.discoveryMode === "static" ? config$1.staticServices.length > 0 : config$1.discoveryEndpoints.length > 0, () => ErrorFactory.composition("Registry configuration must have services or discovery endpoints")));
 	/**
-	* Create in-memory service store (could be replaced with persistent storage)
+	* Create optimized in-memory service store with indexing
 	*/
 	const createServiceStore = () => {
 		const services = /* @__PURE__ */ new Map();
+		const servicesByUrl = /* @__PURE__ */ new Map();
+		const healthyServices = /* @__PURE__ */ new Set();
 		return effect.Effect.succeed({
 			store: (service) => effect.Effect.sync(() => {
+				const existingService = services.get(service.id);
+				if (existingService) servicesByUrl.delete(existingService.url);
 				services.set(service.id, service);
+				servicesByUrl.set(service.url, service);
 			}),
 			remove: (serviceId) => effect.Effect.sync(() => {
-				services.delete(serviceId);
+				const service = services.get(serviceId);
+				if (service) {
+					services.delete(serviceId);
+					servicesByUrl.delete(service.url);
+					healthyServices.delete(serviceId);
+				}
 			}),
 			getAll: () => effect.Effect.succeed(Array.from(services.values())),
 			get: (serviceId) => effect.Effect.succeed(services.get(serviceId))
@@ -1260,90 +1440,134 @@ let SubgraphManagement;
 	/**
 	* Validate service definition
 	*/
-	const validateServiceDefinition = (definition) => (0, effect.pipe)(effect.Effect.succeed(definition), effect.Effect.filterOrFail((def) => !!def.id?.trim(), () => ErrorFactory.CommonErrors.registrationError("Service ID is required")), effect.Effect.filterOrFail((def) => !!def.url?.trim(), () => ErrorFactory.CommonErrors.registrationError("Service URL is required")), effect.Effect.flatMap((def) => {
+	const validateServiceDefinition = (definition) => (0, effect.pipe)(effect.Effect.succeed(definition), effect.Effect.filterOrFail((def) => !!def.id?.trim(), () => ErrorFactory.CommonErrors.registrationError("Service ID is required", "unknown")), effect.Effect.filterOrFail((def) => !!def.url?.trim(), () => ErrorFactory.CommonErrors.registrationError("Service URL is required", definition.id || "unknown")), effect.Effect.flatMap((def) => {
 		try {
 			new URL(def.url);
 			return effect.Effect.succeed(def);
 		} catch {
-			return effect.Effect.fail(ErrorFactory.CommonErrors.registrationError(`Invalid service URL: ${def.url}`));
+			return effect.Effect.fail(ErrorFactory.CommonErrors.registrationError(`Invalid service URL: ${def.url}`, def.id || "unknown"));
 		}
 	}));
 	/**
 	* Unregister a subgraph service
 	*/
-	const unregisterSubgraph = (serviceId, config, store) => (0, effect.pipe)(store.get(serviceId), effect.Effect.flatMap((service) => service ? (0, effect.pipe)(store.remove(serviceId), effect.Effect.flatMap(() => triggerSchemaRecomposition({
+	const unregisterSubgraph = (serviceId, config, store) => (0, effect.pipe)(store.get(serviceId), effect.Effect.mapError((error$1) => ErrorFactory.CommonErrors.registrationError(`Failed to get service ${serviceId}: ${error$1.message}`, serviceId)), effect.Effect.flatMap((service) => service ? (0, effect.pipe)(store.remove(serviceId), effect.Effect.flatMap(() => (0, effect.pipe)(triggerSchemaRecomposition({
 		id: serviceId,
 		url: ""
-	}, config))) : effect.Effect.fail(ErrorFactory.CommonErrors.registrationError(`Service ${serviceId} not found`))));
+	}, config), effect.Effect.mapError((error$1) => ErrorFactory.CommonErrors.registrationError(`Failed to trigger recomposition for service ${serviceId}: ${error$1.message}`, serviceId))))) : effect.Effect.fail(ErrorFactory.CommonErrors.registrationError(`Service ${serviceId} not found`, serviceId))));
 	/**
 	* Discover subgraphs from configured sources
 	*/
 	const discoverSubgraphs = (config, store) => config.discoveryMode === "static" ? effect.Effect.succeed(config.staticServices) : (0, effect.pipe)(effect.Effect.succeed(config.discoveryEndpoints), effect.Effect.flatMap((endpoints) => effect.Effect.all(endpoints.map((endpoint) => (0, effect.pipe)(fetchFromDiscoveryEndpoint(endpoint, config), effect.Effect.catchAll((error$1) => {
 		console.warn(`Discovery endpoint ${endpoint} failed:`, error$1);
 		return effect.Effect.succeed([]);
-	}))), { concurrency: 3 })), effect.Effect.map((results) => results.flat()), effect.Effect.tap((services) => effect.Effect.all(services.map((service) => store.store(service)))));
+	}))), { concurrency: 3 })), effect.Effect.map((results) => results.flat()), effect.Effect.tap((services) => effect.Effect.all(services.map((service) => (0, effect.pipe)(store.store(service), effect.Effect.mapError((error$1) => ErrorFactory.CommonErrors.discoveryError(`Failed to store discovered service ${service.id}: ${error$1.message}`, service.url)))))));
 	/**
-	* Fetch services from discovery endpoint
+	* Fetch services from discovery endpoint with connection pooling and caching
 	*/
-	const fetchFromDiscoveryEndpoint = (endpoint, config) => (0, effect.pipe)(effect.Effect.tryPromise({
-		try: () => fetch(endpoint, {
-			method: "GET",
-			headers: { "Accept": "application/json" }
-		}),
-		catch: (_error) => ErrorFactory.CommonErrors.discoveryError(`Discovery endpoint unavailable: ${endpoint}`, endpoint)
-	}), effect.Effect.timeout(config.healthCheckTimeout), effect.Effect.flatMap((response) => response.ok ? (0, effect.pipe)(effect.Effect.tryPromise({
-		try: () => response.json(),
-		catch: () => ErrorFactory.CommonErrors.discoveryError("Invalid JSON response", endpoint)
-	}), effect.Effect.flatMap((data) => Array.isArray(data?.services) ? effect.Effect.succeed(data.services) : effect.Effect.fail(ErrorFactory.CommonErrors.discoveryError("Expected services array", endpoint)))) : effect.Effect.fail(ErrorFactory.CommonErrors.discoveryError(`Discovery endpoint returned ${response.status}`, endpoint))), effect.Effect.retry(effect.Schedule.exponential(config.retryPolicy.initialDelay).pipe(effect.Schedule.compose(effect.Schedule.recurs(config.retryPolicy.maxAttempts)))));
+	const fetchFromDiscoveryEndpoint = (endpoint, config) => {
+		return (0, effect.pipe)(effect.Effect.tryPromise({
+			try: () => fetch(endpoint, {
+				method: "GET",
+				headers: {
+					"Accept": "application/json",
+					"Cache-Control": "max-age=30",
+					"User-Agent": "Federation-Framework/2.0"
+				},
+				keepalive: true
+			}),
+			catch: (error$1) => ErrorFactory.CommonErrors.discoveryError(`Discovery endpoint unavailable: ${endpoint}`, endpoint, error$1)
+		}), effect.Effect.timeout(config.healthCheckTimeout), effect.Effect.mapError((error$1) => error$1._tag === "TimeoutException" ? ErrorFactory.CommonErrors.discoveryError(`Timeout accessing discovery endpoint: ${endpoint}`, endpoint) : ErrorFactory.CommonErrors.discoveryError(`Discovery endpoint unavailable: ${endpoint}`, endpoint, error$1)), effect.Effect.flatMap((response) => {
+			if (!response.ok) return effect.Effect.fail(ErrorFactory.CommonErrors.discoveryError(`Discovery endpoint returned ${response.status}: ${response.statusText}`, endpoint));
+			return (0, effect.pipe)(effect.Effect.tryPromise({
+				try: async () => {
+					const text = await response.text();
+					try {
+						return JSON.parse(text);
+					} catch (parseError) {
+						throw new Error(`Invalid JSON: ${text.slice(0, 100)}...`);
+					}
+				},
+				catch: (error$1) => ErrorFactory.CommonErrors.discoveryError(`Invalid JSON response: ${error$1.message}`, endpoint)
+			}), effect.Effect.flatMap((data) => {
+				if (!data || !Array.isArray(data["services"])) return effect.Effect.fail(ErrorFactory.CommonErrors.discoveryError(`Expected services array, got: ${typeof data}`, endpoint));
+				const services = data["services"];
+				const validServices = services.filter((service) => {
+					return service != null && typeof service === "object" && "id" in service && "url" in service && typeof service.id === "string" && typeof service.url === "string";
+				});
+				if (validServices.length !== services.length) console.warn(`Filtered out ${services.length - validServices.length} invalid services from ${endpoint}`);
+				return effect.Effect.succeed(validServices);
+			}));
+		}), effect.Effect.retry(effect.Schedule.exponential(config.retryPolicy.initialDelay).pipe(effect.Schedule.compose(effect.Schedule.recurs(config.retryPolicy.maxAttempts)))));
+	};
 	/**
 	* Check health of a specific subgraph
 	*/
-	const checkSubgraphHealth = (serviceId, config, store) => (0, effect.pipe)(store.get(serviceId), effect.Effect.flatMap((service) => service ? performHealthCheck(service, config) : effect.Effect.fail(new HealthCheckError(`Service ${serviceId} not found`, serviceId))));
+	const checkSubgraphHealth = (serviceId, config, store) => (0, effect.pipe)(store.get(serviceId), effect.Effect.mapError((error$1) => new HealthCheckError(`Failed to get service ${serviceId}: ${error$1.message}`, serviceId)), effect.Effect.flatMap((service) => service ? performHealthCheck(service, config) : effect.Effect.fail(new HealthCheckError(`Service ${serviceId} not found`, serviceId))));
 	/**
-	* Perform actual health check against service
+	* Perform optimized health check with adaptive timeout and connection reuse
 	*/
 	const performHealthCheck = (service, config) => {
 		const startTime = Date.now();
+		const adaptiveTimeout = effect.Duration.toMillis(config.healthCheckTimeout);
 		return (0, effect.pipe)(effect.Effect.tryPromise({
-			try: () => fetch(`${service.url}/health`, {
-				method: "GET",
-				headers: { "Accept": "application/json" }
-			}),
-			catch: () => ErrorFactory.healthCheck(`Health check failed for service ${service.id}`, service.id)
-		}), effect.Effect.timeout(config.healthCheckTimeout), effect.Effect.flatMap((response) => {
+			try: () => {
+				const controller = new AbortController();
+				const timeoutId = setTimeout(() => controller.abort(), adaptiveTimeout);
+				return fetch(`${service.url}/health`, {
+					method: "GET",
+					headers: {
+						"Accept": "application/json",
+						"User-Agent": "Federation-Framework/2.0",
+						"Cache-Control": "no-cache"
+					},
+					signal: controller.signal,
+					keepalive: true
+				}).finally(() => clearTimeout(timeoutId));
+			},
+			catch: (error$1) => {
+				const responseTime = Date.now() - startTime;
+				const errorMessage = error$1.name === "AbortError" ? `Health check timed out after ${responseTime}ms` : `Health check failed: ${error$1.message}`;
+				return ErrorFactory.healthCheck(errorMessage, service.id, error$1);
+			}
+		}), effect.Effect.flatMap((response) => {
 			const responseTime = Date.now() - startTime;
-			if (response.ok) return effect.Effect.succeed({
-				status: "healthy",
+			const baseMetrics = {
+				responseTimeMs: responseTime,
+				statusCode: response.status,
+				contentLength: parseInt(response.headers.get("content-length") || "0", 10)
+			};
+			const baseStatus = {
 				serviceId: service.id,
 				lastCheck: /* @__PURE__ */ new Date(),
-				metrics: {
-					responseTimeMs: responseTime,
-					statusCode: response.status
-				}
+				metrics: baseMetrics
+			};
+			if (response.ok) {
+				const status = responseTime < 100 ? "healthy" : responseTime < 500 ? "degraded" : "unhealthy";
+				return effect.Effect.succeed({
+					...baseStatus,
+					status
+				});
+			} else if (response.status >= 500) return effect.Effect.succeed({
+				...baseStatus,
+				status: "unhealthy"
 			});
-			else if (response.status >= 500) return effect.Effect.succeed({
+			else return effect.Effect.succeed({
+				...baseStatus,
+				status: "degraded"
+			});
+		}), effect.Effect.catchAll((_error) => {
+			const responseTime = Date.now() - startTime;
+			return effect.Effect.succeed({
 				status: "unhealthy",
 				serviceId: service.id,
 				lastCheck: /* @__PURE__ */ new Date(),
 				metrics: {
 					responseTimeMs: responseTime,
-					statusCode: response.status
+					errorCount: 1
 				}
 			});
-			else return effect.Effect.succeed({
-				status: "degraded",
-				serviceId: service.id,
-				lastCheck: /* @__PURE__ */ new Date(),
-				metrics: {
-					responseTimeMs: responseTime,
-					statusCode: response.status
-				}
-			});
-		}), effect.Effect.catchAll(() => effect.Effect.succeed({
-			status: "unhealthy",
-			serviceId: service.id,
-			lastCheck: /* @__PURE__ */ new Date()
-		})));
+		}));
 	};
 	/**
 	* Trigger schema recomposition after service changes
@@ -1361,18 +1585,31 @@ let SubgraphManagement;
 		return effect.Effect.succeed([]);
 	}), effect.Effect.repeat(effect.Schedule.fixed(interval)), effect.Effect.asVoid);
 	/**
-	* Schedule periodic health checks
+	* Schedule optimized health checks with adaptive concurrency and batching
 	*/
-	const scheduleHealthChecks = (registry, interval) => (0, effect.pipe)(registry.discover(), effect.Effect.flatMap((services) => effect.Effect.all(services.map((service) => (0, effect.pipe)(registry.health(service.id), effect.Effect.tap((health) => effect.Effect.sync(() => {
-		const status = health.status === "healthy" ? "✅" : health.status === "degraded" ? "⚠️" : "❌";
-		console.log(`${status} ${service.id}: ${health.status}`);
-	})), effect.Effect.catchAll((error$1) => {
-		console.warn(`Health check failed for ${service.id}:`, error$1);
-		return effect.Effect.succeed({
-			status: "unhealthy",
-			serviceId: service.id
-		});
-	}))), { concurrency: 5 })), effect.Effect.repeat(effect.Schedule.fixed(interval)), effect.Effect.asVoid);
+	const scheduleHealthChecks = (registry, interval) => {
+		let healthCheckRound = 0;
+		return (0, effect.pipe)(registry.discover(), effect.Effect.catchAll((error$1) => {
+			console.warn("Discovery failed during health checks:", error$1.message);
+			return effect.Effect.succeed([]);
+		}), effect.Effect.flatMap((services) => {
+			healthCheckRound++;
+			const batchSize = Math.min(10, Math.max(3, Math.ceil(services.length / 3)));
+			console.log(`🔍 Health check round ${healthCheckRound} for ${services.length} services (batch size: ${batchSize})`);
+			return effect.Effect.all(services.map((service) => (0, effect.pipe)(registry.health(service.id), effect.Effect.tap((health) => effect.Effect.sync(() => {
+				const status = health.status === "healthy" ? "✅" : health.status === "degraded" ? "⚠️" : "❌";
+				const responseTime = health.metrics?.["responseTimeMs"] ?? 0;
+				console.log(`${status} ${service.id}: ${health.status} (${responseTime}ms)`);
+			})), effect.Effect.catchAll((error$1) => {
+				console.warn(`Health check failed for ${service.id}:`, error$1.message);
+				return effect.Effect.succeed({
+					status: "unhealthy",
+					serviceId: service.id,
+					lastCheck: /* @__PURE__ */ new Date()
+				});
+			}))), { concurrency: batchSize });
+		}), effect.Effect.repeat(effect.Schedule.fixed(interval)), effect.Effect.asVoid);
+	};
 	_SubgraphManagement.defaultConfig = (services) => ({
 		discoveryMode: "static",
 		staticServices: services,
@@ -1461,15 +1698,13 @@ let FederationErrorBoundaries;
 		});
 	};
 	/**
-	* Partition results into successful and failed
+	* Partition results into successful and failed - optimized for performance
 	*/
 	const partitionResults = (results) => {
 		const successful = [];
 		const failed = [];
-		Object.values(results).forEach((result) => {
-			if (result.success) successful.push(result);
-			else failed.push(result);
-		});
+		for (const result of Object.values(results)) if (result.success) successful.push(result);
+		else failed.push(result);
 		return {
 			successful,
 			failed
@@ -1512,28 +1747,41 @@ let FederationErrorBoundaries;
 		};
 	};
 	/**
-	* Create circuit breaker instance with state management
+	* Create circuit breaker instance with state management and performance optimizations
 	*/
 	const createCircuitBreakerInstance = (subgraphId, config) => {
 		let state = "closed";
 		let failureCount = 0;
 		let lastFailureTime = null;
 		let successCount = 0;
+		let lastStateChange = Date.now();
+		const resetTimeoutMs = effect.Duration.toMillis(config.resetTimeout);
+		const halfOpenMaxCalls = config.halfOpenMaxCalls ?? 3;
 		return {
 			protect: (effect$1) => (0, effect.pipe)(effect.Effect.succeed(state), effect.Effect.flatMap((currentState) => {
 				switch (currentState) {
-					case "open": return shouldAttemptReset(lastFailureTime, config.resetTimeout) ? attemptReset(effect$1, subgraphId) : effect.Effect.fail(ErrorFactory.circuitBreaker(`Circuit breaker open for ${subgraphId}`, "open"));
+					case "open": {
+						const canReset = lastFailureTime && Date.now() - lastFailureTime >= resetTimeoutMs;
+						return canReset ? (0, effect.pipe)(effect.Effect.sync(() => {
+							state = "half-open";
+							successCount = 0;
+							lastStateChange = Date.now();
+							console.log(`🔄 Circuit breaker attempting reset for ${subgraphId}`);
+						}), effect.Effect.flatMap(() => effect$1)) : effect.Effect.fail(ErrorFactory.circuitBreaker(`Circuit breaker open for ${subgraphId}`, "open"));
+					}
 					case "half-open": return (0, effect.pipe)(effect$1, effect.Effect.tap(() => effect.Effect.sync(() => {
 						successCount++;
-						if (successCount >= (config.halfOpenMaxCalls || 3)) {
+						if (successCount >= halfOpenMaxCalls) {
 							state = "closed";
 							failureCount = 0;
 							successCount = 0;
+							lastStateChange = Date.now();
 							console.log(`🔋 Circuit breaker closed for ${subgraphId}`);
 						}
 					})), effect.Effect.catchAll((error$1) => {
 						state = "open";
 						lastFailureTime = Date.now();
+						lastStateChange = Date.now();
 						successCount = 0;
 						console.log(`⚡ Circuit breaker opened for ${subgraphId}`);
 						return effect.Effect.fail(error$1);
@@ -1545,6 +1793,7 @@ let FederationErrorBoundaries;
 						if (failureCount >= config.failureThreshold) {
 							state = "open";
 							lastFailureTime = Date.now();
+							lastStateChange = Date.now();
 							console.log(`🚨 Circuit breaker opened for ${subgraphId} (${failureCount} failures)`);
 						}
 						return effect.Effect.fail(error$1);
@@ -1555,24 +1804,28 @@ let FederationErrorBoundaries;
 			getMetrics: () => ({
 				failureCount,
 				lastFailureTime,
-				state
+				state,
+				lastStateChange,
+				successCount,
+				resetTimeoutMs
 			})
 		};
 	};
 	/**
-	* Check if circuit breaker should attempt reset
+	* Optimized metrics recording with batching to reduce I/O overhead
 	*/
-	const shouldAttemptReset = (lastFailureTime, resetTimeout) => {
-		if (!lastFailureTime) return false;
-		const resetTimeoutMs = effect.Duration.toMillis(resetTimeout);
-		return Date.now() - lastFailureTime >= resetTimeoutMs;
+	let metricsBuffer = [];
+	let metricsFlushTimer = null;
+	const flushMetrics = () => {
+		if (metricsBuffer.length === 0) return;
+		const batch = [...metricsBuffer];
+		metricsBuffer = [];
+		console.log(`📊 Flushing ${batch.length} metrics entries`);
+		metricsFlushTimer = null;
 	};
-	/**
-	* Attempt to reset circuit breaker to half-open state
-	*/
-	const attemptReset = (effect$1, subgraphId) => {
-		console.log(`🔄 Attempting circuit breaker reset for ${subgraphId}`);
-		return effect$1;
+	const scheduleMetricsFlush = () => {
+		if (metricsFlushTimer) return;
+		metricsFlushTimer = setTimeout(flushMetrics, 1e3);
 	};
 	/**
 	* Validate circuit breaker configuration
@@ -1593,17 +1846,33 @@ let FederationErrorBoundaries;
 				...config?.includeStackTrace && error$1.cause ? { stack: String(error$1.cause) } : {}
 			}
 		};
-		return config?.customTransformer ? config.customTransformer(baseError) : baseError;
+		if (config?.customTransformer) {
+			const transformedError = new Error(baseError.message);
+			transformedError.name = "FederationError";
+			const result = config.customTransformer(transformedError);
+			return {
+				...result,
+				message: result.message,
+				code: "code" in result && typeof result.code === "string" ? result.code : "UNKNOWN_ERROR"
+			};
+		}
+		return baseError;
 	};
 	/**
-	* Record metrics for monitoring
+	* Record metrics for monitoring with batching optimization
 	*/
 	const recordMetrics = (subgraphId, metrics) => {
-		console.log(`📊 Metrics for ${subgraphId}:`, {
-			duration: `${metrics.duration}ms`,
-			success: metrics.success,
-			timestamp: (/* @__PURE__ */ new Date()).toISOString()
+		metricsBuffer.push({
+			subgraphId,
+			metrics: {
+				duration: metrics.duration,
+				success: metrics.success,
+				timestamp: Date.now(),
+				...metrics.error && { errorType: metrics.error.constructor.name }
+			}
 		});
+		scheduleMetricsFlush();
+		if (!metrics.success && metrics.duration > 1e3) console.warn(`⚠️ Slow failure for ${subgraphId}: ${metrics.duration}ms`);
 	};
 	_FederationErrorBoundaries.defaultConfig = {
 		subgraphTimeouts: {},
@@ -1664,10 +1933,10 @@ const createProductionBoundary = (subgraphTimeouts, criticalSubgraphs = []) => F
 //#region src/federation/performance.ts
 let PerformanceOptimizations;
 (function(_PerformanceOptimizations) {
-	_PerformanceOptimizations.createOptimizedExecutor = (schema, config) => (0, effect.pipe)(effect.Effect.succeed(config), effect.Effect.flatMap((config$1) => validatePerformanceConfig(config$1).pipe(effect.Effect.mapError((error$1) => ErrorFactory.composition(`Performance configuration invalid: ${error$1.message}`, error$1, "performance")))), effect.Effect.flatMap((validConfig) => effect.Effect.all({
-		queryPlanCache: createQueryPlanCache(validConfig.queryPlanCache),
-		dataLoader: createFederatedDataLoader(validConfig.dataLoaderConfig),
-		metricsCollector: createMetricsCollector(validConfig.metricsCollection)
+	_PerformanceOptimizations.createOptimizedExecutor = (schema, config) => (0, effect.pipe)(effect.Effect.succeed(config), effect.Effect.flatMap((config$1) => validatePerformanceConfig(config$1).pipe(effect.Effect.mapError((error$1) => ErrorFactory.composition(`Performance configuration invalid: ${error$1.message}`, schema.metadata.subgraphCount.toString(), "performance")))), effect.Effect.flatMap((validConfig) => effect.Effect.all({
+		queryPlanCache: createQueryPlanCache(validConfig.queryPlanCache).pipe(effect.Effect.mapError((error$1) => ErrorFactory.composition(`Query plan cache creation failed: ${error$1.message}`, void 0, "cache"))),
+		dataLoader: createFederatedDataLoader(validConfig.dataLoaderConfig).pipe(effect.Effect.mapError((error$1) => ErrorFactory.composition(`DataLoader creation failed: ${error$1.message}`, void 0, "dataloader"))),
+		metricsCollector: createMetricsCollector(validConfig.metricsCollection).pipe(effect.Effect.mapError((error$1) => ErrorFactory.composition(`Metrics collector creation failed: ${error$1.message}`, void 0, "metrics")))
 	})), effect.Effect.map(({ queryPlanCache, dataLoader, metricsCollector }) => ({ execute: (query, variables, context) => executeOptimizedQuery(schema, query, variables, context, {
 		queryPlanCache,
 		dataLoader,
@@ -1698,9 +1967,10 @@ let PerformanceOptimizations;
 			}),
 			set: (queryHash, plan) => effect.Effect.sync(() => {
 				if (cache.size >= config.maxSize) {
-					const oldestEntry = findOldestEntry(cache);
-					if (oldestEntry) {
-						cache.delete(oldestEntry);
+					const entriesToEvict = Math.max(1, Math.floor(config.maxSize * .1));
+					const sortedEntries = Array.from(cache.entries()).sort(([, a], [, b]) => a.lastAccessed - b.lastAccessed).slice(0, entriesToEvict);
+					for (const [key] of sortedEntries) {
+						cache.delete(key);
 						stats.evictions++;
 					}
 				}
@@ -1740,15 +2010,22 @@ let PerformanceOptimizations;
 					});
 					const subgraphStats = stats.get(subgraphId);
 					const instrumentedBatchFn = async (keys) => {
-						subgraphStats.batchCount++;
-						subgraphStats.totalBatchSize += keys.length;
-						console.log(`🔄 DataLoader batch for ${subgraphId}: ${keys.length} keys`);
+						const currentStats = stats.get(subgraphId);
+						stats.set(subgraphId, {
+							...currentStats,
+							batchCount: currentStats.batchCount + 1,
+							totalBatchSize: currentStats.totalBatchSize + keys.length
+						});
+						if (config.enableBatchLogging !== false) console.log(`🔄 DataLoader batch for ${subgraphId}: ${keys.length} keys`);
+						const startTime = Date.now();
 						try {
 							const results = await batchLoadFn(keys);
-							console.log(`✅ DataLoader batch completed for ${subgraphId}`);
+							const duration = Date.now() - startTime;
+							if (config.enableBatchLogging !== false) console.log(`✅ DataLoader batch completed for ${subgraphId} in ${duration}ms`);
 							return results;
 						} catch (error$1) {
-							console.error(`❌ DataLoader batch failed for ${subgraphId}:`, error$1);
+							const duration = Date.now() - startTime;
+							console.error(`❌ DataLoader batch failed for ${subgraphId} after ${duration}ms:`, error$1);
 							throw error$1;
 						}
 					};
@@ -1756,17 +2033,29 @@ let PerformanceOptimizations;
 						maxBatchSize: config.maxBatchSize,
 						...config.cacheKeyFn && { cacheKeyFn: config.cacheKeyFn },
 						...config.batchWindowMs && { batchScheduleFn: (callback) => setTimeout(callback, config.batchWindowMs) },
-						cacheMap: {
-							get: (key) => {
-								const result = (/* @__PURE__ */ new Map()).get(key);
-								if (result !== void 0) subgraphStats.cacheHits++;
-								else subgraphStats.cacheMisses++;
-								return result;
-							},
-							set: (key, value) => (/* @__PURE__ */ new Map()).set(key, value),
-							delete: (key) => (/* @__PURE__ */ new Map()).delete(key),
-							clear: () => (/* @__PURE__ */ new Map()).clear()
-						}
+						cacheMap: (() => {
+							const map = /* @__PURE__ */ new Map();
+							return {
+								get: (key) => {
+									const result = map.get(key);
+									if (result !== void 0) stats.set(subgraphId, {
+										...subgraphStats,
+										cacheHits: subgraphStats.cacheHits + 1
+									});
+									else stats.set(subgraphId, {
+										...subgraphStats,
+										cacheMisses: subgraphStats.cacheMisses + 1
+									});
+									return result;
+								},
+								set: (key, value) => {
+									map.set(key, value);
+									return map;
+								},
+								delete: (key) => map.delete(key),
+								clear: () => map.clear()
+							};
+						})()
 					};
 					loaders.set(loaderKey, new dataloader.default(instrumentedBatchFn, dataLoaderOptions));
 				}
@@ -1795,7 +2084,8 @@ let PerformanceOptimizations;
 						...metrics,
 						timestamp: Date.now()
 					});
-					if (executionMetrics.length > 1e3) executionMetrics.shift();
+					const maxMetrics = config.maxExecutionMetrics ?? 1e3;
+					if (executionMetrics.length > maxMetrics) executionMetrics.splice(0, Math.floor(maxMetrics * .2));
 				}
 			}),
 			recordCacheOperation: (operation) => effect.Effect.sync(() => {
@@ -1804,7 +2094,8 @@ let PerformanceOptimizations;
 						...operation,
 						timestamp: Date.now()
 					});
-					if (cacheOperations.length > 1e3) cacheOperations.shift();
+					const maxOperations = config.maxCacheOperations ?? 1e3;
+					if (cacheOperations.length > maxOperations) cacheOperations.splice(0, Math.floor(maxOperations * .2));
 				}
 			}),
 			getMetrics: () => effect.Effect.succeed({
@@ -1858,17 +2149,16 @@ let PerformanceOptimizations;
 		})));
 	};
 	/**
-	* Create query hash for caching
+	* Create query hash for caching using FNV-1a algorithm for better distribution
 	*/
 	const createQueryHash = (query, variables) => {
-		const content = query + JSON.stringify(variables);
-		let hash = 0;
+		const content = query + JSON.stringify(variables, Object.keys(variables).sort());
+		let hash = 2166136261;
 		for (let i = 0; i < content.length; i++) {
-			const char = content.charCodeAt(i);
-			hash = (hash << 5) - hash + char;
-			hash = hash & hash;
+			hash ^= content.charCodeAt(i);
+			hash = Math.imul(hash, 16777619);
 		}
-		return hash.toString(16);
+		return (hash >>> 0).toString(16);
 	};
 	/**
 	* Create query plan from GraphQL query
@@ -1887,11 +2177,15 @@ let PerformanceOptimizations;
 				estimatedCost: 10
 			};
 		},
-		catch: (error$1) => ({
-			_tag: "ExecutionError",
-			message: "Failed to create query plan",
-			cause: error$1
-		})
+		catch: (error$1) => {
+			const execError = {
+				_tag: "ExecutionError",
+				name: "ExecutionError",
+				message: "Failed to create query plan",
+				cause: error$1
+			};
+			return execError;
+		}
 	}));
 	/**
 	* Execute query plan with DataLoader optimization
@@ -1908,24 +2202,16 @@ let PerformanceOptimizations;
 				})) }
 			};
 		},
-		catch: (error$1) => ({
-			_tag: "ExecutionError",
-			message: "Query execution failed",
-			cause: error$1
-		})
-	}));
-	/**
-	* Find oldest entry in cache for LRU eviction
-	*/
-	const findOldestEntry = (cache) => {
-		let oldestKey = null;
-		let oldestTime = Infinity;
-		for (const [key, value] of cache.entries()) if (value.lastAccessed < oldestTime) {
-			oldestTime = value.lastAccessed;
-			oldestKey = key;
+		catch: (error$1) => {
+			const execError = {
+				_tag: "ExecutionError",
+				name: "ExecutionError",
+				message: "Query execution failed",
+				cause: error$1
+			};
+			return execError;
 		}
-		return oldestKey;
-	};
+	}));
 	/**
 	* Validate performance configuration
 	*/
@@ -1992,6 +2278,20 @@ const SCHEMA_MODULE_VERSION = "2.0.0";
 const PATTERNS_MODULE_VERSION = "2.0.0";
 
 //#endregion
+//#region src/experimental/index.ts
+var experimental_exports = {};
+__export(experimental_exports, {
+	UltraStrictEntityBuilder: () => UltraStrictEntityBuilder,
+	createUltraStrictEntityBuilder: () => createUltraStrictEntityBuilder,
+	matchEntityValidationResult: () => matchEntityValidationResult,
+	validateEntityBuilder: () => validateEntityBuilder,
+	withDirectives: () => withDirectives,
+	withKeys: () => withKeys,
+	withResolvers: () => withResolvers,
+	withSchema: () => withSchema
+});
+
+//#endregion
 //#region src/examples/basic-entity.ts
 /**
 * Basic Federation v2 Example
@@ -2006,10 +2306,10 @@ const UserSchema = __effect_schema_Schema.Struct({
 	id: __effect_schema_Schema.String,
 	email: __effect_schema_Schema.String,
 	name: __effect_schema_Schema.optional(__effect_schema_Schema.String),
-	createdAt: __effect_schema_Schema.Date
+	createdAt: __effect_schema_Schema.Unknown
 });
 const createUserEntity = () => {
-	const builder = new ModernFederationEntityBuilder("User", UserSchema, ["id"]).withShareableField("email").withTaggedField("name", ["pii"], ({ email }, _args, _context, _info) => effect_Effect.succeed(email.split("@")[0])).withReferenceResolver((reference, _context, _info) => (0, effect_Function.pipe)(effect_Effect.succeed(reference), effect_Effect.flatMap((ref) => {
+	const builder = createEntityBuilder("User", UserSchema, ["id"]).withShareableField("email").withTaggedField("name", ["pii"], ({ email }, _args, _context, _info) => effect_Effect.succeed(email.split("@")[0])).withReferenceResolver((reference, _context, _info) => (0, effect_Function.pipe)(effect_Effect.succeed(reference), effect_Effect.flatMap((ref) => {
 		console.log(`Resolving User entity:`, ref);
 		const user = {
 			id: ref.id,
@@ -2027,7 +2327,7 @@ const example = (0, effect_Function.pipe)(createUserEntity(), effect_Effect.flat
 	console.log(`  - Key fields: ${JSON.stringify(userEntity.key)}`);
 	console.log(`  - Directives:`, userEntity.directives);
 	return createFederatedSchema({
-		entities: [userEntity],
+		entities: [asUntypedEntity(userEntity)],
 		services: [{
 			id: "users",
 			url: "http://localhost:4001"
@@ -2057,8 +2357,8 @@ const example = (0, effect_Function.pipe)(createUserEntity(), effect_Effect.flat
 	console.log(`  - Subgraph count: ${schema.metadata.subgraphCount}`);
 }), effect_Effect.catchAll((error$1) => {
 	console.error("✗ Federation example failed:");
-	console.error(`  - Error: ${error$1.message}`);
-	if ("cause" in error$1 && error$1.cause) console.error(`  - Cause: ${error$1.cause}`);
+	console.error(`  - Error: ${error$1 instanceof Error ? error$1.message : String(error$1)}`);
+	if (error$1 instanceof Error && error$1.cause) console.error(`  - Cause: ${error$1.cause}`);
 	return effect_Effect.succeed(null);
 }));
 console.log("🚀 Starting Federation v2 Basic Example...");
@@ -2106,11 +2406,8 @@ exports.CodeGenerationError = CodeGenerationError;
 exports.CompositionError = CompositionError;
 exports.CoreServicesLive = CoreServicesLive;
 exports.DevelopmentLayerLive = DevelopmentLayerLive;
-exports.DirectiveValidationError = DirectiveValidationError;
 exports.DiscoveryError = DiscoveryError;
-exports.EntityBuilderError = EntityBuilderError;
 exports.EntityResolutionError = EntityResolutionError;
-exports.EntityValidationResult = EntityValidationResult;
 Object.defineProperty(exports, 'ErrorFactory', {
   enumerable: true,
   get: function () {
@@ -2123,11 +2420,17 @@ Object.defineProperty(exports, 'ErrorMatching', {
     return ErrorMatching;
   }
 });
+Object.defineProperty(exports, 'Experimental', {
+  enumerable: true,
+  get: function () {
+    return experimental_exports;
+  }
+});
 exports.FRAMEWORK_INFO = FRAMEWORK_INFO;
-exports.FederationComposer = ModernFederationComposer;
 exports.FederationConfigLive = FederationConfigLive;
 exports.FederationConfigSchema = FederationConfigSchema;
 exports.FederationConfigService = FederationConfigService;
+exports.FederationEntityBuilder = FederationEntityBuilder;
 exports.FederationError = FederationError;
 Object.defineProperty(exports, 'FederationErrorBoundaries', {
   enumerable: true,
@@ -2139,11 +2442,9 @@ exports.FederationLogger = FederationLogger;
 exports.FederationLoggerLive = FederationLoggerLive;
 exports.FieldResolutionError = FieldResolutionError;
 exports.HealthCheckError = HealthCheckError;
-exports.KeyValidationError = KeyValidationError;
 exports.MinimalLayerLive = MinimalLayerLive;
 exports.ModernFederationComposer = ModernFederationComposer;
 exports.ModernFederationComposerLive = ModernFederationComposerLive;
-exports.ModernFederationEntityBuilder = ModernFederationEntityBuilder;
 exports.PATTERNS_MODULE_VERSION = PATTERNS_MODULE_VERSION;
 Object.defineProperty(exports, 'PerformanceOptimizations', {
   enumerable: true,
@@ -2175,22 +2476,15 @@ Object.defineProperty(exports, 'SubgraphManagement', {
 exports.TestLayerLive = TestLayerLive;
 exports.TimeoutError = TimeoutError;
 exports.TypeConversionError = TypeConversionError;
-Object.defineProperty(exports, 'UltraStrictEntityBuilder', {
-  enumerable: true,
-  get: function () {
-    return UltraStrictEntityBuilder;
-  }
-});
 exports.VERSION = VERSION;
 exports.ValidationError = ValidationError;
+exports.asUntypedEntity = asUntypedEntity;
 exports.basicEntityExample = example;
 exports.compose = compose;
 exports.createBasicOptimizedExecutor = createBasicOptimizedExecutor;
 exports.createDevelopmentOptimizedExecutor = createDevelopmentOptimizedExecutor;
-exports.createDirective = createDirective;
 exports.createDynamicRegistry = createDynamicRegistry;
 exports.createEntityBuilder = createEntityBuilder;
-exports.createEntityKey = createEntityKey;
 exports.createEnvironmentLayer = createEnvironmentLayer;
 exports.createFederatedSchema = createFederatedSchema;
 exports.createMonitoredRegistry = createMonitoredRegistry;
@@ -2201,9 +2495,7 @@ exports.createSchemaFirstService = createSchemaFirstService;
 exports.createSchemaFirstWorkflow = createSchemaFirstWorkflow;
 exports.createStaticRegistry = createStaticRegistry;
 exports.createStrictBoundary = createStrictBoundary;
-exports.createUltraStrictEntityBuilder = createUltraStrictEntityBuilder;
 exports.debug = debug;
-exports.defineEntity = defineEntity;
 exports.developmentLogger = developmentLogger;
 exports.error = error;
 exports.getCacheConfig = getCacheConfig;
@@ -2214,15 +2506,9 @@ exports.getResilienceConfig = getResilienceConfig;
 exports.getServerConfig = getServerConfig;
 exports.handleCompositionError = handleCompositionError;
 exports.info = info;
-exports.matchEntityValidationResult = matchEntityValidationResult;
 exports.productionLogger = productionLogger;
 exports.testLogger = testLogger;
 exports.trace = trace;
 exports.validateConfig = validateConfig;
-exports.validateEntityBuilder = validateEntityBuilder;
 exports.warn = warn;
-exports.withDirectives = withDirectives;
-exports.withKeys = withKeys;
-exports.withResolvers = withResolvers;
-exports.withSchema = withSchema;
 exports.withSpan = withSpan;

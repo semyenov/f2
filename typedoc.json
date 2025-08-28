@@ -17,7 +17,6 @@
     "NPM": "https://www.npmjs.com/package/@cqrs/federation-v2"
   },
   "sidebarLinks": {
-    "Migration Guide": "https://github.com/cqrs/federation/blob/main/MIGRATION.md",
-    "Security": "./security-checklist.md"
+    "Migration Guide": "https://github.com/cqrs/federation/blob/main/MIGRATION.md"
   }
 }

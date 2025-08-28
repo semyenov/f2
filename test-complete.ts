@@ -1,11 +1,11 @@
 // Comprehensive test of the built Federation v2 package
 import * as Effect from "effect/Effect"
 import {
-  ModernFederationEntityBuilder,
+  FederationEntityBuilder,
   SubgraphManagement,
   FederationErrorBoundaries,
   PerformanceOptimizations,
-  UltraStrictEntityBuilder,
+  Experimental,
   SchemaFirst,
   VERSION,
   FRAMEWORK_INFO
@@ -27,13 +27,13 @@ FRAMEWORK_INFO.features.forEach((feature, i) => {
 console.log("\n📋 === LEGACY COMPATIBILITY TESTS ===")
 
 // Test 1: Original Entity Builder
-console.log("\n✅ Testing ModernFederationEntityBuilder...")
+console.log("\n✅ Testing FederationEntityBuilder...")
 const UserSchema = Schema.Struct({
   id: Schema.String,
   email: Schema.String,
 })
 
-const builder = new ModernFederationEntityBuilder("User", UserSchema, ["id"])
+const builder = new FederationEntityBuilder("User", UserSchema, ["id"])
   .withShareableField("email")
   .withTaggedField("id", ["internal"])
 
@@ -68,7 +68,7 @@ console.log(`   ✓ DataLoader config: ${performanceConfig.dataLoaderConfig.maxB
 
 // Test 5: New Ultra-Strict Entity Builder
 console.log("\n✅ Testing UltraStrictEntityBuilder...")
-console.log("   ✓ UltraStrictEntityBuilder imported successfully")
+console.log("   ✓ Experimental.UltraStrictEntityBuilder imported successfully")
 console.log("   ✓ Pattern matching validation available")
 console.log("   ✓ Phantom types for compile-time safety")
 

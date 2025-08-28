@@ -1,8 +1,8 @@
 # Entity Builder API Reference
 
-The `ModernFederationEntityBuilder` provides a fluent interface for creating federation entities with Apollo Federation 2.x support.
+The `FederationEntityBuilder` provides a fluent interface for creating federation entities with Apollo Federation 2.x support.
 
-## Class: ModernFederationEntityBuilder
+## Class: FederationEntityBuilder
 
 ### Constructor
 
@@ -27,7 +27,7 @@ Marks a field as shareable across subgraphs using the `@shareable` directive.
 
 **Example:**
 ```typescript
-const entity = new ModernFederationEntityBuilder("User", UserSchema, ["id"])
+const entity = new FederationEntityBuilder("User", UserSchema, ["id"])
   .withShareableField("email")
   .withShareableField("name")
 ```
@@ -179,7 +179,7 @@ interface FieldResolver<TSource, TContext, TReturn, TArgs = Record<string, unkno
 ```typescript
 import * as Effect from "effect/Effect"
 import * as Schema from "@effect/schema/Schema"
-import { ModernFederationEntityBuilder } from "@cqrs/federation-v2/core"
+import { FederationEntityBuilder } from "@cqrs/federation-v2/core"
 
 // Define entity schema
 const UserSchema = Schema.Struct({
@@ -192,7 +192,7 @@ const UserSchema = Schema.Struct({
 
 // Create entity with full configuration
 const createUserEntity = () => {
-  const builder = new ModernFederationEntityBuilder("User", UserSchema, ["id"])
+  const builder = new FederationEntityBuilder("User", UserSchema, ["id"])
     .withShareableField("email")
     .withTaggedField("role", ["authorization"])
     .withResolver("fullName", (parent) =>

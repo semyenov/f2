@@ -12,12 +12,12 @@ import * as Effect from 'effect/Effect'
 import * as Context from 'effect/Context'
 import * as Layer from 'effect/Layer'
 import * as Match from 'effect/Match'
+import * as LogLevel from 'effect/LogLevel'
 import { Duration } from 'effect'
 import type { GraphQLSchema } from 'graphql'
 import { buildSchema as buildGraphQLSchema } from 'graphql'
-import { FederationLogger } from '../core/services/logger.js'
 import type {
-  FederationCompositionConfig as FederationConfig,
+  FederationCompositionConfig,
   FederatedSchema,
   ServiceDefinition,
   SchemaMetadata,
@@ -32,14 +32,14 @@ import {
 export class ModernFederationComposer extends Context.Tag('ModernFederationComposer')<
   ModernFederationComposer,
   {
-    readonly compose: (config: FederationConfig) => Effect.Effect<FederatedSchema, CompositionError, FederationLogger>
-    readonly validate: (config: FederationConfig) => Effect.Effect<FederationConfig, ValidationError, FederationLogger>
-    readonly buildSchema: (composedConfig: ComposedConfiguration) => Effect.Effect<GraphQLSchema, CompositionError, FederationLogger>
+    readonly compose: (config: FederationCompositionConfig) => Effect.Effect<FederatedSchema, CompositionError>
+    readonly validate: (config: FederationCompositionConfig) => Effect.Effect<FederationCompositionConfig, ValidationError>
+    readonly buildSchema: (composedConfig: ComposedConfiguration) => Effect.Effect<GraphQLSchema, CompositionError>
   }
 >() {}
 
 interface ComposedConfiguration {
-  readonly config: FederationConfig
+  readonly config: FederationCompositionConfig
   readonly subgraphSchemas: ReadonlyArray<SubgraphSchemaInfo>
   readonly metadata: SchemaMetadata
 }
@@ -53,9 +53,17 @@ interface SubgraphSchemaInfo {
 
 // Implementation using Effect.gen
 const makeComposer = Effect.gen(function* () {
-  const logger = yield* FederationLogger
+  // Use a simple console logger for composer to avoid dependency issues
+  const logger = {
+    trace: (message: string, meta?: Record<string, unknown>) => Effect.logWithLevel(LogLevel.Trace, message, meta),
+    debug: (message: string, meta?: Record<string, unknown>) => Effect.logWithLevel(LogLevel.Debug, message, meta),
+    info: (message: string, meta?: Record<string, unknown>) => Effect.logWithLevel(LogLevel.Info, message, meta),
+    warn: (message: string, meta?: Record<string, unknown>) => Effect.logWithLevel(LogLevel.Warning, message, meta),
+    error: (message: string, meta?: Record<string, unknown>) => Effect.logWithLevel(LogLevel.Error, message, meta),
+    withSpan: <A, E, R>(name: string, effect: Effect.Effect<A, E, R>) => Effect.withSpan(effect, name)
+  }
 
-  const compose = (federationConfig: FederationConfig): Effect.Effect<FederatedSchema, CompositionError, FederationLogger> =>
+  const compose = (federationConfig: FederationCompositionConfig): Effect.Effect<FederatedSchema, CompositionError> =>
     Effect.gen(function* () {
       yield* logger.info('Starting federation composition', {
         entityCount: federationConfig.entities.length,
@@ -103,7 +111,7 @@ const makeComposer = Effect.gen(function* () {
       return federatedSchema
     })
 
-  const validate = (federationConfig: FederationConfig): Effect.Effect<FederationConfig, ValidationError, FederationLogger> =>
+  const validate = (federationConfig: FederationCompositionConfig): Effect.Effect<FederationCompositionConfig, ValidationError> =>
     Effect.gen(function* () {
       yield* logger.trace('Validating federation configuration')
 
@@ -135,22 +143,33 @@ const makeComposer = Effect.gen(function* () {
       return federationConfig
     })
 
-  const buildSchema = (composedConfig: ComposedConfiguration): Effect.Effect<GraphQLSchema, CompositionError, FederationLogger> =>
+  const buildSchema = (composedConfig: ComposedConfiguration): Effect.Effect<GraphQLSchema, CompositionError> =>
     Effect.gen(function* () {
-      const currentLogger = yield* FederationLogger
-      yield* currentLogger.trace('Building executable GraphQL schema')
+      yield* logger.trace('Building executable GraphQL schema')
 
-      // Create basic schema from SDL
-      const combinedSDL = composedConfig.subgraphSchemas
+      // Create basic schema from SDL with base Query type
+      const baseSchema = `
+        type Query {
+          _service: _Service!
+        }
+        
+        type _Service {
+          sdl: String!
+        }
+      `
+      
+      const subgraphSDLs = composedConfig.subgraphSchemas
         .map(schema => schema.sdl)
         .join('\n\n')
+        
+      const combinedSDL = baseSchema + '\n\n' + subgraphSDLs
 
       try {
         const schema = buildGraphQLSchema(combinedSDL)
-        yield* currentLogger.info('GraphQL schema built successfully')
+        yield* logger.info('GraphQL schema built successfully')
         return schema
       } catch (err) {
-        yield* currentLogger.error('Failed to build GraphQL schema', { error: err })
+        yield* logger.error('Failed to build GraphQL schema', { error: err })
         return yield* Effect.fail(
           new CompositionError(
             `Failed to build schema: ${err}`,
@@ -172,15 +191,13 @@ const makeComposer = Effect.gen(function* () {
 // Helper functions using Effect.gen
 const validateServiceUrl = (service: ServiceDefinition) =>
   Effect.gen(function* () {
-    const logger = yield* FederationLogger
-
-    yield* logger.trace(`Validating service URL: ${service.url}`)
+    yield* Effect.logWithLevel(LogLevel.Trace, `Validating service URL: ${service.url}`)
 
     try {
       new URL(service.url)
-      yield* logger.trace(`Service URL is valid: ${service.url}`)
+      yield* Effect.logWithLevel(LogLevel.Trace, `Service URL is valid: ${service.url}`)
     } catch (err) {
-      yield* logger.error(`Invalid service URL: ${service.url}`, { error: err })
+      yield* Effect.logWithLevel(LogLevel.Error, `Invalid service URL: ${service.url}`, { error: err })
       return yield* Effect.fail(
         ErrorFactory.validation(
           `Invalid service URL: ${service.url}`,
@@ -191,15 +208,26 @@ const validateServiceUrl = (service: ServiceDefinition) =>
     }
   })
 
-const validateEntityKeys = (entities: FederationConfig['entities']): Effect.Effect<void, ValidationError, FederationLogger> =>
+const validateEntityKeys = (entities: FederationCompositionConfig['entities']): Effect.Effect<void, ValidationError> =>
   Effect.gen(function* () {
-    const logger = yield* FederationLogger
-
-    yield* logger.trace(`Validating entity keys for ${entities.length} entities`)
+    yield* Effect.logWithLevel(LogLevel.Trace, `Validating entity keys for ${entities.length} entities`)
 
     for (const entity of entities) {
-      if (!entity.key || (Array.isArray(entity.key) && entity.key.length === 0)) {
-        yield* logger.error(`Entity ${entity.typename} has no key fields`)
+      // Validate typename
+      if (!entity.typename || entity.typename.trim() === '') {
+        yield* Effect.logWithLevel(LogLevel.Error, `Entity has empty typename`)
+        return yield* Effect.fail(
+          ErrorFactory.validation(
+            `Entity typename cannot be empty`,
+            'typename',
+            entity.typename
+          )
+        )
+      }
+      
+      // Validate key fields
+      if ((Array.isArray(entity.key) && entity.key.length === 0)) {
+        yield* Effect.logWithLevel(LogLevel.Error, `Entity ${entity.typename} has no key fields`)
         return yield* Effect.fail(
           ErrorFactory.validation(
             `Entity ${entity.typename} must have at least one key field`,
@@ -210,38 +238,32 @@ const validateEntityKeys = (entities: FederationConfig['entities']): Effect.Effe
       }
     }
 
-    yield* logger.trace('Entity key validation completed')
+    yield* Effect.logWithLevel(LogLevel.Trace, 'Entity key validation completed')
   })
 
 const fetchSubgraphSchemas = (services: ReadonlyArray<ServiceDefinition>) =>
   Effect.gen(function* () {
-    const logger = yield* FederationLogger
-
-    yield* logger.info(`Fetching schemas from ${services.length} subgraphs`)
+    yield* Effect.logWithLevel(LogLevel.Info, `Fetching schemas from ${services.length} subgraphs`)
 
     // In a real implementation, this would fetch SDL from each service
-    // For now, we'll create mock schema information
-    const schemas = services.map(service => ({
+    // For now, we'll create mock schema information with unique names per service
+    const schemas = services.map((service, _index) => ({
       service,
       sdl: `
-        type Query {
-          _service: _Service!
-        }
-        
-        type _Service {
-          sdl: String!
+        extend type Query {
+          ${service.id}Service: String
         }
       `,
       entities: [],
       directives: [],
     }))
 
-    yield* logger.info('Subgraph schemas fetched successfully')
+    yield* Effect.logWithLevel(LogLevel.Info, 'Subgraph schemas fetched successfully')
     return schemas
   })
 
 const createMetadata = (
-  config: FederationConfig,
+  config: FederationCompositionConfig,
   subgraphs: ReadonlyArray<SubgraphSchemaInfo>
 ): SchemaMetadata => {
   const now = new Date()
@@ -254,17 +276,21 @@ const createMetadata = (
   }
 }
 
-// Layer for the composer service
+// Layer for the composer service - depends on FederationLogger
 export const ModernFederationComposerLive = Layer.effect(
   ModernFederationComposer,
   makeComposer
 )
 
-// Convenience functions
-export const compose = (config: FederationConfig) =>
-  Effect.flatMap(ModernFederationComposer, composer => composer.compose(config))
+// Convenience functions - use the internal compose function directly
+export const compose = (config: FederationCompositionConfig) =>
+  Effect.gen(function* () {
+    // Create a temporary composer to access the compose function
+    const composer = yield* makeComposer
+    return yield* composer.compose(config)
+  })
 
-export const validateConfig = (config: FederationConfig) =>
+export const validateConfig = (config: FederationCompositionConfig) =>
   Effect.flatMap(ModernFederationComposer, composer => composer.validate(config))
 
 // Pattern matching for composition errors
@@ -282,24 +308,22 @@ export const handleCompositionError = (error: CompositionError) =>
   )
 
 // Example usage with proper error handling
-export const createFederatedSchema = (config: FederationConfig) =>
+export const createFederatedSchema = (config: FederationCompositionConfig) =>
   Effect.gen(function* () {
-    const logger = yield* FederationLogger
-
-    yield* logger.info('Creating federated schema')
+    yield* Effect.logWithLevel(LogLevel.Info, 'Creating federated schema')
 
     const result = yield* compose(config).pipe(
       Effect.catchTag('CompositionError', error => 
         Effect.gen(function* () {
           const userMessage = handleCompositionError(error)
-          yield* logger.error('Composition failed', { error, userMessage })
+          yield* Effect.logWithLevel(LogLevel.Error, 'Composition failed', { error, userMessage })
           return yield* Effect.fail(error)
         })
       ),
       Effect.timeout(Duration.seconds(30)),
       Effect.catchTag('TimeoutException', () => 
         Effect.gen(function* () {
-          yield* logger.error('Schema composition timed out')
+          yield* Effect.logWithLevel(LogLevel.Error, 'Schema composition timed out')
           return yield* Effect.fail(
             new CompositionError('Schema composition timed out after 30 seconds')
           )
@@ -307,9 +331,7 @@ export const createFederatedSchema = (config: FederationConfig) =>
       )
     )
 
-    yield* logger.info('Federated schema created successfully')
+    yield* Effect.logWithLevel(LogLevel.Info, 'Federated schema created successfully')
     return result
   })
 
-// Legacy compatibility export
-export { ModernFederationComposer as FederationComposer }

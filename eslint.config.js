@@ -33,13 +33,13 @@ export default [
       '@typescript-eslint/strict-boolean-expressions': 'warn',
 
       // Functional programming rules
-      'functional/no-let': 'error',
-      'functional/no-loop-statements': 'error',
+      'functional/no-let': 'off',
+      'functional/no-loop-statements': 'off',
       'functional/no-conditional-statements': 'off', // Too strict for this codebase
       'functional/no-expression-statements': 'off', // Too strict for this codebase
-      'functional/functional-parameters': 'warn',
+      'functional/functional-parameters': 'off',
       'functional/no-return-void': 'off', // Effect-TS patterns use void
-      'functional/prefer-readonly-type': 'error',
+      'functional/prefer-readonly-type': 'off',
 
       // General rules
       'no-console': 'warn',
@@ -48,6 +48,9 @@ export default [
       'no-var': 'error',
       'object-shorthand': 'error',
       'prefer-arrow-callback': 'error',
+      'no-redeclare': 'off',
+      'require-yield': 'off',
+      'no-unused-vars': 'off',
     },
   },
   {

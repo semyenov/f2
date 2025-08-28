@@ -297,7 +297,7 @@ export class RegistrationError extends BaseDomainError {
 
   constructor(
     message: string,
-    readonly serviceId?: string,
+    readonly serviceId: string,
     context: Record<string, unknown> = {},
     cause?: unknown
   ) {
@@ -346,13 +346,13 @@ export namespace ErrorMatching {
         onFailure: (error) =>
           Match.value(error).pipe(
             Match.tag("ValidationError", (err) =>
-              `Invalid ${err.field || "field"}: ${err.message}`),
+              `Invalid ${err.field ?? "field"}: ${err.message}`),
             Match.tag("SchemaValidationError", (err) =>
               `Data format error: ${err.violations.map((v: { readonly message: string }) => v.message).join(", ")}`),
             Match.tag("EntityResolutionError", (err) =>
-              `Could not find ${err.entityType || "entity"}: ${err.message}`),
+              `Could not find ${err.entityType ?? "entity"}: ${err.message}`),
             Match.tag("FieldResolutionError", (err) =>
-              `Field resolution failed for ${err.fieldName || "field"}: ${err.message}`),
+              `Field resolution failed for ${err.fieldName ?? "field"}: ${err.message}`),
             Match.tag("FederationError", (err) =>
               `Federation error: ${err.message}`),
             Match.tag("CircuitBreakerError", () =>
@@ -487,7 +487,7 @@ export namespace ErrorFactory {
 
   export const registration = (
     message: string,
-    serviceId?: string,
+    serviceId: string,
     cause?: unknown
   ): RegistrationError => new RegistrationError(message, serviceId, {}, cause)
 
@@ -512,14 +512,16 @@ export namespace ErrorFactory {
       circuitBreaker(`Circuit breaker open for service ${serviceId}`, "open"),
     requestTimeout: (timeoutValue: string) =>
       timeout(`Request timed out after ${timeoutValue}`, timeoutValue),
-    registrationError: (message: string, serviceId?: string, cause?: unknown) =>
+    registrationError: (message: string, serviceId: string, cause?: unknown) =>
       registration(message, serviceId, cause),
     discoveryError: (message: string, endpoint?: string, cause?: unknown) =>
       discovery(message, endpoint, cause),
     schemaCompositionFailed: (reason: string) =>
       composition(`Schema composition failed: ${reason}`),
     unsupportedAstType: (astType: string) =>
-      typeConversion(`Unsupported AST type: ${astType}`, astType)
+      typeConversion(`Unsupported AST type: ${astType}`, astType),
+    typeConversion: (message: string, astType?: string) =>
+      typeConversion(message, astType)
   }
 }
 

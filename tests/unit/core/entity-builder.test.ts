@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'bun:test'
 import * as Effect from 'effect/Effect'
 import * as Schema from '@effect/schema/Schema'
-import { ModernFederationEntityBuilder } from '../../../src/core/builders/entity-builder.js'
+import { createEntityBuilder } from '../../../src/core/builders/entity-builder.js'
 
-describe('ModernFederationEntityBuilder', () => {
+describe('FederationEntityBuilder', () => {
   const UserSchema = Schema.Struct({
     id: Schema.String,
     email: Schema.String,
@@ -11,40 +11,40 @@ describe('ModernFederationEntityBuilder', () => {
   })
 
   it('should create a basic entity with key fields', async () => {
-    const builder = new ModernFederationEntityBuilder('User', UserSchema, ['id'])
+    const builder = createEntityBuilder('User', UserSchema, ['id'])
     const entityEffect = builder.build()
     const entity = await Effect.runPromise(entityEffect)
 
-    expect(entity.typename).toBe('User')
-    expect(entity.key).toEqual(['id'])
-    expect(entity.schema).toBe(UserSchema)
+    expect((entity as any).typename).toBe('User')
+    expect((entity as any).key).toEqual(['id'])
+    expect((entity as any).schema).toBe(UserSchema)
   })
 
   it('should add shareable field directive', async () => {
-    const builder = new ModernFederationEntityBuilder('User', UserSchema, ['id'])
+    const builder = createEntityBuilder('User', UserSchema, ['id'])
       .withShareableField('email')
     const entityEffect = builder.build()
     const entity = await Effect.runPromise(entityEffect)
 
-    expect(Array.isArray(entity.directives) && entity.directives.find((d: { name: string }) => d.name === 'shareable')).toBeDefined()
+    expect(Array.isArray((entity as any).directives) && (entity as any).directives.find((d: { name: string }) => d.name === 'shareable')).toBeDefined()
   })
 
   it('should add tagged field directive', async () => {
-    const builder = new ModernFederationEntityBuilder('User', UserSchema, ['id'])
+    const builder = createEntityBuilder('User', UserSchema, ['id'])
       .withTaggedField('email', ['pii'])
     const entityEffect = builder.build()
     const entity = await Effect.runPromise(entityEffect)
 
-    expect(Array.isArray(entity.directives) && entity.directives.find((d: { name: string }) => d.name === 'tag')).toBeDefined()
+    expect(Array.isArray((entity as any).directives) && (entity as any).directives.find((d: { name: string }) => d.name === 'tag')).toBeDefined()
   })
 
   it('should add inaccessible field directive', async () => {
-    const builder = new ModernFederationEntityBuilder('User', UserSchema, ['id'])
+    const builder = createEntityBuilder('User', UserSchema, ['id'])
       .withInaccessibleField('name')
     const entityEffect = builder.build()
     const entity = await Effect.runPromise(entityEffect)
 
-    expect(Array.isArray(entity.directives) && entity.directives.find((d: { name: string }) => d.name === 'inaccessible')).toBeDefined()
+    expect(Array.isArray((entity as any).directives) && (entity as any).directives.find((d: { name: string }) => d.name === 'inaccessible')).toBeDefined()
   })
 
   it('should handle reference resolution with Effect', async () => {
@@ -54,23 +54,23 @@ describe('ModernFederationEntityBuilder', () => {
       name: 'Test User',
     }
 
-    const builder = new ModernFederationEntityBuilder('User', UserSchema, ['id'])
-      .withReferenceResolver((_reference) => Effect.succeed(mockUser))
+    const builder = createEntityBuilder('User', UserSchema, ['id'])
+      .withReferenceResolver((_reference: any) => Effect.succeed(mockUser))
 
     const entityEffect = builder.build()
     const entity = await Effect.runPromise(entityEffect)
     
-    if (entity.resolveReference) {
+    if ((entity as any).resolveReference) {
       const result = await Effect.runPromise(
-        entity.resolveReference({ id: '123' }, {}, {} as never)
+        (entity as any).resolveReference({ id: '123' }, {}, {} as never)
       )
       expect(result).toEqual(mockUser)
     }
   })
 
   it('should handle field resolvers with Effect', async () => {
-    const builder = new ModernFederationEntityBuilder('User', UserSchema, ['id'])
-      .withField('id', (parent) =>
+    const builder = createEntityBuilder('User', UserSchema, ['id'])
+      .withField('id', (parent: any) =>
         Effect.succeed(`${parent.name || 'Anonymous'} (${parent.email})`)
       )
 
@@ -78,16 +78,16 @@ describe('ModernFederationEntityBuilder', () => {
     const entity = await Effect.runPromise(entityEffect)
     
     // Test simplified - just ensure entity creation works
-    expect(entity.typename).toBe('User')
+    expect((entity as any).typename).toBe('User')
   })
 
   it('should validate constructor arguments', () => {
     expect(() => {
-      new ModernFederationEntityBuilder('', UserSchema, ['id'])
+      createEntityBuilder('', UserSchema, ['id'])
     }).toThrow('Typename cannot be empty')
 
     expect(() => {
-      new ModernFederationEntityBuilder('User', UserSchema, [])
+      createEntityBuilder('User', UserSchema, [])
     }).toThrow('Key fields cannot be empty')
   })
 })

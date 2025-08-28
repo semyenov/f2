@@ -2,9 +2,11 @@ import * as Schema from "@effect/schema/Schema"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import { Duration } from "effect/index"
-import { ModernFederationEntityBuilder } from "../core/builders/entity-builder.js"
+import { createEntityBuilder } from "../core/builders/entity-builder.js"
 import { createFederatedSchema } from "../federation/composer.js"
 import { DevelopmentLayerLive } from "../core/services/layers.js"
+import { asUntypedEntity } from "../core/types.js"
+import type { GraphQLResolveInfo } from "graphql"
 
 /**
  * Basic Federation v2 Example
@@ -17,29 +19,30 @@ import { DevelopmentLayerLive } from "../core/services/layers.js"
  */
 
 // Define User schema with Effect Schema
+// For federation entities, we typically work with decoded types
 const UserSchema = Schema.Struct({
   id: Schema.String,
   email: Schema.String,
   name: Schema.optional(Schema.String),
-  createdAt: Schema.Date
+  createdAt: Schema.Unknown as Schema.Schema<Date>
 })
 
 type User = Schema.Schema.Type<typeof UserSchema>
 
 // Define federation context
-export interface FederationContext {
+export interface FederationContext extends Record<string, unknown> {
   readonly userId?: string
   readonly permissions: ReadonlyArray<string>
 }
 
 // Create federation entity with directives
 const createUserEntity = () => {
-  const builder = new ModernFederationEntityBuilder("User", UserSchema, ["id"])
+  const builder = createEntityBuilder<User, FederationContext>("User", UserSchema, ["id"])
     .withShareableField("email") // Can be resolved by multiple subgraphs
-    .withTaggedField("name", ["pii"], ({ email }, _args, _context, _info) =>
+    .withTaggedField("name", ["pii"], ({ email }: User, _args: Record<string, unknown>, _context: FederationContext, _info: GraphQLResolveInfo) =>
       Effect.succeed(email!.split("@")[0])
     )
-    .withReferenceResolver((reference, _context, _info) =>
+    .withReferenceResolver((reference: Partial<User>, _context: FederationContext, _info: GraphQLResolveInfo) =>
       pipe(
         Effect.succeed(reference),
         Effect.flatMap(ref => {
@@ -72,7 +75,7 @@ const example = pipe(
     console.log(`  - Directives:`, userEntity.directives)
 
     return createFederatedSchema({
-      entities: [userEntity],
+      entities: [asUntypedEntity(userEntity)],
       services: [
         { id: "users", url: "http://localhost:4001" }
       ],
@@ -103,10 +106,10 @@ const example = pipe(
     console.log(`  - Entity count: ${schema.metadata.entityCount}`)
     console.log(`  - Subgraph count: ${schema.metadata.subgraphCount}`)
   }),
-  Effect.catchAll(error => {
+  Effect.catchAll((error: unknown) => {
     console.error("✗ Federation example failed:")
-    console.error(`  - Error: ${error.message}`)
-    if ("cause" in error && error.cause) {
+    console.error(`  - Error: ${error instanceof Error ? error.message : String(error)}`)
+    if (error instanceof Error && error.cause) {
       console.error(`  - Cause: ${error.cause}`)
     }
     return Effect.succeed(null)

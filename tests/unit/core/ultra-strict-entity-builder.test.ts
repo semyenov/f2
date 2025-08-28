@@ -2,6 +2,7 @@ import { describe, test, expect } from 'bun:test'
 import * as Schema from '@effect/schema/Schema'
 import * as Effect from 'effect/Effect'
 import { GraphQLID, GraphQLString } from 'graphql'
+import { UltraStrictEntityBuilder } from '../../../src/experimental/ultra-strict-entity-builder.js'
 import {
   createUltraStrictEntityBuilder,
   withSchema,
@@ -10,8 +11,7 @@ import {
   withResolvers,
   validateEntityBuilder,
   matchEntityValidationResult,
-  UltraStrictEntityBuilder,
-} from '../../../src/core/ultra-strict-entity-builder.js'
+} from '../../../src/experimental/ultra-strict-entity-builder.js'
 
 describe('UltraStrictEntityBuilder', () => {
   describe('Entity Creation Pipeline', () => {

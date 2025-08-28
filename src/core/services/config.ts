@@ -69,16 +69,16 @@ export const FederationConfigSchema = Schema.Struct({
   }),
 })
 
-export type FederationConfig = Schema.Schema.Type<typeof FederationConfigSchema>
+export type FederationServiceConfig = Schema.Schema.Type<typeof FederationConfigSchema>
 
 // Configuration service tag
 export class FederationConfigService extends Context.Tag('FederationConfigService')<
   FederationConfigService,
-  FederationConfig
+  FederationServiceConfig
 >() {}
 
 // Default configuration
-const defaultConfig: FederationConfig = {
+const defaultConfig: FederationServiceConfig = {
   server: {
     port: 4000,
     host: '0.0.0.0',

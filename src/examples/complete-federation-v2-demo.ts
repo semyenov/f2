@@ -14,6 +14,7 @@ import * as Schema from "@effect/schema/Schema";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import { pipe } from "effect/Function";
+import { GraphQLID } from "graphql";
 
 // Import all our implemented components
 // import { SubgraphManagement } from "../federation/subgraph.js"  // Unused in mock implementation
@@ -24,13 +25,13 @@ import {
 import {
   createUltraStrictEntityBuilder,
   matchEntityValidationResult,
-  UltraStrictEntityBuilder,
   validateEntityBuilder,
   withDirectives,
   withKeys,
   withResolvers,
   withSchema,
-} from "../core/ultra-strict-entity-builder.js";
+  UltraStrictEntityBuilder,
+} from "../experimental/ultra-strict-entity-builder.js";
 import { FederationErrorBoundaries } from "../federation/error-boundaries.js";
 import { PerformanceOptimizations } from "../federation/performance.js";
 
@@ -236,7 +237,7 @@ export const demoUltraStrictEntityBuilder = (): Effect.Effect<void, never> =>
         withKeys([
           UltraStrictEntityBuilder.Key.create(
             "id",
-            { name: "ID" } as any,
+            GraphQLID,
             false,
           ),
         ]),
@@ -245,9 +246,9 @@ export const demoUltraStrictEntityBuilder = (): Effect.Effect<void, never> =>
           UltraStrictEntityBuilder.Directive.tag("user-management"),
         ]),
         withResolvers({
-          fullName: (parent: any) => `${parent.name || "Anonymous User"}`,
-          isNewUser: (parent: any) => {
-            const createdAt = new Date(parent.createdAt);
+          fullName: (parent: unknown) => `${(parent as {name?: string}).name || "Anonymous User"}`,
+          isNewUser: (parent: unknown) => {
+            const createdAt = new Date((parent as {createdAt: string | Date}).createdAt);
             const daysSinceCreation =
               (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
             return daysSinceCreation < 30;

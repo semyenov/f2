@@ -9,8 +9,7 @@ import type {
   CircuitBreakerState,
   CircuitBreakerMetrics,
   FederationError,
-  TimeoutError,
-  CircuitBreakerError
+  CircuitBreakerError,
 } from "../core/types.js"
 import { CompositionError } from "../core/errors.js"
 import { ErrorFactory } from "../core/errors.js"
@@ -18,7 +17,7 @@ import { ErrorFactory } from "../core/errors.js"
 /**
  * GraphQL resolver function type
  */
-type GraphQLResolver = (parent: any, args: any, context: any, info: GraphQLResolveInfo) => Promise<any>
+type GraphQLResolver = (parent: unknown, args: unknown, context: unknown, info: GraphQLResolveInfo) => Promise<unknown>
 
 /**
  * Bounded resolver with error handling
@@ -28,7 +27,7 @@ type BoundedResolver = GraphQLResolver
 /**
  * Error boundary instance
  */
-interface ErrorBoundary {
+export interface ErrorBoundary {
   readonly wrapResolver: (subgraphId: string, resolver: GraphQLResolver) => BoundedResolver
   readonly handlePartialFailure: (results: SubgraphResults) => Effect.Effect<ProcessedResults, FederationError>
   readonly transformError: (error: FederationError, context: ErrorContext) => TransformedError
@@ -44,16 +43,16 @@ interface SubgraphResults {
 interface SubgraphResult {
   readonly subgraphId: string
   readonly success: boolean
-  readonly data?: any
-  readonly error?: any
+  readonly data?: unknown
+  readonly error?: unknown
 }
 
 /**
  * Processed results after partial failure handling
  */
 interface ProcessedResults {
-  readonly data: any
-  readonly errors: ReadonlyArray<any>
+  readonly data: unknown
+  readonly errors: ReadonlyArray<unknown>
 }
 
 /**
@@ -220,22 +219,23 @@ export namespace FederationErrorBoundaries {
   }
 
   /**
-   * Partition results into successful and failed
+   * Partition results into successful and failed - optimized for performance
    */
   const partitionResults = (results: SubgraphResults): {
     readonly successful: readonly SubgraphResult[]
     readonly failed: readonly SubgraphResult[]
   } => {
-    const successful: readonly SubgraphResult[] = []
-    const failed: readonly SubgraphResult[] = []
+    const successful: SubgraphResult[] = []
+    const failed: SubgraphResult[] = []
     
-    Object.values(results).forEach(result => {
+    // Use for...of for better performance than Object.values().forEach
+    for (const result of Object.values(results)) {
       if (result.success) {
         successful.push(result)
       } else {
         failed.push(result)
       }
-    })
+    }
     
     return { successful, failed }
   }
@@ -243,10 +243,10 @@ export namespace FederationErrorBoundaries {
   /**
    * Merge successful results into a single data object
    */
-  const mergeSuccessfulResults = (results: readonly SubgraphResult[]): any => {
+  const mergeSuccessfulResults = (results: readonly SubgraphResult[]): unknown => {
     return results.reduce((merged, result) => ({
       ...merged,
-      ...result.data
+      ...(typeof result.data === 'object' && result.data !== null ? result.data : {})
     }), {})
   }
 
@@ -257,14 +257,14 @@ export namespace FederationErrorBoundaries {
     successful: readonly SubgraphResult[],
     failed: readonly SubgraphResult[],
     config: PartialFailureConfig
-  ): any => {
+  ): unknown => {
     let data = mergeSuccessfulResults(successful)
     
     if (config.fallbackValues) {
       failed.forEach(failedResult => {
         const fallback = config.fallbackValues?.[failedResult.subgraphId]
         if (fallback) {
-          data = { ...data, ...fallback }
+          data = { ...(typeof data === 'object' && data !== null ? data : {}), ...fallback }
         }
       })
     }
@@ -275,19 +275,20 @@ export namespace FederationErrorBoundaries {
   /**
    * Transform subgraph error for client consumption
    */
-  const transformSubgraphError = (error: any): any => {
+  const transformSubgraphError = (error: unknown): unknown => {
+    const errorObj = error as { message?: string; code?: string; extensions?: Record<string, unknown> }
     return {
-      message: error.message || "Subgraph execution failed",
+      message: errorObj.message || "Subgraph execution failed",
       extensions: {
-        code: error.code || "SUBGRAPH_ERROR",
+        code: errorObj.code || "SUBGRAPH_ERROR",
         timestamp: new Date().toISOString(),
-        ...error.extensions
+        ...errorObj.extensions
       }
     }
   }
 
   /**
-   * Create circuit breaker instance with state management
+   * Create circuit breaker instance with state management and performance optimizations
    */
   const createCircuitBreakerInstance = (
     subgraphId: string,
@@ -297,36 +298,54 @@ export namespace FederationErrorBoundaries {
     let failureCount = 0
     let lastFailureTime: number | null = null
     let successCount = 0
+    let lastStateChange = Date.now()
+    
+    // Pre-calculate timeout values for better performance
+    const resetTimeoutMs = Duration.toMillis(config.resetTimeout)
+    const halfOpenMaxCalls = config.halfOpenMaxCalls ?? 3
 
     return {
-      protect: <A, E>(effect: Effect.Effect<A, E>) =>
+      protect: <A, E>(effect: Effect.Effect<A, E>): Effect.Effect<A, CircuitBreakerError | E> =>
         pipe(
           Effect.succeed(state),
-          Effect.flatMap(currentState => {
+          Effect.flatMap((currentState): Effect.Effect<A, CircuitBreakerError | E> => {
             switch (currentState) {
-              case "open":
-                return shouldAttemptReset(lastFailureTime, config.resetTimeout)
-                  ? attemptReset(effect, subgraphId)
+              case "open": {
+                // Use pre-calculated timeout for better performance
+                const canReset = lastFailureTime && (Date.now() - lastFailureTime) >= resetTimeoutMs
+                return canReset
+                  ? pipe(
+                      Effect.sync(() => {
+                        state = "half-open"
+                        successCount = 0
+                        lastStateChange = Date.now()
+                        console.log(`🔄 Circuit breaker attempting reset for ${subgraphId}`)
+                      }),
+                      Effect.flatMap((): Effect.Effect<A, CircuitBreakerError | E> => effect)
+                    )
                   : Effect.fail(ErrorFactory.circuitBreaker(
                       `Circuit breaker open for ${subgraphId}`,
                       "open"
                     ))
+              }
               
               case "half-open":
                 return pipe(
                   effect,
                   Effect.tap(() => Effect.sync(() => {
                     successCount++
-                    if (successCount >= (config.halfOpenMaxCalls || 3)) {
+                    if (successCount >= halfOpenMaxCalls) {
                       state = "closed"
                       failureCount = 0
                       successCount = 0
+                      lastStateChange = Date.now()
                       console.log(`🔋 Circuit breaker closed for ${subgraphId}`)
                     }
                   })),
                   Effect.catchAll(error => {
                     state = "open"
                     lastFailureTime = Date.now()
+                    lastStateChange = Date.now()
                     successCount = 0
                     console.log(`⚡ Circuit breaker opened for ${subgraphId}`)
                     return Effect.fail(error)
@@ -337,7 +356,7 @@ export namespace FederationErrorBoundaries {
                 return pipe(
                   effect,
                   Effect.tap(() => Effect.sync(() => {
-                    // Reset failure count on success
+                    // Reset failure count on success - only if needed
                     if (failureCount > 0) {
                       failureCount = 0
                     }
@@ -347,6 +366,7 @@ export namespace FederationErrorBoundaries {
                     if (failureCount >= config.failureThreshold) {
                       state = "open"
                       lastFailureTime = Date.now()
+                      lastStateChange = Date.now()
                       console.log(`🚨 Circuit breaker opened for ${subgraphId} (${failureCount} failures)`)
                     }
                     return Effect.fail(error)
@@ -360,34 +380,37 @@ export namespace FederationErrorBoundaries {
       getMetrics: (): CircuitBreakerMetrics => ({ 
         failureCount, 
         lastFailureTime, 
-        state 
+        state,
+        lastStateChange,
+        successCount,
+        resetTimeoutMs
       })
     }
   }
 
   /**
-   * Check if circuit breaker should attempt reset
+   * Optimized metrics recording with batching to reduce I/O overhead
    */
-  const shouldAttemptReset = (
-    lastFailureTime: number | null,
-    resetTimeout: Duration.Duration
-  ): boolean => {
-    if (!lastFailureTime) return false
+  let metricsBuffer: Array<{ subgraphId: string; metrics: unknown }> = []
+  let metricsFlushTimer: NodeJS.Timeout | null = null
+  
+  const flushMetrics = () => {
+    if (metricsBuffer.length === 0) return
     
-    const resetTimeoutMs = Duration.toMillis(resetTimeout)
-    return (Date.now() - lastFailureTime) >= resetTimeoutMs
+    // Batch process metrics
+    const batch = [...metricsBuffer]
+    metricsBuffer = []
+    
+    // In production, this would batch write to monitoring system
+    console.log(`📊 Flushing ${batch.length} metrics entries`)
+    
+    metricsFlushTimer = null
   }
-
-  /**
-   * Attempt to reset circuit breaker to half-open state
-   */
-  const attemptReset = <A, E>(
-    effect: Effect.Effect<A, E>,
-    subgraphId: string
-  ): Effect.Effect<A, E | CircuitBreakerError> => {
-    console.log(`🔄 Attempting circuit breaker reset for ${subgraphId}`)
-    // Set state to half-open and try the effect
-    return effect
+  
+  const scheduleMetricsFlush = () => {
+    if (metricsFlushTimer) return
+    
+    metricsFlushTimer = setTimeout(flushMetrics, 1000) // 1 second batch window
   }
 
   /**
@@ -416,7 +439,7 @@ export namespace FederationErrorBoundaries {
     context: ErrorContext,
     config?: ErrorTransformationConfig
   ): TransformedError => {
-    const baseError = {
+    const baseError: TransformedError = {
       message: config?.sanitizeErrors ? "Internal server error" : error.message,
       code: error._tag || "FEDERATION_ERROR",
       path: context.fieldPath,
@@ -430,13 +453,23 @@ export namespace FederationErrorBoundaries {
       }
     }
 
-    return config?.customTransformer 
-      ? config.customTransformer(baseError)
-      : baseError
+    if (config?.customTransformer) {
+      const transformedError = new Error(baseError.message)
+      transformedError.name = 'FederationError'
+      
+      const result = config.customTransformer(transformedError)
+      return {
+        ...result,
+        message: result.message,
+        code: 'code' in result && typeof result.code === 'string' ? result.code : 'UNKNOWN_ERROR'
+      }
+    }
+    
+    return baseError
   }
 
   /**
-   * Record metrics for monitoring
+   * Record metrics for monitoring with batching optimization
    */
   const recordMetrics = (
     subgraphId: string,
@@ -446,12 +479,23 @@ export namespace FederationErrorBoundaries {
       readonly error?: any
     }
   ): void => {
-    // In a real implementation, this would send metrics to a monitoring system
-    console.log(`📊 Metrics for ${subgraphId}:`, {
-      duration: `${metrics.duration}ms`,
-      success: metrics.success,
-      timestamp: new Date().toISOString()
+    // Buffer metrics for batch processing to reduce I/O overhead
+    metricsBuffer.push({
+      subgraphId,
+      metrics: {
+        duration: metrics.duration,
+        success: metrics.success,
+        timestamp: Date.now(),
+        ...(metrics.error && { errorType: metrics.error.constructor.name })
+      }
     })
+    
+    scheduleMetricsFlush()
+    
+    // For immediate debugging, still log individual critical failures
+    if (!metrics.success && metrics.duration > 1000) {
+      console.warn(`⚠️ Slow failure for ${subgraphId}: ${metrics.duration}ms`)
+    }
   }
 
   /**

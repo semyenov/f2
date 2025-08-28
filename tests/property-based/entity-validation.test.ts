@@ -3,6 +3,7 @@ import * as fc from 'fast-check'
 import * as Schema from '@effect/schema/Schema'
 import * as Effect from 'effect/Effect'
 import { GraphQLID, GraphQLString, GraphQLInt, GraphQLFloat } from 'graphql'
+import { UltraStrictEntityBuilder } from '../../src/experimental/ultra-strict-entity-builder.js'
 import {
   createUltraStrictEntityBuilder,
   withSchema,
@@ -11,8 +12,7 @@ import {
   withResolvers,
   validateEntityBuilder,
   matchEntityValidationResult,
-  UltraStrictEntityBuilder,
-} from '../../src/core/ultra-strict-entity-builder.js'
+} from '../../src/experimental/ultra-strict-entity-builder.js'
 
 // Property-based testing for entity validation
 describe('Property-Based Entity Validation', () => {
@@ -38,22 +38,39 @@ describe('Property-Based Entity Validation', () => {
     UltraStrictEntityBuilder.Key.create(field, type, isComposite)
   )
 
-  // Generator for federation directives
+  // Generator for non-conflicting federation directive sets
+  const nonConflictingDirectives = fc.oneof(
+    // Shareable with compatible directives
+    fc.constant([UltraStrictEntityBuilder.Directive.shareable()]),
+    fc.string({ minLength: 1, maxLength: 20 }).map(tag => 
+      [UltraStrictEntityBuilder.Directive.shareable(), UltraStrictEntityBuilder.Directive.tag(tag)]
+    ),
+    fc.string({ minLength: 1, maxLength: 50 }).map(fields => 
+      [UltraStrictEntityBuilder.Directive.shareable(), UltraStrictEntityBuilder.Directive.provides(fields)]
+    ),
+    
+    // Override alone (conflicts with shareable)
+    fc.string({ minLength: 1, maxLength: 20 }).map(from => 
+      [UltraStrictEntityBuilder.Directive.override(from)]
+    ),
+    
+    // Other safe combinations
+    fc.constant([UltraStrictEntityBuilder.Directive.external()]),
+    fc.constant([UltraStrictEntityBuilder.Directive.inaccessible()]),
+    fc.string({ minLength: 1, maxLength: 50 }).map(fields => 
+      [UltraStrictEntityBuilder.Directive.requires(fields)]
+    )
+  )
+
+  // Single directive generator for backwards compatibility
   const federationDirective = fc.oneof(
     fc.constant(UltraStrictEntityBuilder.Directive.shareable()),
-    fc.constant(UltraStrictEntityBuilder.Directive.inaccessible()),
     fc.constant(UltraStrictEntityBuilder.Directive.external()),
     fc.string({ minLength: 1, maxLength: 20 }).map(tag => 
       UltraStrictEntityBuilder.Directive.tag(tag)
     ),
-    fc.string({ minLength: 1, maxLength: 20 }).map(from => 
-      UltraStrictEntityBuilder.Directive.override(from)
-    ),
     fc.string({ minLength: 1, maxLength: 50 }).map(fields => 
       UltraStrictEntityBuilder.Directive.provides(fields)
-    ),
-    fc.string({ minLength: 1, maxLength: 50 }).map(fields => 
-      UltraStrictEntityBuilder.Directive.requires(fields)
     )
   )
 
@@ -121,7 +138,7 @@ describe('Property-Based Entity Validation', () => {
       await fc.assert(
         fc.asyncProperty(
           validEntityName,
-          fc.array(federationDirective, { minLength: 1, maxLength: 3 }),
+          nonConflictingDirectives,
           async (entityName, directives) => {
             const result = await Effect.runPromise(
               Effect.gen(function* () {

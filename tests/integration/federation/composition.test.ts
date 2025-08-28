@@ -10,7 +10,7 @@ import {
   withResolvers,
   validateEntityBuilder,
   UltraStrictEntityBuilder,
-} from '../../../src/core/ultra-strict-entity-builder.js'
+} from '../../../src/experimental/ultra-strict-entity-builder.js'
 
 describe('Federation Composition Integration', () => {
   describe('Multi-Entity Federation', () => {
@@ -27,7 +27,7 @@ describe('Federation Composition Integration', () => {
           const builder = createUltraStrictEntityBuilder('User')
           const composed = yield* Effect.succeed(
             withResolvers({
-              fullName: (parent: any) => `${parent.name || 'Anonymous'}`,
+              fullName: (parent: unknown) => `${(parent as {name?: string}).name || 'Anonymous'}`,
             })(
               withDirectives([
                 UltraStrictEntityBuilder.Directive.shareable(),
@@ -56,7 +56,7 @@ describe('Federation Composition Integration', () => {
           const builder = createUltraStrictEntityBuilder('Product')
           const composed = yield* Effect.succeed(
             withResolvers({
-              formattedPrice: (parent: any) => `$${parent.price.toFixed(2)}`,
+              formattedPrice: (parent: unknown) => `$${(parent as {price: number}).price.toFixed(2)}`,
             })(
               withDirectives([
                 UltraStrictEntityBuilder.Directive.tag('inventory'),
@@ -130,7 +130,7 @@ describe('Federation Composition Integration', () => {
             const builder = createUltraStrictEntityBuilder('Order')
             return yield* validateEntityBuilder(
               withResolvers({
-                totalFormatted: (parent: any) => `$${parent.total}`,
+                totalFormatted: (parent: unknown) => `$${(parent as {total: number}).total}`,
               })(
                 withDirectives([
                   UltraStrictEntityBuilder.Directive.requires('userId'),
@@ -171,7 +171,6 @@ describe('Federation Composition Integration', () => {
             withResolvers({})(
               withDirectives([
                 UltraStrictEntityBuilder.Directive.override('LegacyUserService'),
-                UltraStrictEntityBuilder.Directive.shareable(),
               ])(
                 withKeys([UltraStrictEntityBuilder.Key.create('id', GraphQLID, false)])(
                   withSchema(
@@ -204,7 +203,7 @@ describe('Federation Composition Integration', () => {
           const builder = createUltraStrictEntityBuilder('Product')
           return yield* validateEntityBuilder(
             withResolvers({
-              category: (parent: any) => parent.categoryName,
+              category: (parent: unknown) => (parent as {categoryName: string}).categoryName,
             })(
               withDirectives([
                 UltraStrictEntityBuilder.Directive.provides('category'),

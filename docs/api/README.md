@@ -6,7 +6,7 @@ This directory contains comprehensive API documentation for all modules and comp
 
 ### 🏗️ Entity Building
 - **[Entity Builder](./entity-builder.md)** - Standard federation entity creation
-- **[Ultra-Strict Entity Builder](./ultra-strict-entity-builder.md)** - Type-safe entity building with phantom types
+- **[Ultra-Strict Entity Builder](./ultra-strict-entity-builder.md)** - Experimental type-safe entity building with phantom types
 - **[Schema-First Patterns](./schema-first-patterns.md)** - AST-based schema development workflow
 
 ### ⚡ Effect System
@@ -30,9 +30,9 @@ This directory contains comprehensive API documentation for all modules and comp
 
 | Component | Purpose | Key Features |
 |-----------|---------|-------------|
-| `ModernFederationEntityBuilder` | Standard entity creation | Apollo Federation 2.x directives, Effect resolvers |
-| `UltraStrictEntityBuilder` | Type-safe entity building | Phantom types, compile-time validation, pattern matching |
-| `FederationComposer` | Schema composition | Service orchestration, validation, hot reload |
+| `FederationEntityBuilder` | Standard entity creation | Apollo Federation 2.x directives, Effect resolvers |
+| `Experimental.UltraStrictEntityBuilder` | Experimental type-safe entity building | Phantom types, compile-time validation, pattern matching |
+| `ModernFederationComposer` | Schema composition | Service orchestration, validation, hot reload |
 | `SubgraphRegistry` | Service management | Health checks, discovery, load balancing |
 | `ErrorBoundaries` | Fault tolerance | Circuit breakers, partial failure handling |
 | `PerformanceOptimizations` | Query optimization | Plan caching, DataLoader batching, metrics |
@@ -41,9 +41,9 @@ This directory contains comprehensive API documentation for all modules and comp
 
 ### Basic Entity Creation
 ```typescript
-import { ModernFederationEntityBuilder } from "@cqrs/federation-v2/core"
+import { FederationEntityBuilder } from "@cqrs/federation-v2/core"
 
-const userEntity = new ModernFederationEntityBuilder("User", UserSchema, ["id"])
+const userEntity = new FederationEntityBuilder("User", UserSchema, ["id"])
   .withShareableField("email")
   .withTaggedField("name", ["pii"])
   .build()

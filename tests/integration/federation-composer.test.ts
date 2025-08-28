@@ -1,11 +1,19 @@
 import { describe, it, expect } from 'bun:test'
 import * as Effect from 'effect/Effect'
 import * as Schema from '@effect/schema/Schema'
-import { Duration } from 'effect'
-import { ModernFederationEntityBuilder } from '../../src/core/builders/entity-builder.js'
-import { FederationComposer } from '../../src/federation/composer.js'
+import { Duration, Layer } from 'effect'
+import { createEntityBuilder } from '../../src/core/builders/entity-builder.js'
+import { createFederatedSchema, ModernFederationComposerLive } from '../../src/federation/composer.js'
+import { TestLayerLive } from '../../src/core/services/layers.js'
+import { asUntypedEntity } from '../../src/core/types.js'
+import type { FederationEntity } from '../../src/core/types.js'
 
 describe('Federation Composer Integration', () => {
+  // Ensure all required services are explicitly provided with correct dependency order
+  const testLayers = TestLayerLive.pipe(
+    Layer.provide(ModernFederationComposerLive)
+  )
+  
   const UserSchema = Schema.Struct({
     id: Schema.String,
     email: Schema.String,
@@ -19,9 +27,9 @@ describe('Federation Composer Integration', () => {
   })
 
   it('should compose federation with multiple entities', async () => {
-    const userEntity = new ModernFederationEntityBuilder('User', UserSchema, ['id'])
+    const userEntityEffect = createEntityBuilder('User', UserSchema, ['id'])
       .withShareableField('email')
-      .withReferenceResolver((ref) =>
+      .withReferenceResolver((ref: any) =>
         Effect.succeed({
           id: ref.id as string,
           email: `user${ref.id}@example.com`,
@@ -30,9 +38,9 @@ describe('Federation Composer Integration', () => {
       )
       .build()
 
-    const productEntity = new ModernFederationEntityBuilder('Product', ProductSchema, ['id'])
+    const productEntityEffect = createEntityBuilder('Product', ProductSchema, ['id'])
       .withShareableField('name')
-      .withReferenceResolver((ref) =>
+      .withReferenceResolver((ref: any) =>
         Effect.succeed({
           id: ref.id as string,
           name: `Product ${ref.id}`,
@@ -41,8 +49,10 @@ describe('Federation Composer Integration', () => {
       )
       .build()
 
+    const entities = await Effect.runPromise(Effect.all([userEntityEffect, productEntityEffect]) as any)
+
     const config = {
-      entities: [userEntity, productEntity],
+      entities: [asUntypedEntity((entities as any)[0] as any), asUntypedEntity((entities as any)[1] as any)],
       services: [
         { id: 'users', url: 'http://localhost:4001' },
         { id: 'products', url: 'http://localhost:4002' },
@@ -67,7 +77,11 @@ describe('Federation Composer Integration', () => {
       },
     }
 
-    const result = await Effect.runPromise(FederationComposer.create(config))
+    const result = await Effect.runPromise(
+      createFederatedSchema(config).pipe(
+        Effect.provide(testLayers)
+      )
+    )
 
     expect(result).toBeDefined()
     expect(result.schema).toBeDefined()
@@ -79,8 +93,8 @@ describe('Federation Composer Integration', () => {
   })
 
   it('should handle composition with error boundaries', async () => {
-    const userEntity = new ModernFederationEntityBuilder('User', UserSchema, ['id'])
-      .withReferenceResolver((ref) =>
+    const userEntityEffect = createEntityBuilder('User', UserSchema, ['id'])
+      .withReferenceResolver((ref: any) =>
         Effect.succeed({
           id: ref.id as string,
           email: `user${ref.id}@example.com`,
@@ -89,8 +103,10 @@ describe('Federation Composer Integration', () => {
       )
       .build()
 
+    const entities = await Effect.runPromise(Effect.all([userEntityEffect]) as any)
+
     const config = {
-      entities: [userEntity],
+      entities: [asUntypedEntity((entities as any)[0] as any)],
       services: [{ id: 'users', url: 'http://localhost:4001' }],
       errorBoundaries: {
         subgraphTimeouts: {
@@ -112,7 +128,11 @@ describe('Federation Composer Integration', () => {
       },
     }
 
-    const result = await Effect.runPromise(FederationComposer.create(config))
+    const result = await Effect.runPromise(
+      createFederatedSchema(config).pipe(
+        Effect.provide(testLayers)
+      )
+    )
 
     expect(result).toBeDefined()
     expect(result.entities).toHaveLength(1)
@@ -131,7 +151,7 @@ describe('Federation Composer Integration', () => {
     }
 
     const config = {
-      entities: [invalidEntity as any],
+      entities: [invalidEntity as FederationEntity<unknown, unknown, unknown, unknown>],
       services: [{ id: 'users', url: 'http://localhost:4001' }],
       errorBoundaries: {
         subgraphTimeouts: {
@@ -152,6 +172,13 @@ describe('Federation Composer Integration', () => {
       },
     }
 
-    await expect(Effect.runPromise(FederationComposer.create(config))).rejects.toThrow()
+    await expect(
+      Effect.runPromise(
+        createFederatedSchema(config).pipe(
+          Effect.provide(testLayers),
+          Effect.scoped
+        )
+      )
+    ).rejects.toThrow()
   })
 })

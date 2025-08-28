@@ -3,15 +3,17 @@ import * as Schema from "@effect/schema/Schema";
 import { DocumentNode, ExecutionResult, GraphQLFieldResolver, GraphQLOutputType, GraphQLResolveInfo, GraphQLSchema } from "graphql";
 import * as Data from "effect/Data";
 import * as Effect$1 from "effect/Effect";
-import * as effect_Unify0 from "effect/Unify";
-import * as effect_Types0 from "effect/Types";
-import * as effect_Cause0 from "effect/Cause";
+import * as effect_Unify7 from "effect/Unify";
+import * as effect_Types2 from "effect/Types";
+import * as effect_Cause2 from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Layer from "effect/Layer";
-import * as _effect_schema_ParseResult4 from "@effect/schema/ParseResult";
-import * as effect_ConfigError4 from "effect/ConfigError";
+import * as _effect_schema_ParseResult5 from "@effect/schema/ParseResult";
+import * as effect_ConfigError5 from "effect/ConfigError";
 import DataLoader from "dataloader";
 
+//#region rolldown:runtime
+//#endregion
 //#region src/core/errors.d.ts
 /**
  * Core error data structure with comprehensive metadata
@@ -54,19 +56,19 @@ declare class ValidationError extends BaseDomainError implements ValidationError
  */
 declare class SchemaValidationError extends BaseDomainError {
   readonly schemaName: string;
-  readonly violations: Array<{
-    path: string;
-    message: string;
-    value?: unknown;
+  readonly violations: ReadonlyArray<{
+    readonly path: string;
+    readonly message: string;
+    readonly value?: unknown;
   }>;
   readonly _tag: "SchemaValidationError";
   readonly severity: "medium";
   readonly category: "validation";
   readonly retryable = false;
-  constructor(schemaName: string, message: string, violations: Array<{
-    path: string;
-    message: string;
-    value?: unknown;
+  constructor(schemaName: string, message: string, violations: ReadonlyArray<{
+    readonly path: string;
+    readonly message: string;
+    readonly value?: unknown;
   }>, context?: Record<string, unknown>);
 }
 /**
@@ -165,12 +167,12 @@ declare class HealthCheckError extends BaseDomainError {
  * Registration error for service registration failures
  */
 declare class RegistrationError extends BaseDomainError {
-  readonly serviceId?: string | undefined;
+  readonly serviceId: string;
   readonly _tag: "RegistrationError";
   readonly severity: "high";
   readonly category: "registration";
   readonly retryable = true;
-  constructor(message: string, serviceId?: string | undefined, context?: Record<string, unknown>, cause?: unknown);
+  constructor(message: string, serviceId: string, context?: Record<string, unknown>, cause?: unknown);
 }
 /**
  * Discovery error for service discovery failures
@@ -205,10 +207,10 @@ declare namespace ErrorMatching {
  */
 declare namespace ErrorFactory {
   const validation: (message: string, field?: string, value?: unknown, code?: string) => ValidationError;
-  const schemaValidation: (schemaName: string, message: string, violations: Array<{
-    path: string;
-    message: string;
-    value?: unknown;
+  const schemaValidation: (schemaName: string, message: string, violations: ReadonlyArray<{
+    readonly path: string;
+    readonly message: string;
+    readonly value?: unknown;
   }>) => SchemaValidationError;
   const entityResolution: (message: string, entityType?: string, entityId?: string, cause?: unknown) => EntityResolutionError;
   const fieldResolution: (message: string, fieldName?: string, parentType?: string, cause?: unknown) => FieldResolutionError;
@@ -218,7 +220,7 @@ declare namespace ErrorFactory {
   const composition: (message: string, subgraphId?: string, cause?: unknown) => CompositionError;
   const typeConversion: (message: string, astType?: string, field?: string, cause?: unknown) => TypeConversionError;
   const healthCheck: (message: string, serviceId?: string, cause?: unknown) => HealthCheckError;
-  const registration: (message: string, serviceId?: string, cause?: unknown) => RegistrationError;
+  const registration: (message: string, serviceId: string, cause?: unknown) => RegistrationError;
   const discovery: (message: string, endpoint?: string, cause?: unknown) => DiscoveryError;
   const CommonErrors: {
     required: (field: string) => ValidationError;
@@ -228,10 +230,11 @@ declare namespace ErrorFactory {
     fieldNotResolvable: (fieldName: string, parentType: string) => FieldResolutionError;
     circuitOpen: (serviceId: string) => CircuitBreakerError;
     requestTimeout: (timeoutValue: string) => TimeoutError;
-    registrationError: (message: string, serviceId?: string, cause?: unknown) => RegistrationError;
+    registrationError: (message: string, serviceId: string, cause?: unknown) => RegistrationError;
     discoveryError: (message: string, endpoint?: string, cause?: unknown) => DiscoveryError;
     schemaCompositionFailed: (reason: string) => CompositionError;
     unsupportedAstType: (astType: string) => TypeConversionError;
+    typeConversion: (message: string, astType?: string) => TypeConversionError;
   };
 }
 /**
@@ -241,36 +244,47 @@ type FederationDomainError = ValidationError | SchemaValidationError | EntityRes
 //#endregion
 //#region src/core/types.d.ts
 /**
- * Additional error types used in federation configuration
- */
-interface RegistrationError$1 {
-  readonly _tag: "RegistrationError";
-  readonly message: string;
-  readonly serviceId?: string;
-  readonly cause?: unknown;
-}
-interface DiscoveryError$1 {
-  readonly _tag: "DiscoveryError";
-  readonly message: string;
-  readonly endpoint?: string;
-  readonly cause?: unknown;
-}
-interface HealthCheckError$1 {
-  readonly _tag: "HealthCheckError";
-  readonly message: string;
-  readonly serviceId?: string;
-  readonly cause?: unknown;
-}
-/**
  * Core federation entity definition with full Apollo Federation 2.x support
+ *
+ * Represents a GraphQL entity that can be federated across multiple subgraphs.
+ * Entities are types that can be resolved from references and extended by other subgraphs.
+ *
+ * @template TSource - The source data type (e.g., from database or API)
+ * @template TContext - The GraphQL execution context type (user, services, etc.)
+ * @template TResult - The resolved entity type returned to clients
+ * @template TReference - The reference type containing key fields for entity lookup
+ *
+ * @example
+ * ```typescript
+ * const userEntity: FederationEntity<DatabaseUser, AppContext, User, UserRef> = {
+ *   typename: 'User',
+ *   key: ['id'],
+ *   schema: UserSchema,
+ *   resolveReference: resolveUserFromReference,
+ *   fields: {
+ *     displayName: resolveUserDisplayName,
+ *     avatar: resolveUserAvatar
+ *   },
+ *   directives: {
+ *     email: [{ type: '@inaccessible' }]
+ *   }
+ * }
+ * ```
  */
 interface FederationEntity<TSource = Record<string, unknown>, TContext = Record<string, unknown>, TResult = Partial<TSource>, TReference = Partial<TSource>> {
+  /** GraphQL type name - must match the type name in your schema */
   readonly typename: string;
+  /** Key field(s) that uniquely identify this entity across subgraphs */
   readonly key: string | ReadonlyArray<string>;
+  /** Effect Schema for runtime validation and type safety */
   readonly schema: Schema.Schema<TSource, TContext>;
+  /** Resolver function called when this entity is referenced by other subgraphs */
   readonly resolveReference: EntityReferenceResolver<TResult, TContext, TReference>;
+  /** Optional field resolvers for computed or federated fields */
   readonly fields: FieldResolverMap<TResult, TContext> | undefined;
+  /** Federation directives (@shareable, @inaccessible, @override, etc.) */
   readonly directives: FederationDirectiveMap | undefined;
+  /** Additional metadata for tooling and extensions */
   readonly extensions: Record<string, unknown> | undefined;
 }
 /**
@@ -285,6 +299,32 @@ interface FederationDirective {
 }
 /**
  * Entity reference resolver with Effect-based error handling
+ *
+ * Called when Apollo Federation needs to resolve an entity from a reference.
+ * The reference contains the key fields that identify the entity uniquely.
+ *
+ * @template TResult - The complete entity type to be returned
+ * @template TContext - The GraphQL execution context type
+ * @template TReference - The reference type containing key fields
+ *
+ * @param reference - Object containing key fields to identify the entity
+ * @param context - GraphQL execution context with services, user info, etc.
+ * @param info - GraphQL execution info with field selection and metadata
+ *
+ * @returns Effect resolving to the entity or EntityResolutionError
+ *
+ * @example
+ * ```typescript
+ * const resolveUser: EntityReferenceResolver<User, AppContext, UserRef> =
+ *   (ref, ctx, info) => pipe(
+ *     ctx.userService.findById(ref.id),
+ *     Effect.mapError(err =>
+ *       ErrorFactory.entityResolution(
+ *         `User ${ref.id} not found`, 'User', ref.id, err
+ *       )
+ *     )
+ *   )
+ * ```
  */
 interface EntityReferenceResolver<TResult, TContext, TReference> {
   (reference: TReference, context: TContext, info: GraphQLResolveInfo): Effect.Effect<TResult, EntityResolutionError>;
@@ -293,6 +333,38 @@ interface EntityReferenceResolver<TResult, TContext, TReference> {
  * Field resolver map for federation entities
  */
 type FieldResolverMap<TResult, TContext> = { readonly [K in keyof TResult]?: FieldResolver<TResult, TContext, TResult[K]> };
+/**
+ * GraphQL field resolver with Effect-based error handling
+ *
+ * Resolves a specific field on a GraphQL type, with proper error handling
+ * and context propagation using the Effect system.
+ *
+ * @template TSource - The parent object type containing this field
+ * @template TContext - The GraphQL execution context type
+ * @template TReturn - The return type of this field
+ * @template TArgs - The arguments passed to this field
+ *
+ * @param parent - The parent object being resolved
+ * @param args - Arguments passed to the GraphQL field
+ * @param context - Execution context with services and user info
+ * @param info - GraphQL execution info with field selection
+ *
+ * @returns Effect resolving to field value or FieldResolutionError
+ *
+ * @example
+ * ```typescript
+ * const resolveUserEmail: FieldResolver<User, AppContext, string> =
+ *   (user, args, ctx, info) => pipe(
+ *     ctx.authService.checkAccess(ctx.user, 'read:email'),
+ *     Effect.flatMap(() => Effect.succeed(user.email)),
+ *     Effect.mapError(err =>
+ *       ErrorFactory.fieldResolution(
+ *         'Insufficient permissions for email field', 'email', 'User', err
+ *       )
+ *     )
+ *   )
+ * ```
+ */
 interface FieldResolver<TSource, TContext, TReturn, TArgs = Record<string, unknown>> {
   (parent: TSource, args: TArgs, context: TContext, info: GraphQLResolveInfo): Effect.Effect<TReturn, FieldResolutionError>;
 }
@@ -310,11 +382,12 @@ interface ServiceDefinition {
  * Federation composition configuration
  */
 interface FederationCompositionConfig {
-  readonly entities: ReadonlyArray<FederationEntity<any, any, any, any>>;
+  readonly entities: ReadonlyArray<FederationEntity<unknown, unknown, unknown, unknown>>;
   readonly services: ReadonlyArray<ServiceDefinition>;
   readonly errorBoundaries: ErrorBoundaryConfig;
   readonly performance: PerformanceConfig;
 }
+declare const asUntypedEntity: <TSource, TContext, TResult, TReference>(entity: FederationEntity<TSource, TContext, TResult, TReference>) => FederationEntity<unknown, unknown, unknown, unknown>;
 /**
  * Error boundary configuration for circuit breakers and fault tolerance
  */
@@ -355,18 +428,23 @@ interface DataLoaderConfig {
   readonly maxBatchSize: number;
   readonly batchWindowMs?: number;
   readonly cacheKeyFn?: (key: unknown) => string;
+  readonly enableBatchLogging?: boolean;
+  readonly maxCacheOperations?: number;
+  readonly maxExecutionMetrics?: number;
 }
 interface MetricsConfig {
   readonly enabled: boolean;
   readonly collectExecutionMetrics?: boolean;
   readonly collectCacheMetrics?: boolean;
+  readonly maxExecutionMetrics?: number;
+  readonly maxCacheOperations?: number;
 }
 /**
  * Schema composition result
  */
 interface FederatedSchema {
   readonly schema: GraphQLSchema;
-  readonly entities: ReadonlyArray<FederationEntity<any, any, any, any>>;
+  readonly entities: ReadonlyArray<FederationEntity<unknown, unknown, unknown, unknown>>;
   readonly services: ReadonlyArray<ServiceDefinition>;
   readonly version: string;
   readonly metadata: SchemaMetadata;
@@ -395,19 +473,58 @@ interface SchemaWatcher {
  * Subgraph registry for service discovery
  */
 interface SubgraphRegistry {
-  readonly register: (definition: ServiceDefinition) => Effect.Effect<void, RegistrationError$1>;
-  readonly unregister: (serviceId: string) => Effect.Effect<void, RegistrationError$1>;
-  readonly discover: () => Effect.Effect<ReadonlyArray<ServiceDefinition>, DiscoveryError$1>;
-  readonly health: (serviceId: string) => Effect.Effect<HealthStatus, HealthCheckError$1>;
+  readonly register: (definition: ServiceDefinition) => Effect.Effect<void, RegistrationError>;
+  readonly unregister: (serviceId: string) => Effect.Effect<void, RegistrationError>;
+  readonly discover: () => Effect.Effect<ReadonlyArray<ServiceDefinition>, DiscoveryError>;
+  readonly health: (serviceId: string) => Effect.Effect<HealthStatus, HealthCheckError>;
 }
+/**
+ * Health status of a federated subgraph service
+ *
+ * Represents the current operational status of a subgraph:
+ * - `healthy`: Service responding normally with good performance
+ * - `degraded`: Service responding but with poor performance or warnings
+ * - `unhealthy`: Service not responding or returning errors
+ *
+ * @example
+ * ```typescript
+ * const health: HealthStatus = {
+ *   status: 'healthy',
+ *   serviceId: 'user-service',
+ *   lastCheck: new Date(),
+ *   metrics: {
+ *     responseTimeMs: 42,
+ *     statusCode: 200,
+ *     memoryUsageMB: 256
+ *   }
+ * }
+ * ```
+ */
 interface HealthStatus {
+  /** Current health status of the service */
   readonly status: "healthy" | "unhealthy" | "degraded";
+  /** Unique identifier of the service */
   readonly serviceId: string;
+  /** Timestamp when health check was last performed */
   readonly lastCheck?: Date;
+  /** Optional metrics collected during health check */
   readonly metrics?: Record<string, number>;
 }
 /**
  * Circuit breaker state and operations
+ *
+ * Circuit breaker pattern implementation for fault tolerance:
+ * - `closed`: Normal operation, all requests pass through
+ * - `open`: Circuit is open, requests fail immediately (fail-fast)
+ * - `half-open`: Testing phase, limited requests allowed to test recovery
+ *
+ * State transitions:
+ * closed -> open: When failure threshold is exceeded
+ * open -> half-open: After reset timeout expires
+ * half-open -> closed: When test requests succeed
+ * half-open -> open: When test requests fail
+ *
+ * @see {@link https://martinfowler.com/bliki/CircuitBreaker.html}
  */
 type CircuitBreakerState = "closed" | "open" | "half-open";
 interface CircuitBreaker {
@@ -419,6 +536,9 @@ interface CircuitBreakerMetrics {
   readonly failureCount: number;
   readonly lastFailureTime: number | null;
   readonly state: CircuitBreakerState;
+  readonly lastStateChange?: number;
+  readonly successCount?: number;
+  readonly resetTimeoutMs?: number;
 }
 /**
  * Error types for comprehensive error handling
@@ -427,7 +547,7 @@ interface CircuitBreakerMetrics {
  * Schema first development types
  */
 interface SchemaImportResult {
-  readonly schema: Schema.Schema<any>;
+  readonly schema: Schema.Schema<unknown>;
   readonly directives: FederationDirectiveMap;
   readonly metadata: SchemaMetadata;
 }
@@ -448,11 +568,38 @@ interface SchemaConflict {
   readonly resolution?: "local" | "remote" | "merge";
 }
 /**
- * Union type for all domain errors
+ * Union type for all domain errors with exhaustive matching support
+ *
+ * This discriminated union enables exhaustive pattern matching in error handlers,
+ * ensuring all error cases are handled at compile time.
+ *
+ * @example
+ * ```typescript
+ * const handleError = (error: DomainError): string =>
+ *   Match.value(error).pipe(
+ *     Match.tag('ValidationError', err => `Validation failed: ${err.message}`),
+ *     Match.tag('FederationError', err => `Federation error: ${err.message}`),
+ *     Match.tag('EntityResolutionError', err => `Entity not found: ${err.message}`),
+ *     // ... handle all error types
+ *     Match.exhaustive // Compile error if any error type is missing
+ *   )
+ * ```
  */
-type DomainError = EntityResolutionError | FieldResolutionError | ValidationError | SchemaValidationError | CompositionError | RegistrationError$1 | DiscoveryError$1 | HealthCheckError$1 | CircuitBreakerError | TimeoutError | FederationError | TypeConversionError;
+type DomainError = EntityResolutionError | FieldResolutionError | ValidationError | SchemaValidationError | CompositionError | RegistrationError | DiscoveryError | HealthCheckError | CircuitBreakerError | TimeoutError | FederationError | TypeConversionError;
 /**
  * Type-safe branded types for domain concepts
+ *
+ * Branded types prevent accidental mixing of semantically different strings,
+ * providing compile-time safety for domain-specific identifiers.
+ *
+ * @example
+ * ```typescript
+ * const serviceId: ServiceId = 'user-service' as ServiceId
+ * const typeName: EntityTypename = 'User' as EntityTypename
+ *
+ * // This would cause a compile error:
+ * // const wrong: ServiceId = typeName  // Type error!
+ * ```
  */
 type ServiceId = string & {
   readonly __brand: "ServiceId";
@@ -467,11 +614,107 @@ type QueryHash = string & {
   readonly __brand: "QueryHash";
 };
 /**
- * Utility types for type-level programming
+ * Utility types for advanced type-level programming
+ *
+ * These utility types provide enhanced type safety and better developer
+ * experience when working with complex federation configurations.
  */
-type Prettify<T> = { [K in keyof T]: T[K] } & {};
-type NonEmptyArray<T> = [T, ...T[]];
-type RequireAtLeastOne<T, Keys extends keyof T = keyof T> = Pick<T, Exclude<keyof T, Keys>> & { [K in Keys]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<Keys, K>>> }[Keys];
+/**
+ * Prettify type - flattens intersection types for better IDE display
+ *
+ * @example
+ * ```typescript
+ * type Complex = { a: string } & { b: number }  // Shows as intersection
+ * type Clean = Prettify<Complex>                // Shows as { a: string; b: number }
+ * ```
+ */
+type Prettify<T> = { readonly [K in keyof T]: T[K] } & {};
+/**
+ * Non-empty array type - ensures array has at least one element
+ *
+ * @example
+ * ```typescript
+ * const keys: NonEmptyArray<string> = ['id']           // ✓ Valid
+ * const empty: NonEmptyArray<string> = []              // ✗ Type error
+ * ```
+ */
+type NonEmptyArray<T> = readonly [T, ...readonly T[]];
+/**
+ * Require at least one property from a set of optional properties
+ *
+ * @example
+ * ```typescript
+ * type Config = {
+ *   name?: string
+ *   url?: string
+ *   port?: number
+ * }
+ *
+ * type ValidConfig = RequireAtLeastOne<Config, 'url' | 'port'>
+ * // Must have at least url or port, name is still optional
+ * ```
+ */
+type RequireAtLeastOne<T, Keys extends keyof T = keyof T> = Pick<T, Exclude<keyof T, Keys>> & { readonly [K in Keys]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<Keys, K>>> }[Keys];
+/**
+ * Extract resolver function type from a field
+ *
+ * @example
+ * ```typescript
+ * type UserResolver = ExtractResolver<User, AppContext, 'displayName'>
+ * // Results in: (parent: User, args: any, context: AppContext, info: GraphQLResolveInfo) => ...
+ * ```
+ */
+type ExtractResolver<TSource, TContext, TField extends keyof TSource> = FieldResolver<TSource, TContext, TSource[TField]>;
+/**
+ * Create a type-safe resolver map from an entity type
+ *
+ * @example
+ * ```typescript
+ * type UserResolvers = SafeResolverMap<User, AppContext>
+ * // Only allows resolvers for actual User fields with correct types
+ * ```
+ */
+type SafeResolverMap<TSource, TContext> = { readonly [K in keyof TSource]?: ExtractResolver<TSource, TContext, K> };
+/**
+ * Extract only the required keys from a type
+ *
+ * @example
+ * ```typescript
+ * type Required = RequiredKeys<{ id: string; name?: string; age?: number }>
+ * // Results in: 'id'
+ * ```
+ */
+type RequiredKeys<T> = { [K in keyof T]-?: {} extends Pick<T, K> ? never : K }[keyof T];
+/**
+ * Extract only the optional keys from a type
+ *
+ * @example
+ * ```typescript
+ * type Optional = OptionalKeys<{ id: string; name?: string; age?: number }>
+ * // Results in: 'name' | 'age'
+ * ```
+ */
+type OptionalKeys<T> = { [K in keyof T]-?: {} extends Pick<T, K> ? K : never }[keyof T];
+/**
+ * Make specific properties required while keeping others as-is
+ *
+ * @example
+ * ```typescript
+ * type User = { id?: string; name?: string; email?: string }
+ * type UserWithId = MakeRequired<User, 'id'>  // { id: string; name?: string; email?: string }
+ * ```
+ */
+type MakeRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
+/**
+ * Deep readonly type that makes all nested properties readonly
+ *
+ * @example
+ * ```typescript
+ * type Config = { db: { host: string; port: number } }
+ * type ReadonlyConfig = DeepReadonly<Config>  // { readonly db: { readonly host: string; readonly port: number } }
+ * ```
+ */
+type DeepReadonly<T> = { readonly [P in keyof T]: T[P] extends (infer U)[] ? ReadonlyArray<DeepReadonly<U>> : T[P] extends object ? DeepReadonly<T[P]> : T[P] };
 //#endregion
 //#region src/core/builders/entity-builder.d.ts
 /**
@@ -484,7 +727,7 @@ type RequireAtLeastOne<T, Keys extends keyof T = keyof T> = Pick<T, Exclude<keyo
  * - Type-safe field resolver binding
  * - Directive validation and conflict detection
  */
-declare class ModernFederationEntityBuilder<TSource extends Record<string, any> = Record<string, any>, TContext = Record<string, unknown>, TResult extends Partial<TSource> = Partial<TSource>, TReference extends Partial<TSource> = Partial<TSource>> {
+declare class FederationEntityBuilder<TSource extends Record<string, unknown> = Record<string, unknown>, TContext = Record<string, unknown>, TResult extends Partial<TSource> = Partial<TSource>, TReference extends Partial<TSource> = Partial<TSource>> {
   private readonly typename;
   private readonly schema;
   private readonly keyFields;
@@ -492,49 +735,49 @@ declare class ModernFederationEntityBuilder<TSource extends Record<string, any> 
   private readonly fieldResolvers;
   private readonly referenceResolver?;
   private readonly extensions?;
-  constructor(typename: string, schema: Schema.Schema.Any, keyFields: ReadonlyArray<keyof TSource>, directiveMap?: FederationDirectiveMap, fieldResolvers?: FieldResolverMap<TResult, TContext>, referenceResolver?: EntityReferenceResolver<TResult, TContext, TReference> | undefined, extensions?: Record<string, unknown> | undefined);
+  constructor(typename: string, schema: Schema.Schema<TSource, TSource>, keyFields: ReadonlyArray<keyof TSource>, directiveMap?: FederationDirectiveMap, fieldResolvers?: FieldResolverMap<TSource, TContext>, referenceResolver?: EntityReferenceResolver<TResult, TContext, TReference> | undefined, extensions?: Record<string, unknown> | undefined);
   private validateConstructorArgs;
   /**
    * Federation 2.x directive support
    * @shareable - Field can be resolved by multiple subgraphs
    */
-  withShareableField<K extends keyof TResult>(field: K, resolver?: FieldResolver<TResult, TContext, TResult[K]>): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference>;
+  withShareableField<K extends keyof TSource>(field: K, resolver?: FieldResolver<TSource, TContext, TSource[K]>): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
    * @inaccessible - Field hidden from public schema but available for federation
    */
-  withInaccessibleField<K extends keyof TResult>(field: K, resolver?: FieldResolver<TResult, TContext, TResult[K]>): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference>;
+  withInaccessibleField<K extends keyof TSource>(field: K, resolver?: FieldResolver<TSource, TContext, TSource[K]>): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
    * @tag - Metadata tags for schema organization and tooling
    */
-  withTaggedField<K extends keyof TResult>(field: K, tags: ReadonlyArray<string>, resolver?: FieldResolver<TResult, TContext, TResult[K]>): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference>;
+  withTaggedField<K extends keyof TSource>(field: K, tags: ReadonlyArray<string>, resolver?: FieldResolver<TSource, TContext, TSource[K]>): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
    * @override - Overrides field resolution from another subgraph
    */
-  withOverrideField<K extends keyof TResult>(field: K, fromSubgraph: string, resolver: FieldResolver<TResult, TContext, TResult[K]>): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference>;
+  withOverrideField<K extends keyof TSource>(field: K, fromSubgraph: string, resolver: FieldResolver<TSource, TContext, TSource[K]>): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
    * @external - Field is defined in another subgraph
    */
-  withExternalField<K extends keyof TResult>(field: K): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference>;
+  withExternalField<K extends keyof TSource>(field: K): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
    * @requires - Field requires specific fields from base type
    */
-  withRequiredFields<K extends keyof TResult>(field: K, requiredFields: string, resolver?: FieldResolver<TResult, TContext, TResult[K]>): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference>;
+  withRequiredFields<K extends keyof TSource>(field: K, requiredFields: string, resolver?: FieldResolver<TSource, TContext, TSource[K]>): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
    * @provides - Field provides specific fields to base type
    */
-  withProvidedFields<K extends keyof TResult>(field: K, providedFields: string, resolver?: FieldResolver<TResult, TContext, TResult[K]>): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference>;
+  withProvidedFields<K extends keyof TSource>(field: K, providedFields: string, resolver?: FieldResolver<TSource, TContext, TSource[K]>): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
    * Add a custom field resolver without directives
    */
-  withField<K extends keyof TResult>(field: K, resolver: FieldResolver<TResult, TContext, TResult[K]>): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference>;
+  withField<K extends keyof TSource>(field: K, resolver: FieldResolver<TSource, TContext, TSource[K]>): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
    * Set the reference resolver for entity resolution
    */
-  withReferenceResolver(resolver: EntityReferenceResolver<TResult, TContext, TReference>): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference>;
+  withReferenceResolver(resolver: EntityReferenceResolver<TResult, TContext, TReference>): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
    * Add extension metadata to the entity
    */
-  withExtensions(extensions: Record<string, unknown>): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference>;
+  withExtensions(extensions: Record<string, unknown>): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
    * Internal method to add directives with validation
    */
@@ -569,35 +812,47 @@ declare class ModernFederationEntityBuilder<TSource extends Record<string, any> 
   protected resolveEntityFromReference(reference: TReference, _context: TContext, _info: GraphQLResolveInfo): Effect.Effect<TResult, EntityResolutionError>;
 }
 /**
- * Factory function for creating entity builders with type inference
+ * Factory function for creating entity builders with proper type inference
  */
-declare const createEntityBuilder: <TSource extends Record<string, any>, TContext = Record<string, unknown>, TResult extends Partial<TSource> = Partial<TSource>, TReference extends Partial<TSource> = Partial<TSource>>(typename: string, schema: Schema.Schema.Any, keyFields: ReadonlyArray<keyof TSource>) => ModernFederationEntityBuilder<TSource, TContext, TResult, TReference>;
-/**
- * Utility function to create entity with fluent API
- */
-declare const defineEntity: <TSource extends Record<string, any>, TContext = Record<string, unknown>, TResult extends Partial<TSource> = Partial<TSource>, TReference extends Partial<TSource> = Partial<TSource>>(config: {
-  typename: string;
-  schema: Schema.Schema.Any;
-  keyFields: ReadonlyArray<keyof TSource>;
-}, builder: (entityBuilder: ModernFederationEntityBuilder<TSource, TContext, TResult, TReference>) => ModernFederationEntityBuilder<TSource, TContext, TResult, TReference>) => Effect.Effect<FederationEntity<TSource, TContext, TResult, TReference>, ValidationError>;
+declare const createEntityBuilder: <TSource extends Record<string, unknown> = Record<string, unknown>, TContext extends Record<string, unknown> = Record<string, unknown>>(typename: string, schema: Schema.Schema<TSource, TSource>, keyFields: ReadonlyArray<keyof TSource>) => FederationEntityBuilder<TSource, TContext, TSource, Partial<TSource>>;
 //#endregion
-//#region src/core/ultra-strict-entity-builder.d.ts
+//#region src/experimental/ultra-strict-entity-builder.d.ts
 /**
  * Phantom type markers for compile-time validation states
+ *
+ * These phantom types ensure that the builder methods can only be called
+ * in the correct order, providing compile-time guarantees about builder state.
+ *
+ * State transition flow:
+ * Unvalidated -> HasSchema -> HasKeys -> HasDirectives -> Complete
+ *
+ * @example
+ * ```typescript
+ * const builder = UltraStrictEntityBuilder.create('User')  // Unvalidated
+ *   .pipe(withSchema(UserSchema))                          // HasSchema
+ *   .pipe(withKeys([UltraStrictEntityBuilder.Key.create('id', GraphQLID)]))    // HasKeys
+ *   .pipe(withDirectives([]))                              // HasDirectives
+ *   .pipe(withResolvers({}))                               // Complete
+ * ```
  */
 declare namespace PhantomStates {
+  /** Initial state - no configuration applied yet */
   interface Unvalidated {
     readonly _tag: "Unvalidated";
   }
+  /** Schema has been defined and validated */
   interface HasSchema {
     readonly _tag: "HasSchema";
   }
+  /** Entity keys have been defined and validated */
   interface HasKeys {
     readonly _tag: "HasKeys";
   }
+  /** Federation directives have been applied */
   interface HasDirectives {
     readonly _tag: "HasDirectives";
   }
+  /** Builder is complete and ready for validation */
   interface Complete {
     readonly _tag: "Complete";
   }
@@ -606,31 +861,31 @@ declare namespace PhantomStates {
  * Entity validation result discriminated union
  */
 type EntityValidationResult = Data.TaggedEnum<{
-  Valid: {
-    entity: ValidatedEntity;
-    metadata: EntityMetadata;
+  readonly Valid: {
+    readonly entity: ValidatedEntity;
+    readonly metadata: EntityMetadata;
   };
-  InvalidSchema: {
-    errors: readonly SchemaValidationError$1[];
-    partialEntity?: Partial<ValidatedEntity>;
+  readonly InvalidSchema: {
+    readonly errors: readonly SchemaValidationError$1[];
+    readonly partialEntity?: Partial<ValidatedEntity>;
   };
-  InvalidKeys: {
-    errors: readonly KeyValidationError[];
-    schema: Schema.Schema<any>;
+  readonly InvalidKeys: {
+    readonly errors: readonly KeyValidationError[];
+    readonly schema: Schema.Schema<any>;
   };
-  InvalidDirectives: {
-    errors: readonly DirectiveValidationError[];
-    schema: Schema.Schema<any>;
-    keys: readonly EntityKey[];
+  readonly InvalidDirectives: {
+    readonly errors: readonly DirectiveValidationError[];
+    readonly schema: Schema.Schema<any>;
+    readonly keys: readonly EntityKey[];
   };
-  CircularDependency: {
-    cycle: readonly string[];
-    involvedEntities: readonly string[];
+  readonly CircularDependency: {
+    readonly cycle: readonly string[];
+    readonly involvedEntities: readonly string[];
   };
-  IncompatibleVersion: {
-    requiredVersion: string;
-    currentVersion: string;
-    entity: string;
+  readonly IncompatibleVersion: {
+    readonly requiredVersion: string;
+    readonly currentVersion: string;
+    readonly entity: string;
   };
 }>;
 declare const EntityValidationResult: {
@@ -765,7 +1020,7 @@ declare const EntityValidationResult: {
       readonly requiredVersion: string;
       readonly currentVersion: string;
       readonly entity: string;
-    }) => effect_Unify0.Unify<ReturnType<Cases["Valid" | "InvalidSchema" | "InvalidKeys" | "InvalidDirectives" | "CircularDependency" | "IncompatibleVersion"]>>;
+    }) => effect_Unify7.Unify<ReturnType<Cases["Valid" | "InvalidSchema" | "InvalidKeys" | "InvalidDirectives" | "CircularDependency" | "IncompatibleVersion"]>>;
     <const Cases extends {
       readonly Valid: (args: {
         readonly _tag: "Valid";
@@ -825,10 +1080,10 @@ declare const EntityValidationResult: {
       readonly requiredVersion: string;
       readonly currentVersion: string;
       readonly entity: string;
-    }, cases: Cases & { [K in Exclude<keyof Cases, "Valid" | "InvalidSchema" | "InvalidKeys" | "InvalidDirectives" | "CircularDependency" | "IncompatibleVersion">]: never }): effect_Unify0.Unify<ReturnType<Cases["Valid" | "InvalidSchema" | "InvalidKeys" | "InvalidDirectives" | "CircularDependency" | "IncompatibleVersion"]>>;
+    }, cases: Cases & { [K in Exclude<keyof Cases, "Valid" | "InvalidSchema" | "InvalidKeys" | "InvalidDirectives" | "CircularDependency" | "IncompatibleVersion">]: never }): effect_Unify7.Unify<ReturnType<Cases["Valid" | "InvalidSchema" | "InvalidKeys" | "InvalidDirectives" | "CircularDependency" | "IncompatibleVersion"]>>;
   };
 };
-declare const SchemaValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause0.YieldableError & {
+declare const SchemaValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "SchemaValidationError";
 } & Readonly<A>;
 declare class SchemaValidationError$1 extends SchemaValidationError_base<{
@@ -836,7 +1091,7 @@ declare class SchemaValidationError$1 extends SchemaValidationError_base<{
   readonly schemaPath: readonly string[];
   readonly suggestion?: string;
 }> {}
-declare const KeyValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause0.YieldableError & {
+declare const KeyValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "KeyValidationError";
 } & Readonly<A>;
 declare class KeyValidationError extends KeyValidationError_base<{
@@ -845,7 +1100,7 @@ declare class KeyValidationError extends KeyValidationError_base<{
   readonly entityType: string;
   readonly suggestion?: string;
 }> {}
-declare const DirectiveValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause0.YieldableError & {
+declare const DirectiveValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "DirectiveValidationError";
 } & Readonly<A>;
 declare class DirectiveValidationError extends DirectiveValidationError_base<{
@@ -854,7 +1109,7 @@ declare class DirectiveValidationError extends DirectiveValidationError_base<{
   readonly field?: string;
   readonly suggestion?: string;
 }> {}
-declare const EntityBuilderError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause0.YieldableError & {
+declare const EntityBuilderError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "EntityBuilderError";
 } & Readonly<A>;
 declare class EntityBuilderError extends EntityBuilderError_base<{
@@ -897,24 +1152,108 @@ interface UltraStrictEntityBuilder<TState extends PhantomStates.Unvalidated | Ph
 }
 /**
  * Creates a new UltraStrictEntityBuilder with compile-time state tracking
+ *
+ * The builder uses phantom types to enforce correct usage order at compile time.
+ * This prevents runtime errors by catching configuration mistakes during development.
+ *
+ * @param typename - The GraphQL type name for this entity
+ * @returns Builder in Unvalidated state, requiring schema definition next
+ *
+ * @example
+ * ```typescript
+ * const userBuilder = createUltraStrictEntityBuilder('User')
+ * // Next step must be withSchema - compiler enforces this
+ * ```
  */
 declare const createUltraStrictEntityBuilder: (typename: string) => UltraStrictEntityBuilder<PhantomStates.Unvalidated>;
 /**
  * Type-safe schema attachment (only valid in Unvalidated state)
+ *
+ * Attaches an Effect Schema to the entity for runtime validation.
+ * The phantom type system ensures this can only be called on an unvalidated builder.
+ *
+ * @template A - The schema type being attached
+ * @param schema - Effect Schema instance for validation
+ * @returns Function that takes Unvalidated builder and returns HasSchema builder
+ *
+ * @example
+ * ```typescript
+ * const UserSchema = Schema.Struct({
+ *   id: Schema.String,
+ *   name: Schema.String,
+ *   email: Schema.String
+ * })
+ *
+ * const builderWithSchema = createUltraStrictEntityBuilder('User')
+ *   .pipe(withSchema(UserSchema))
+ * ```
  */
-declare const withSchema: <A>(schema: Schema.Schema<A>) => (builder: UltraStrictEntityBuilder<PhantomStates.Unvalidated>) => UltraStrictEntityBuilder<PhantomStates.HasSchema>;
+declare const withSchema: <A>(schema?: Schema.Schema<A>) => (builder: UltraStrictEntityBuilder<PhantomStates.Unvalidated>) => UltraStrictEntityBuilder<PhantomStates.HasSchema>;
 /**
  * Type-safe key definition (only valid in HasSchema state)
+ *
+ * Defines the key fields that uniquely identify this entity across subgraphs.
+ * The phantom type system ensures schema is attached before keys can be defined.
+ *
+ * @param keys - Array of EntityKey objects defining the unique identifier(s)
+ * @returns Function that takes HasSchema builder and returns HasKeys builder
+ *
+ * @example
+ * ```typescript
+ * const keys = [
+ *   UltraStrictEntityBuilder.Key.create('id', GraphQLID, false),
+ *   UltraStrictEntityBuilder.Key.create('organizationId', GraphQLID, false) // Composite key
+ * ]
+ *
+ * const builderWithKeys = builderWithSchema
+ *   .pipe(withKeys(keys))
+ * ```
  */
-declare const withKeys: (keys: readonly EntityKey[]) => (builder: UltraStrictEntityBuilder<PhantomStates.HasSchema>) => UltraStrictEntityBuilder<PhantomStates.HasKeys>;
+declare const withKeys: (keys?: readonly EntityKey[]) => (builder: UltraStrictEntityBuilder<PhantomStates.HasSchema>) => UltraStrictEntityBuilder<PhantomStates.HasKeys>;
 /**
  * Type-safe directive application (only valid in HasKeys state)
+ *
+ * Applies Federation directives to the entity. The phantom type system ensures
+ * both schema and keys are defined before directives can be applied.
+ *
+ * @param directives - Array of Federation directives (@shareable, @inaccessible, etc.)
+ * @returns Function that takes HasKeys builder and returns HasDirectives builder
+ *
+ * @example
+ * ```typescript
+ * const directives = [
+ *   UltraStrictEntityBuilder.Directive.shareable(),
+ *   UltraStrictEntityBuilder.Directive.tag('public'),
+ *   UltraStrictEntityBuilder.Directive.provides('email')
+ * ]
+ *
+ * const builderWithDirectives = builderWithKeys
+ *   .pipe(withDirectives(directives))
+ * ```
  */
-declare const withDirectives: (directives: readonly EntityDirective[]) => (builder: UltraStrictEntityBuilder<PhantomStates.HasKeys>) => UltraStrictEntityBuilder<PhantomStates.HasDirectives>;
+declare const withDirectives: (directives?: readonly EntityDirective[]) => (builder: UltraStrictEntityBuilder<PhantomStates.HasKeys>) => UltraStrictEntityBuilder<PhantomStates.HasDirectives>;
 /**
  * Type-safe resolver attachment (only valid in HasDirectives state)
+ *
+ * Attaches field resolvers to the entity. The phantom type system ensures
+ * all previous configuration steps are complete before resolvers can be attached.
+ *
+ * @param resolvers - Record of field name to resolver function mappings
+ * @returns Function that takes HasDirectives builder and returns Complete builder
+ *
+ * @example
+ * ```typescript
+ * const resolvers = {
+ *   displayName: (user) => `${user.firstName} ${user.lastName}`,
+ *   avatar: (user, args, ctx) => ctx.imageService.getAvatar(user.id),
+ *   posts: (user, args, ctx) => ctx.postService.findByUserId(user.id)
+ * }
+ *
+ * const completeBuilder = builderWithDirectives
+ *   .pipe(withResolvers(resolvers))
+ * ```
  */
-declare const withResolvers: (resolvers: Record<string, GraphQLFieldResolver<any, any>>) => (builder: UltraStrictEntityBuilder<PhantomStates.HasDirectives>) => UltraStrictEntityBuilder<PhantomStates.Complete>;
+declare const withResolvers: (resolvers?: Record<string, GraphQLFieldResolver<any, any>>) => (builder: UltraStrictEntityBuilder<PhantomStates.HasDirectives>) => UltraStrictEntityBuilder<PhantomStates.Complete>;
 /**
  * Validates a complete entity builder using exhaustive pattern matching
  */
@@ -923,115 +1262,90 @@ declare const validateEntityBuilder: (builder: UltraStrictEntityBuilder<PhantomS
  * Exhaustive pattern matching over entity validation results
  */
 declare const matchEntityValidationResult: <A>(handlers: {
-  Valid: (data: {
-    entity: ValidatedEntity;
-    metadata: EntityMetadata;
+  readonly Valid: (data: {
+    readonly entity: ValidatedEntity;
+    readonly metadata: EntityMetadata;
   }) => A;
-  InvalidSchema: (data: {
-    errors: readonly SchemaValidationError$1[];
-    partialEntity?: Partial<ValidatedEntity>;
+  readonly InvalidSchema: (data: {
+    readonly errors: readonly SchemaValidationError$1[];
+    readonly partialEntity?: Partial<ValidatedEntity>;
   }) => A;
-  InvalidKeys: (data: {
-    errors: readonly KeyValidationError[];
-    schema: Schema.Schema<any>;
+  readonly InvalidKeys: (data: {
+    readonly errors: readonly KeyValidationError[];
+    readonly schema: Schema.Schema<any>;
   }) => A;
-  InvalidDirectives: (data: {
-    errors: readonly DirectiveValidationError[];
-    schema: Schema.Schema<any>;
-    keys: readonly EntityKey[];
+  readonly InvalidDirectives: (data: {
+    readonly errors: readonly DirectiveValidationError[];
+    readonly schema: Schema.Schema<any>;
+    readonly keys: readonly EntityKey[];
   }) => A;
-  CircularDependency: (data: {
-    cycle: readonly string[];
-    involvedEntities: readonly string[];
+  readonly CircularDependency: (data: {
+    readonly cycle: readonly string[];
+    readonly involvedEntities: readonly string[];
   }) => A;
-  IncompatibleVersion: (data: {
-    requiredVersion: string;
-    currentVersion: string;
-    entity: string;
+  readonly IncompatibleVersion: (data: {
+    readonly requiredVersion: string;
+    readonly currentVersion: string;
+    readonly entity: string;
   }) => A;
 }) => (result: EntityValidationResult) => A;
 /**
- * Factory function for common entity key patterns
+ * UltraStrictEntityBuilder namespace with static utilities
+ *
+ * This provides the expected API surface that tests and examples use
  */
-declare const createEntityKey: (field: string, type: GraphQLOutputType, isComposite?: boolean) => EntityKey;
-/**
- * Factory function for Federation directives
- */
-declare const createDirective: (name: string, args?: Record<string, unknown>, applicableFields?: readonly string[]) => EntityDirective;
 declare namespace UltraStrictEntityBuilder {
-  const create: (typename: string) => UltraStrictEntityBuilder<PhantomStates.Unvalidated>;
-  const validate: (builder: UltraStrictEntityBuilder<PhantomStates.Complete>) => Effect$1.Effect<EntityValidationResult, EntityBuilderError>;
-  const match: <A>(handlers: {
-    Valid: (data: {
-      entity: ValidatedEntity;
-      metadata: EntityMetadata;
-    }) => A;
-    InvalidSchema: (data: {
-      errors: readonly SchemaValidationError$1[];
-      partialEntity?: Partial<ValidatedEntity>;
-    }) => A;
-    InvalidKeys: (data: {
-      errors: readonly KeyValidationError[];
-      schema: Schema.Schema<any>;
-    }) => A;
-    InvalidDirectives: (data: {
-      errors: readonly DirectiveValidationError[];
-      schema: Schema.Schema<any>;
-      keys: readonly EntityKey[];
-    }) => A;
-    CircularDependency: (data: {
-      cycle: readonly string[];
-      involvedEntities: readonly string[];
-    }) => A;
-    IncompatibleVersion: (data: {
-      requiredVersion: string;
-      currentVersion: string;
-      entity: string;
-    }) => A;
-  }) => (result: EntityValidationResult) => A;
-  const Key: {
-    create: (field: string, type: GraphQLOutputType, isComposite?: boolean) => EntityKey;
-  };
-  const Directive: {
-    create: (name: string, args?: Record<string, unknown>, applicableFields?: readonly string[]) => EntityDirective;
-    shareable: () => EntityDirective;
-    inaccessible: () => EntityDirective;
-    tag: (name: string) => EntityDirective;
-    override: (from: string) => EntityDirective;
-    external: () => EntityDirective;
-    provides: (fields: string) => EntityDirective;
-    requires: (fields: string) => EntityDirective;
-  };
+  /**
+   * Directive utilities namespace for creating federation directives
+   */
+  namespace Directive {
+    const shareable: () => EntityDirective;
+    const inaccessible: () => EntityDirective;
+    const tag: (name: string) => EntityDirective;
+    const override: (from: string) => EntityDirective;
+    const external: () => EntityDirective;
+    const provides: (fields: string) => EntityDirective;
+    const requires: (fields: string) => EntityDirective;
+  }
+  /**
+   * Key utilities namespace for creating entity keys
+   */
+  namespace Key {
+    const create: (field: string, type: GraphQLOutputType, isComposite?: boolean) => EntityKey;
+  }
 }
+/**
+ * @deprecated Use UltraStrictEntityBuilder.Directive instead
+ */
 //#endregion
 //#region src/core/schema-first-patterns.d.ts
 /**
  * Schema development lifecycle states
  */
 type SchemaLifecycleState = Data.TaggedEnum<{
-  Draft: {
-    schema: DocumentNode;
-    version: string;
+  readonly Draft: {
+    readonly schema: DocumentNode;
+    readonly version: string;
   };
-  Validated: {
-    schema: DocumentNode;
-    entities: readonly ValidatedEntity[];
-    version: string;
+  readonly Validated: {
+    readonly schema: DocumentNode;
+    readonly entities: readonly ValidatedEntity[];
+    readonly version: string;
   };
-  Composed: {
-    federatedSchema: GraphQLSchema;
-    subgraphs: readonly string[];
-    version: string;
+  readonly Composed: {
+    readonly federatedSchema: GraphQLSchema;
+    readonly subgraphs: readonly string[];
+    readonly version: string;
   };
-  Deployed: {
-    federatedSchema: GraphQLSchema;
-    deploymentId: string;
-    version: string;
+  readonly Deployed: {
+    readonly federatedSchema: GraphQLSchema;
+    readonly deploymentId: string;
+    readonly version: string;
   };
-  Deprecated: {
-    schema: DocumentNode;
-    replacedBy: string;
-    version: string;
+  readonly Deprecated: {
+    readonly schema: DocumentNode;
+    readonly replacedBy: string;
+    readonly version: string;
   };
 }>;
 declare const SchemaLifecycleState: {
@@ -1154,7 +1468,7 @@ declare const SchemaLifecycleState: {
       readonly schema: DocumentNode;
       readonly replacedBy: string;
       readonly version: string;
-    }) => effect_Unify0.Unify<ReturnType<Cases["Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated"]>>;
+    }) => effect_Unify7.Unify<ReturnType<Cases["Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated"]>>;
     <const Cases extends {
       readonly Draft: (args: {
         readonly _tag: "Draft";
@@ -1209,50 +1523,50 @@ declare const SchemaLifecycleState: {
       readonly schema: DocumentNode;
       readonly replacedBy: string;
       readonly version: string;
-    }, cases: Cases & { [K in Exclude<keyof Cases, "Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated">]: never }): effect_Unify0.Unify<ReturnType<Cases["Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated"]>>;
+    }, cases: Cases & { [K in Exclude<keyof Cases, "Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated">]: never }): effect_Unify7.Unify<ReturnType<Cases["Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated"]>>;
   };
 };
 /**
  * Schema evolution operations
  */
 type SchemaEvolution = Data.TaggedEnum<{
-  AddField: {
-    entityType: string;
-    fieldName: string;
-    fieldType: string;
-    isBreaking: boolean;
+  readonly AddField: {
+    readonly entityType: string;
+    readonly fieldName: string;
+    readonly fieldType: string;
+    readonly isBreaking: boolean;
   };
-  RemoveField: {
-    entityType: string;
-    fieldName: string;
-    isBreaking: boolean;
+  readonly RemoveField: {
+    readonly entityType: string;
+    readonly fieldName: string;
+    readonly isBreaking: boolean;
   };
-  ChangeFieldType: {
-    entityType: string;
-    fieldName: string;
-    oldType: string;
-    newType: string;
-    isBreaking: boolean;
+  readonly ChangeFieldType: {
+    readonly entityType: string;
+    readonly fieldName: string;
+    readonly oldType: string;
+    readonly newType: string;
+    readonly isBreaking: boolean;
   };
-  AddDirective: {
-    entityType: string;
-    fieldName: string | undefined;
-    directive: string;
-    isBreaking: boolean;
+  readonly AddDirective: {
+    readonly entityType: string;
+    readonly fieldName: string | undefined;
+    readonly directive: string;
+    readonly isBreaking: boolean;
   };
-  RemoveDirective: {
-    entityType: string;
-    fieldName: string | undefined;
-    directive: string;
-    isBreaking: boolean;
+  readonly RemoveDirective: {
+    readonly entityType: string;
+    readonly fieldName: string | undefined;
+    readonly directive: string;
+    readonly isBreaking: boolean;
   };
-  AddEntity: {
-    entityType: string;
-    isBreaking: boolean;
+  readonly AddEntity: {
+    readonly entityType: string;
+    readonly isBreaking: boolean;
   };
-  RemoveEntity: {
-    entityType: string;
-    isBreaking: boolean;
+  readonly RemoveEntity: {
+    readonly entityType: string;
+    readonly isBreaking: boolean;
   };
 }>;
 declare const SchemaEvolution: {
@@ -1439,7 +1753,7 @@ declare const SchemaEvolution: {
       readonly _tag: "RemoveEntity";
       readonly entityType: string;
       readonly isBreaking: boolean;
-    }) => effect_Unify0.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
+    }) => effect_Unify7.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
     <const Cases extends {
       readonly AddField: (args: {
         readonly _tag: "AddField";
@@ -1524,10 +1838,10 @@ declare const SchemaEvolution: {
       readonly _tag: "RemoveEntity";
       readonly entityType: string;
       readonly isBreaking: boolean;
-    }, cases: Cases & { [K in Exclude<keyof Cases, "AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity">]: never }): effect_Unify0.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
+    }, cases: Cases & { [K in Exclude<keyof Cases, "AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity">]: never }): effect_Unify7.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
   };
 };
-declare const SchemaFirstError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause0.YieldableError & {
+declare const SchemaFirstError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "SchemaFirstError";
 } & Readonly<A>;
 declare class SchemaFirstError extends SchemaFirstError_base<{
@@ -1535,7 +1849,7 @@ declare class SchemaFirstError extends SchemaFirstError_base<{
   readonly schemaPath?: readonly string[];
   readonly suggestion?: string;
 }> {}
-declare const SchemaEvolutionError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause0.YieldableError & {
+declare const SchemaEvolutionError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "SchemaEvolutionError";
 } & Readonly<A>;
 declare class SchemaEvolutionError extends SchemaEvolutionError_base<{
@@ -1543,7 +1857,7 @@ declare class SchemaEvolutionError extends SchemaEvolutionError_base<{
   readonly evolution: SchemaEvolution;
   readonly conflictingChanges?: readonly SchemaEvolution[];
 }> {}
-declare const CodeGenerationError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause0.YieldableError & {
+declare const CodeGenerationError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "CodeGenerationError";
 } & Readonly<A>;
 declare class CodeGenerationError extends CodeGenerationError_base<{
@@ -1695,7 +2009,7 @@ declare namespace SchemaFirst {
         readonly schema: DocumentNode;
         readonly replacedBy: string;
         readonly version: string;
-      }) => effect_Unify0.Unify<ReturnType<Cases["Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated"]>>;
+      }) => effect_Unify7.Unify<ReturnType<Cases["Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated"]>>;
       <const Cases extends {
         readonly Draft: (args: {
           readonly _tag: "Draft";
@@ -1750,7 +2064,7 @@ declare namespace SchemaFirst {
         readonly schema: DocumentNode;
         readonly replacedBy: string;
         readonly version: string;
-      }, cases: Cases & { [K in Exclude<keyof Cases, "Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated">]: never }): effect_Unify0.Unify<ReturnType<Cases["Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated"]>>;
+      }, cases: Cases & { [K in Exclude<keyof Cases, "Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated">]: never }): effect_Unify7.Unify<ReturnType<Cases["Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated"]>>;
     };
   };
   const Evolution: {
@@ -1937,7 +2251,7 @@ declare namespace SchemaFirst {
         readonly _tag: "RemoveEntity";
         readonly entityType: string;
         readonly isBreaking: boolean;
-      }) => effect_Unify0.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
+      }) => effect_Unify7.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
       <const Cases extends {
         readonly AddField: (args: {
           readonly _tag: "AddField";
@@ -2022,13 +2336,13 @@ declare namespace SchemaFirst {
         readonly _tag: "RemoveEntity";
         readonly entityType: string;
         readonly isBreaking: boolean;
-      }, cases: Cases & { [K in Exclude<keyof Cases, "AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity">]: never }): effect_Unify0.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
+      }, cases: Cases & { [K in Exclude<keyof Cases, "AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity">]: never }): effect_Unify7.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
     };
   };
 }
 //#endregion
 //#region src/core/services/logger.d.ts
-declare const FederationLogger_base: Context.TagClass<FederationLogger$1, "FederationLogger", {
+declare const FederationLogger_base: Context.TagClass<FederationLogger, "FederationLogger", {
   readonly trace: (message: string, meta?: Record<string, unknown>) => Effect$1.Effect<void>;
   readonly debug: (message: string, meta?: Record<string, unknown>) => Effect$1.Effect<void>;
   readonly info: (message: string, meta?: Record<string, unknown>) => Effect$1.Effect<void>;
@@ -2036,17 +2350,17 @@ declare const FederationLogger_base: Context.TagClass<FederationLogger$1, "Feder
   readonly error: (message: string, meta?: Record<string, unknown>) => Effect$1.Effect<void>;
   readonly withSpan: <A, E, R>(name: string, effect: Effect$1.Effect<A, E, R>) => Effect$1.Effect<A, E, R>;
 }>;
-declare class FederationLogger$1 extends FederationLogger_base {}
-declare const FederationLoggerLive: Layer.Layer<FederationLogger$1, never, never>;
-declare const trace: (message: string, meta?: Record<string, unknown>) => Effect$1.Effect<void, never, FederationLogger$1>;
-declare const debug: (message: string, meta?: Record<string, unknown>) => Effect$1.Effect<void, never, FederationLogger$1>;
-declare const info: (message: string, meta?: Record<string, unknown>) => Effect$1.Effect<void, never, FederationLogger$1>;
-declare const warn: (message: string, meta?: Record<string, unknown>) => Effect$1.Effect<void, never, FederationLogger$1>;
-declare const error: (message: string, meta?: Record<string, unknown>) => Effect$1.Effect<void, never, FederationLogger$1>;
-declare const withSpan: <A, E, R>(name: string, effect: Effect$1.Effect<A, E, R>) => Effect$1.Effect<A, E, FederationLogger$1 | R>;
-declare const developmentLogger: Layer.Layer<FederationLogger$1, never, never>;
-declare const productionLogger: Layer.Layer<FederationLogger$1, never, never>;
-declare const testLogger: Layer.Layer<FederationLogger$1, never, never>;
+declare class FederationLogger extends FederationLogger_base {}
+declare const FederationLoggerLive: Layer.Layer<FederationLogger, never, never>;
+declare const trace: (message: string, meta?: Record<string, unknown>) => Effect$1.Effect<void, never, FederationLogger>;
+declare const debug: (message: string, meta?: Record<string, unknown>) => Effect$1.Effect<void, never, FederationLogger>;
+declare const info: (message: string, meta?: Record<string, unknown>) => Effect$1.Effect<void, never, FederationLogger>;
+declare const warn: (message: string, meta?: Record<string, unknown>) => Effect$1.Effect<void, never, FederationLogger>;
+declare const error: (message: string, meta?: Record<string, unknown>) => Effect$1.Effect<void, never, FederationLogger>;
+declare const withSpan: <A, E, R>(name: string, effect: Effect$1.Effect<A, E, R>) => Effect$1.Effect<A, E, FederationLogger | R>;
+declare const developmentLogger: Layer.Layer<FederationLogger, never, never>;
+declare const productionLogger: Layer.Layer<FederationLogger, never, never>;
+declare const testLogger: Layer.Layer<FederationLogger, never, never>;
 //#endregion
 //#region src/core/services/config.d.ts
 declare const FederationConfigSchema: Schema.Struct<{
@@ -2095,8 +2409,8 @@ declare const FederationConfigSchema: Schema.Struct<{
     }>;
   }>;
 }>;
-type FederationConfig = Schema.Schema.Type<typeof FederationConfigSchema>;
-declare const FederationConfigService_base: Context.TagClass<FederationConfigService$1, "FederationConfigService", {
+type FederationServiceConfig = Schema.Schema.Type<typeof FederationConfigSchema>;
+declare const FederationConfigService_base: Context.TagClass<FederationConfigService, "FederationConfigService", {
   readonly federation: {
     readonly introspection: boolean;
     readonly playground: boolean;
@@ -2142,8 +2456,8 @@ declare const FederationConfigService_base: Context.TagClass<FederationConfigSer
     };
   };
 }>;
-declare class FederationConfigService$1 extends FederationConfigService_base {}
-declare const FederationConfigLive: Layer.Layer<FederationConfigService$1, _effect_schema_ParseResult4.ParseError | effect_ConfigError4.ConfigError, never>;
+declare class FederationConfigService extends FederationConfigService_base {}
+declare const FederationConfigLive: Layer.Layer<FederationConfigService, _effect_schema_ParseResult5.ParseError | effect_ConfigError5.ConfigError, never>;
 declare const getServerConfig: Effect$1.Effect<{
   readonly port: number;
   readonly host: string;
@@ -2151,32 +2465,32 @@ declare const getServerConfig: Effect$1.Effect<{
     readonly enabled: boolean;
     readonly origins: readonly string[];
   };
-}, never, FederationConfigService$1>;
+}, never, FederationConfigService>;
 declare const getFederationConfig: Effect$1.Effect<{
   readonly introspection: boolean;
   readonly playground: boolean;
   readonly subscriptions: boolean;
   readonly tracing: boolean;
-}, never, FederationConfigService$1>;
+}, never, FederationConfigService>;
 declare const getDatabaseConfig: Effect$1.Effect<{
   readonly url: string;
   readonly maxConnections: number;
   readonly connectionTimeout: string;
-}, never, FederationConfigService$1>;
+}, never, FederationConfigService>;
 declare const getCacheConfig: Effect$1.Effect<{
   readonly redis: {
     readonly url: string;
     readonly keyPrefix: string;
     readonly defaultTtl: string;
   };
-}, never, FederationConfigService$1>;
+}, never, FederationConfigService>;
 declare const getResilienceConfig: Effect$1.Effect<{
   readonly circuitBreaker: {
     readonly failureThreshold: number;
     readonly resetTimeout: string;
     readonly halfOpenMaxCalls: number;
   };
-}, never, FederationConfigService$1>;
+}, never, FederationConfigService>;
 declare const getObservabilityConfig: Effect$1.Effect<{
   readonly tracing: {
     readonly enabled: boolean;
@@ -2187,24 +2501,24 @@ declare const getObservabilityConfig: Effect$1.Effect<{
     readonly port: number;
     readonly enabled: boolean;
   };
-}, never, FederationConfigService$1>;
+}, never, FederationConfigService>;
 //#endregion
 //#region src/core/services/layers.d.ts
-declare const CoreServicesLive: Layer.Layer<FederationLogger$1 | FederationConfigService$1, _effect_schema_ParseResult4.ParseError | effect_ConfigError4.ConfigError, never>;
-declare const DevelopmentLayerLive: Layer.Layer<FederationLogger$1 | FederationConfigService$1, _effect_schema_ParseResult4.ParseError | effect_ConfigError4.ConfigError, never>;
-declare const ProductionLayerLive: Layer.Layer<FederationLogger$1 | FederationConfigService$1, _effect_schema_ParseResult4.ParseError | effect_ConfigError4.ConfigError, never>;
-declare const TestLayerLive: Layer.Layer<FederationLogger$1 | FederationConfigService$1, _effect_schema_ParseResult4.ParseError | effect_ConfigError4.ConfigError, never>;
-declare const MinimalLayerLive: Layer.Layer<FederationConfigService$1, _effect_schema_ParseResult4.ParseError | effect_ConfigError4.ConfigError, never>;
+declare const CoreServicesLive: Layer.Layer<FederationConfigService | FederationLogger, _effect_schema_ParseResult5.ParseError | effect_ConfigError5.ConfigError, never>;
+declare const DevelopmentLayerLive: Layer.Layer<FederationConfigService | FederationLogger, _effect_schema_ParseResult5.ParseError | effect_ConfigError5.ConfigError, never>;
+declare const ProductionLayerLive: Layer.Layer<FederationConfigService | FederationLogger, _effect_schema_ParseResult5.ParseError | effect_ConfigError5.ConfigError, never>;
+declare const TestLayerLive: Layer.Layer<FederationConfigService | FederationLogger, _effect_schema_ParseResult5.ParseError | effect_ConfigError5.ConfigError, never>;
+declare const MinimalLayerLive: Layer.Layer<FederationConfigService, _effect_schema_ParseResult5.ParseError | effect_ConfigError5.ConfigError, never>;
 /**
  * Helper function to create environment-specific layers
  */
-declare const createEnvironmentLayer: (environment?: string) => Layer.Layer<FederationLogger | FederationConfigService, never, never>;
+declare const createEnvironmentLayer: (environment?: string) => Layer.Layer<FederationConfigService | FederationLogger, _effect_schema_ParseResult5.ParseError | effect_ConfigError5.ConfigError, never>;
 //#endregion
 //#region src/federation/composer.d.ts
 declare const ModernFederationComposer_base: Context.TagClass<ModernFederationComposer, "ModernFederationComposer", {
-  readonly compose: (config: FederationCompositionConfig) => Effect$1.Effect<FederatedSchema, CompositionError, FederationLogger$1>;
-  readonly validate: (config: FederationCompositionConfig) => Effect$1.Effect<FederationCompositionConfig, ValidationError, FederationLogger$1>;
-  readonly buildSchema: (composedConfig: ComposedConfiguration) => Effect$1.Effect<GraphQLSchema, CompositionError, FederationLogger$1>;
+  readonly compose: (config: FederationCompositionConfig) => Effect$1.Effect<FederatedSchema, CompositionError>;
+  readonly validate: (config: FederationCompositionConfig) => Effect$1.Effect<FederationCompositionConfig, ValidationError>;
+  readonly buildSchema: (composedConfig: ComposedConfiguration) => Effect$1.Effect<GraphQLSchema, CompositionError>;
 }>;
 declare class ModernFederationComposer extends ModernFederationComposer_base {}
 interface ComposedConfiguration {
@@ -2218,11 +2532,11 @@ interface SubgraphSchemaInfo {
   readonly entities: ReadonlyArray<string>;
   readonly directives: ReadonlyArray<string>;
 }
-declare const ModernFederationComposerLive: Layer.Layer<ModernFederationComposer, never, FederationLogger$1>;
-declare const compose: (config: FederationCompositionConfig) => Effect$1.Effect<FederatedSchema, CompositionError, ModernFederationComposer | FederationLogger$1>;
-declare const validateConfig: (config: FederationCompositionConfig) => Effect$1.Effect<FederationCompositionConfig, ValidationError, ModernFederationComposer | FederationLogger$1>;
+declare const ModernFederationComposerLive: Layer.Layer<ModernFederationComposer, never, never>;
+declare const compose: (config: FederationCompositionConfig) => Effect$1.Effect<FederatedSchema, CompositionError, never>;
+declare const validateConfig: (config: FederationCompositionConfig) => Effect$1.Effect<FederationCompositionConfig, ValidationError, ModernFederationComposer>;
 declare const handleCompositionError: (error: CompositionError) => string;
-declare const createFederatedSchema: (config: FederationCompositionConfig) => Effect$1.Effect<FederatedSchema, CompositionError, ModernFederationComposer | FederationLogger$1>;
+declare const createFederatedSchema: (config: FederationCompositionConfig) => Effect$1.Effect<FederatedSchema, CompositionError, never>;
 //#endregion
 //#region src/federation/subgraph.d.ts
 /**
@@ -2277,8 +2591,8 @@ declare namespace SubgraphManagement {
 declare const createStaticRegistry: (services: ReadonlyArray<ServiceDefinition>) => Effect.Effect<SubgraphRegistry, CompositionError, never>;
 declare const createDynamicRegistry: (discoveryEndpoints: ReadonlyArray<string>) => Effect.Effect<SubgraphRegistry, CompositionError, never>;
 declare const createMonitoredRegistry: (services: ReadonlyArray<ServiceDefinition>, options?: {
-  discoveryInterval?: Duration.Duration;
-  healthCheckInterval?: Duration.Duration;
+  readonly discoveryInterval?: Duration.Duration;
+  readonly healthCheckInterval?: Duration.Duration;
 }) => Effect.Effect<SubgraphRegistry, CompositionError, never>;
 //#endregion
 //#region src/federation/error-boundaries.d.ts
@@ -2424,7 +2738,7 @@ interface CacheStats {
  * Federated DataLoader interface
  */
 interface FederatedDataLoader {
-  readonly getLoader: <K, V>(subgraphId: string, batchLoadFn: (keys: readonly K[]) => Promise<V[]>) => Effect.Effect<DataLoader<K, V>, never>;
+  readonly getLoader: <K, V>(subgraphId: string, batchLoadFn: (keys: readonly K[]) => Promise<readonly V[]>) => Effect.Effect<DataLoader<K, V>, never>;
   readonly clearAll: () => Effect.Effect<void, never>;
   readonly getStats: () => Effect.Effect<DataLoaderStats, never>;
 }
@@ -2499,8 +2813,9 @@ interface ExecutionContext {
 /**
  * Execution error
  */
-interface ExecutionError {
+interface ExecutionError extends Error {
   readonly _tag: "ExecutionError";
+  readonly name: "ExecutionError";
   readonly message: string;
   readonly cause?: unknown;
 }
@@ -2556,13 +2871,16 @@ declare const SCHEMA_MODULE_VERSION = "2.0.0";
 //#endregion
 //#region src/patterns/index.d.ts
 declare const PATTERNS_MODULE_VERSION = "2.0.0";
+declare namespace index_d_exports {
+  export { EntityDirective, EntityKey, EntityMetadata, EntityValidationResult, PhantomStates, UltraStrictEntityBuilder, ValidatedEntity, createUltraStrictEntityBuilder, matchEntityValidationResult, validateEntityBuilder, withDirectives, withKeys, withResolvers, withSchema };
+}
 //#endregion
 //#region src/examples/basic-entity.d.ts
-interface FederationContext {
+interface FederationContext extends Record<string, unknown> {
   readonly userId?: string;
   readonly permissions: ReadonlyArray<string>;
 }
-declare const example: Effect$1.Effect<FederatedSchema | null, never, ModernFederationComposer | FederationLogger$1>;
+declare const example: Effect$1.Effect<FederatedSchema | null, never, never>;
 //#endregion
 //#region src/index.d.ts
 /**
@@ -2579,5 +2897,5 @@ declare const FRAMEWORK_INFO: {
   readonly features: readonly ["Effect-First Architecture", "Apollo Federation 2.x Support", "Ultra-Strict TypeScript", "Algebraic Error System", "Performance Optimizations", "Schema-First Development", "Circuit Breakers", "Hot Reload", "Layer-based Dependency Injection", "Effect.gen Patterns", "Structured Logging", "Type-safe Configuration", "Pattern Matching Error Handling", "Modern Test Infrastructure"];
 };
 //#endregion
-export { BaseDomainError, CircuitBreaker, CircuitBreakerConfig, type CircuitBreakerError, CircuitBreakerMetrics, CircuitBreakerState, CodeGenerationError, type CompositionError, CoreServicesLive, DataLoaderConfig, DevelopmentLayerLive, DirectiveValidationError, DiscoveryError, DomainError, EntityBuilderError, EntityDirective, EntityKey, EntityMetadata, EntityReferenceResolver, type EntityResolutionError, EntityTypename, EntityValidationResult, ErrorBoundaryConfig, ErrorFactory, ErrorMatching, ErrorTransformationConfig, FRAMEWORK_INFO, FederatedSchema, ModernFederationComposer as FederationComposer, FederationCompositionConfig, FederationConfig, FederationConfigLive, FederationConfigSchema, FederationConfigService$1 as FederationConfigService, FederationContext, FederationDirective, FederationDirectiveMap, FederationDomainError, FederationEntity, type FederationError, FederationErrorBoundaries, FederationLogger$1 as FederationLogger, FederationLoggerLive, FieldName, type FieldResolutionError, FieldResolver, FieldResolverMap, HealthCheckError, HealthStatus, HotReloadableSchema, KeyValidationError, MetricsConfig, MinimalLayerLive, ModernFederationComposer, ModernFederationComposerLive, ModernFederationEntityBuilder, NonEmptyArray, PATTERNS_MODULE_VERSION, PartialFailureConfig, PerformanceConfig, PerformanceOptimizations, PhantomStates, Prettify, ProductionLayerLive, QueryHash, QueryPlanCacheConfig, RegistrationError, RequireAtLeastOne, SCHEMA_MODULE_VERSION, SchemaChange, SchemaConflict, SchemaEvolution, SchemaEvolutionError, SchemaFirst, SchemaFirstError, SchemaFirstService, SchemaFirstWorkflow, SchemaImportResult, SchemaLifecycleState, SchemaMetadata, type SchemaValidationError, SchemaWatcher, ServiceDefinition, ServiceId, SubgraphManagement, SubgraphRegistry, SyncResult, TestLayerLive, type TimeoutError, type TypeConversionError, UltraStrictEntityBuilder, VERSION, ValidatedEntity, type ValidationError, example as basicEntityExample, compose, createBasicOptimizedExecutor, createDevelopmentOptimizedExecutor, createDirective, createDynamicRegistry, createEntityBuilder, createEntityKey, createEnvironmentLayer, createFederatedSchema, createMonitoredRegistry, createProductionBoundary, createProductionOptimizedExecutor, createResilientBoundary, createSchemaFirstService, createSchemaFirstWorkflow, createStaticRegistry, createStrictBoundary, createUltraStrictEntityBuilder, debug, defineEntity, developmentLogger, error, getCacheConfig, getDatabaseConfig, getFederationConfig, getObservabilityConfig, getResilienceConfig, getServerConfig, handleCompositionError, info, matchEntityValidationResult, productionLogger, testLogger, trace, validateConfig, validateEntityBuilder, warn, withDirectives, withKeys, withResolvers, withSchema, withSpan };
+export { BaseDomainError, CircuitBreaker, CircuitBreakerConfig, type CircuitBreakerError, CircuitBreakerMetrics, CircuitBreakerState, CodeGenerationError, type CompositionError, CoreServicesLive, DataLoaderConfig, DeepReadonly, DevelopmentLayerLive, type DiscoveryError, DomainError, EntityReferenceResolver, type EntityResolutionError, EntityTypename, ErrorBoundary, ErrorBoundaryConfig, ErrorFactory, ErrorMatching, ErrorTransformationConfig, index_d_exports as Experimental, ExtractResolver, FRAMEWORK_INFO, FederatedSchema, FederationCompositionConfig, FederationConfigLive, FederationConfigSchema, FederationConfigService, FederationContext, FederationDirective, FederationDirectiveMap, FederationDomainError, FederationEntity, FederationEntityBuilder, type FederationError, FederationErrorBoundaries, FederationLogger, FederationLoggerLive, FederationServiceConfig, FieldName, type FieldResolutionError, FieldResolver, FieldResolverMap, type HealthCheckError, HealthStatus, HotReloadableSchema, MakeRequired, MetricsConfig, MinimalLayerLive, ModernFederationComposer, ModernFederationComposerLive, NonEmptyArray, OptimizedExecutor, OptionalKeys, PATTERNS_MODULE_VERSION, PartialFailureConfig, PerformanceConfig, PerformanceOptimizations, Prettify, ProductionLayerLive, QueryHash, QueryPlanCacheConfig, type RegistrationError, RequireAtLeastOne, RequiredKeys, SCHEMA_MODULE_VERSION, SafeResolverMap, SchemaChange, SchemaConflict, SchemaEvolution, SchemaEvolutionError, SchemaFirst, SchemaFirstError, SchemaFirstService, SchemaFirstWorkflow, SchemaImportResult, SchemaLifecycleState, SchemaMetadata, type SchemaValidationError, SchemaWatcher, ServiceDefinition, ServiceId, SubgraphManagement, SubgraphRegistry, SyncResult, TestLayerLive, type TimeoutError, type TypeConversionError, VERSION, type ValidationError, asUntypedEntity, example as basicEntityExample, compose, createBasicOptimizedExecutor, createDevelopmentOptimizedExecutor, createDynamicRegistry, createEntityBuilder, createEnvironmentLayer, createFederatedSchema, createMonitoredRegistry, createProductionBoundary, createProductionOptimizedExecutor, createResilientBoundary, createSchemaFirstService, createSchemaFirstWorkflow, createStaticRegistry, createStrictBoundary, debug, developmentLogger, error, getCacheConfig, getDatabaseConfig, getFederationConfig, getObservabilityConfig, getResilienceConfig, getServerConfig, handleCompositionError, info, productionLogger, testLogger, trace, validateConfig, warn, withSpan };
 //# sourceMappingURL=index.d.cts.map

@@ -23,18 +23,18 @@ import { ErrorFactory } from "../errors.js"
  * - Type-safe field resolver binding
  * - Directive validation and conflict detection
  */
-export class ModernFederationEntityBuilder<
-  TSource extends Record<string, any> = Record<string, any>,
+export class FederationEntityBuilder<
+  TSource extends Record<string, unknown> = Record<string, unknown>,
   TContext = Record<string, unknown>,
   TResult extends Partial<TSource> = Partial<TSource>,
   TReference extends Partial<TSource> = Partial<TSource>
 > {
   constructor(
     private readonly typename: string,
-    private readonly schema: Schema.Schema.Any,
+    private readonly schema: Schema.Schema<TSource, TSource>,
     private readonly keyFields: ReadonlyArray<keyof TSource>,
     private readonly directiveMap: FederationDirectiveMap = {},
-    private readonly fieldResolvers: FieldResolverMap<TResult, TContext> = {},
+    private readonly fieldResolvers: FieldResolverMap<TSource, TContext> = {},
     private readonly referenceResolver?: EntityReferenceResolver<TResult, TContext, TReference>,
     private readonly extensions?: Record<string, unknown>
   ) {
@@ -54,10 +54,10 @@ export class ModernFederationEntityBuilder<
    * Federation 2.x directive support
    * @shareable - Field can be resolved by multiple subgraphs
    */
-  withShareableField<K extends keyof TResult>(
+  withShareableField<K extends keyof TSource>(
     field: K,
-    resolver?: FieldResolver<TResult, TContext, TResult[K]>
-  ): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference> {
+    resolver?: FieldResolver<TSource, TContext, TSource[K]>
+  ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     return this.addDirective(field as string, {
       type: "@shareable"
     }, resolver)
@@ -66,10 +66,10 @@ export class ModernFederationEntityBuilder<
   /**
    * @inaccessible - Field hidden from public schema but available for federation
    */
-  withInaccessibleField<K extends keyof TResult>(
+  withInaccessibleField<K extends keyof TSource>(
     field: K,
-    resolver?: FieldResolver<TResult, TContext, TResult[K]>
-  ): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference> {
+    resolver?: FieldResolver<TSource, TContext, TSource[K]>
+  ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     return this.addDirective(field as string, {
       type: "@inaccessible"
     }, resolver)
@@ -78,11 +78,11 @@ export class ModernFederationEntityBuilder<
   /**
    * @tag - Metadata tags for schema organization and tooling
    */
-  withTaggedField<K extends keyof TResult>(
+  withTaggedField<K extends keyof TSource>(
     field: K,
     tags: ReadonlyArray<string>,
-    resolver?: FieldResolver<TResult, TContext, TResult[K]>
-  ): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference> {
+    resolver?: FieldResolver<TSource, TContext, TSource[K]>
+  ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     if (!tags.length) {
       throw new Error("Tags array cannot be empty")
     }
@@ -96,16 +96,13 @@ export class ModernFederationEntityBuilder<
   /**
    * @override - Overrides field resolution from another subgraph
    */
-  withOverrideField<K extends keyof TResult>(
+  withOverrideField<K extends keyof TSource>(
     field: K,
     fromSubgraph: string,
-    resolver: FieldResolver<TResult, TContext, TResult[K]>
-  ): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference> {
+    resolver: FieldResolver<TSource, TContext, TSource[K]>
+  ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     if (!fromSubgraph?.trim()) {
       throw new Error("fromSubgraph cannot be empty")
-    }
-    if (!resolver) {
-      throw new Error("Resolver is required for override fields")
     }
     
     return this.addDirective(field as string, {
@@ -117,9 +114,9 @@ export class ModernFederationEntityBuilder<
   /**
    * @external - Field is defined in another subgraph
    */
-  withExternalField<K extends keyof TResult>(
+  withExternalField<K extends keyof TSource>(
     field: K
-  ): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference> {
+  ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     return this.addDirective(field as string, {
       type: "@external"
     })
@@ -128,11 +125,11 @@ export class ModernFederationEntityBuilder<
   /**
    * @requires - Field requires specific fields from base type
    */
-  withRequiredFields<K extends keyof TResult>(
+  withRequiredFields<K extends keyof TSource>(
     field: K,
     requiredFields: string,
-    resolver?: FieldResolver<TResult, TContext, TResult[K]>
-  ): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference> {
+    resolver?: FieldResolver<TSource, TContext, TSource[K]>
+  ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     if (!requiredFields?.trim()) {
       throw new Error("Required fields specification cannot be empty")
     }
@@ -146,11 +143,11 @@ export class ModernFederationEntityBuilder<
   /**
    * @provides - Field provides specific fields to base type
    */
-  withProvidedFields<K extends keyof TResult>(
+  withProvidedFields<K extends keyof TSource>(
     field: K,
     providedFields: string,
-    resolver?: FieldResolver<TResult, TContext, TResult[K]>
-  ): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference> {
+    resolver?: FieldResolver<TSource, TContext, TSource[K]>
+  ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     if (!providedFields?.trim()) {
       throw new Error("Provided fields specification cannot be empty")
     }
@@ -164,15 +161,11 @@ export class ModernFederationEntityBuilder<
   /**
    * Add a custom field resolver without directives
    */
-  withField<K extends keyof TResult>(
+  withField<K extends keyof TSource>(
     field: K,
-    resolver: FieldResolver<TResult, TContext, TResult[K]>
-  ): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference> {
-    if (!resolver) {
-      throw new Error("Field resolver cannot be null")
-    }
-
-    return new ModernFederationEntityBuilder(
+    resolver: FieldResolver<TSource, TContext, TSource[K]>
+  ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
+    return new FederationEntityBuilder(
       this.typename,
       this.schema,
       this.keyFields,
@@ -180,7 +173,7 @@ export class ModernFederationEntityBuilder<
       {
         ...this.fieldResolvers,
         [field]: resolver,
-      } as FieldResolverMap<TResult, TContext>,
+      } as FieldResolverMap<TSource, TContext>,
       this.referenceResolver,
       this.extensions
     )
@@ -191,12 +184,8 @@ export class ModernFederationEntityBuilder<
    */
   withReferenceResolver(
     resolver: EntityReferenceResolver<TResult, TContext, TReference>
-  ): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference> {
-    if (!resolver) {
-      throw new Error("Reference resolver cannot be null")
-    }
-
-    return new ModernFederationEntityBuilder(
+  ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
+    return new FederationEntityBuilder(
       this.typename,
       this.schema,
       this.keyFields,
@@ -212,8 +201,8 @@ export class ModernFederationEntityBuilder<
    */
   withExtensions(
     extensions: Record<string, unknown>
-  ): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference> {
-    return new ModernFederationEntityBuilder(
+  ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
+    return new FederationEntityBuilder(
       this.typename,
       this.schema,
       this.keyFields,
@@ -227,15 +216,15 @@ export class ModernFederationEntityBuilder<
   /**
    * Internal method to add directives with validation
    */
-  private addDirective<K extends keyof TResult>(
+  private addDirective<K extends keyof TSource>(
     field: string,
     directive: FederationDirective,
-    resolver?: FieldResolver<TResult, TContext, TResult[K]>
-  ): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference> {
+    resolver?: FieldResolver<TSource, TContext, TSource[K]>
+  ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     // Validate directive conflicts
     this.validateDirectiveConflicts(field, directive)
     
-    const existingDirectives = this.directiveMap[field] || []
+    const existingDirectives = this.directiveMap[field] ?? []
     const newDirectiveMap = {
       ...this.directiveMap,
       [field]: [...existingDirectives, directive]
@@ -244,9 +233,9 @@ export class ModernFederationEntityBuilder<
     const newFieldResolvers = resolver ? {
       ...this.fieldResolvers,
       [field]: resolver
-    } as FieldResolverMap<TResult, TContext> : this.fieldResolvers
+    } as FieldResolverMap<TSource, TContext> : this.fieldResolvers
 
-    return new ModernFederationEntityBuilder(
+    return new FederationEntityBuilder(
       this.typename,
       this.schema,
       this.keyFields,
@@ -261,7 +250,7 @@ export class ModernFederationEntityBuilder<
    * Validate directive conflicts and usage rules
    */
   private validateDirectiveConflicts(field: string, newDirective: FederationDirective): void {
-    const existingDirectives = this.directiveMap[field] || []
+    const existingDirectives = this.directiveMap[field] ?? []
     
     // Check for conflicting directives
     const conflicts = [
@@ -299,28 +288,31 @@ export class ModernFederationEntityBuilder<
    * Validate that all required components are present for building
    */
   private validateBuildRequirements(): Effect.Effect<void, ValidationError> {
-    const self = this
-    return Effect.gen(function* () {
-      // Validate reference resolver is present
-      if (!self.referenceResolver) {
-        yield* Effect.fail(ErrorFactory.validation(
-          "Reference resolver is required",
-          "referenceResolver"
+    // Reference resolver is only required if the entity has federation directives
+    const hasFederationDirectives = Object.values(this.directiveMap).some(directives => 
+      directives.some(d => ['@key', '@requires', '@provides', '@external'].includes(d.type))
+    )
+    
+    if (hasFederationDirectives && !this.referenceResolver) {
+      return Effect.fail(ErrorFactory.validation(
+        "Reference resolver is required for entities with federation directives",
+        "referenceResolver"
+      ))
+    }
+
+    // Validate that override fields have resolvers
+    for (const [field, directives] of Object.entries(this.directiveMap)) {
+      const hasOverride = directives.some(d => d.type === "@override")
+      if (hasOverride && !this.fieldResolvers[field as keyof TSource]) {
+        return Effect.fail(ErrorFactory.validation(
+          `Override field '${field}' requires a resolver`,
+          "fieldResolver",
+          field
         ))
       }
+    }
 
-      // Validate that override fields have resolvers
-      for (const [field, directives] of Object.entries(self.directiveMap)) {
-        const hasOverride = directives.some(d => d.type === "@override")
-        if (hasOverride && !self.fieldResolvers[field as keyof TResult]) {
-          yield* Effect.fail(ErrorFactory.validation(
-            `Override field '${field}' requires a resolver`,
-            "fieldResolver",
-            field
-          ))
-        }
-      }
-    }.bind(this))
+    return Effect.succeed(undefined)
   }
 
   /**
@@ -330,9 +322,9 @@ export class ModernFederationEntityBuilder<
     const entity: FederationEntity<TSource, TContext, TResult, TReference> = {
       typename: this.typename,
       key: this.keyFields as string | ReadonlyArray<string>,
-      schema: this.schema as Schema.Schema<TSource, TContext>,
+      schema: this.schema as unknown as Schema.Schema<TSource, TContext>,
       resolveReference: this.referenceResolver!,
-      fields: this.fieldResolvers,
+      fields: this.fieldResolvers as unknown as FieldResolverMap<TResult, TContext>,
       directives: this.directiveMap,
       extensions: this.extensions
     }
@@ -391,48 +383,20 @@ export class ModernFederationEntityBuilder<
 }
 
 /**
- * Factory function for creating entity builders with type inference
+ * Factory function for creating entity builders with proper type inference
  */
 export const createEntityBuilder = <
-  TSource extends Record<string, any>,
-  TContext = Record<string, unknown>,
-  TResult extends Partial<TSource> = Partial<TSource>,
-  TReference extends Partial<TSource> = Partial<TSource>
+  TSource extends Record<string, unknown> = Record<string, unknown>,
+  TContext extends Record<string, unknown> = Record<string, unknown>
 >(
   typename: string,
-  schema: Schema.Schema.Any,
+  schema: Schema.Schema<TSource, TSource>,
   keyFields: ReadonlyArray<keyof TSource>
-): ModernFederationEntityBuilder<TSource, TContext, TResult, TReference> => {
-  return new ModernFederationEntityBuilder<TSource, TContext, TResult, TReference>(
+): FederationEntityBuilder<TSource, TContext, TSource, Partial<TSource>> => {
+  return new FederationEntityBuilder<TSource, TContext, TSource, Partial<TSource>>(
     typename,
     schema,
     keyFields
   )
 }
 
-/**
- * Utility function to create entity with fluent API
- */
-export const defineEntity = <
-  TSource extends Record<string, any>,
-  TContext = Record<string, unknown>,
-  TResult extends Partial<TSource> = Partial<TSource>,
-  TReference extends Partial<TSource> = Partial<TSource>
->(
-  config: {
-    readonly typename: string
-    readonly schema: Schema.Schema.Any
-    readonly keyFields: ReadonlyArray<keyof TSource>
-  },
-  builder: (
-    entityBuilder: ModernFederationEntityBuilder<TSource, TContext, TResult, TReference>
-  ) => ModernFederationEntityBuilder<TSource, TContext, TResult, TReference>
-): Effect.Effect<FederationEntity<TSource, TContext, TResult, TReference>, ValidationError> => {
-  const initialBuilder = createEntityBuilder<TSource, TContext, TResult, TReference>(
-    config.typename,
-    config.schema,
-    config.keyFields
-  )
-  
-  return builder(initialBuilder).build()
-}

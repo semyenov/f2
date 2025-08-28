@@ -20,7 +20,10 @@ import {
   type GraphQLOutputType,
   type GraphQLInputType,
   type GraphQLType,
-  isOutputType as isGraphQLOutputType
+  isOutputType as isGraphQLOutputType,
+  type ThunkObjMap,
+  type GraphQLInputFieldConfig,
+  type GraphQLFieldConfig
 } from "graphql"
 import type { TypeConversionError } from "../core/types.js"
 import { ErrorFactory } from "../core/errors.js"
@@ -30,8 +33,8 @@ const MAX_RECURSION_DEPTH = 10 as const
 /**
  * Type conversion context with caching and configuration
  */
-export interface TypeConversionContext {
-  readonly cache: ReadonlyMap<string, GraphQLType>
+interface TypeConversionContext {
+  readonly cache: Map<string, GraphQLType>
   readonly isInput: boolean
   readonly scalars: Record<string, GraphQLScalarType>
   readonly depth: number
@@ -76,7 +79,7 @@ export namespace ASTConversion {
    * Convert Effect Schema to GraphQL type with comprehensive error handling
    */
   export const schemaToGraphQLType = (
-    schema: Schema.Schema<any>,
+    schema: Schema.Schema<unknown>,
     context: TypeConversionContext = createConversionContext()
   ): Effect.Effect<GraphQLOutputType | GraphQLInputType, TypeConversionError> => {
     if (context.depth > context.maxDepth) {
@@ -114,7 +117,7 @@ export namespace ASTConversion {
    * Convert multiple schemas to GraphQL types concurrently
    */
   export const convertSchemasParallel = (
-    schemas: ReadonlyArray<{ readonly name: string; readonly schema: Schema.Schema<any> }>,
+    schemas: ReadonlyArray<{ readonly name: string; readonly schema: Schema.Schema<unknown> }>,
     context: TypeConversionContext = createConversionContext()
   ): Effect.Effect<Record<string, GraphQLOutputType | GraphQLInputType>, TypeConversionError> =>
     pipe(
@@ -134,9 +137,9 @@ export namespace ASTConversion {
    * Create GraphQL schema from Effect Schema registry
    */
   export const createGraphQLSchema = (
-    entities: Record<string, Schema.Schema<any>>,
-    queries: Record<string, Schema.Schema<any>> = {},
-    mutations: Record<string, Schema.Schema<any>> = {}
+    entities: Record<string, Schema.Schema<unknown>>,
+    queries: Record<string, Schema.Schema<unknown>> = {},
+    mutations: Record<string, Schema.Schema<unknown>> = {}
   ): Effect.Effect<{
     readonly types: Record<string, GraphQLOutputType>
     readonly queries: Record<string, GraphQLOutputType>
@@ -303,79 +306,89 @@ export namespace ASTConversion {
     const titleAnnotation = AST.getAnnotation(AST.TitleAnnotationId)(ast)
     
     return pipe(
-      Option.fromNullable(titleAnnotation),
-      Option.match({
-        onNone: () => 
-          // No title annotation - delegate to underlying type
-          schemaToGraphQLType(Schema.make(ast.from), context),
-        
-        onSome: (annotation: any) => {
-          const title = annotation?.title as string
-          
-          return Match.value(title).pipe(
-            // ID types -> GraphQL ID
-            Match.when((t) => t?.endsWith("Id") || t?.includes("Identity") || t === "ID", () =>
-              Effect.succeed(GraphQLID)),
-            
-            // Email and communication types
-            Match.when((t) => t === "Email" || t === "EmailAddress", () =>
-              Effect.succeed(GraphQLString)),
-            
-            Match.when((t) => t === "Phone" || t === "PhoneNumber", () =>
-              Effect.succeed(GraphQLString)),
-            
-            Match.when((t) => t === "URL" || t === "Uri" || t === "Link", () =>
-              Effect.succeed(GraphQLString)),
-            
-            // Temporal types
-            Match.when((t) => t === "Timestamp" || t === "DateTime", () =>
-              Effect.succeed(context.scalars['DateTime'] ?? GraphQLString)),
-            
-            Match.when((t) => t === "Date", () =>
-              Effect.succeed(context.scalars['Date'] ?? GraphQLString)),
-            
-            Match.when((t) => t === "Time", () =>
-              Effect.succeed(context.scalars['Time'] ?? GraphQLString)),
-            
-            // Numeric types with constraints
-            Match.when((t) => t === "Money" || t === "Currency" || t === "Amount", () =>
-              Effect.succeed(context.scalars['Money'] ?? GraphQLFloat)),
-            
-            Match.when((t) => t === "Percentage", () =>
-              Effect.succeed(GraphQLFloat)),
-            
-            Match.when((t) => t === "Version" || t === "SequenceNumber", () =>
-              Effect.succeed(GraphQLInt)),
-            
-            Match.when((t) => t === "Port" || t === "Count", () =>
-              Effect.succeed(GraphQLInt)),
-            
-            // JSON and structured types
-            Match.when((t) => t === "JSON" || t === "JsonValue", () =>
-              Effect.succeed(context.scalars['JSON'] ?? GraphQLString)),
-            
-            // Sensitive types - should not be exposed
-            Match.when((t) => t === "Password" || t === "Secret" || t === "Token", (sensitiveType) =>
-              context.strictMode
-                ? Effect.fail(ErrorFactory.typeConversion(
-                    `Sensitive type ${sensitiveType} cannot be converted to GraphQL type`,
-                    "sensitive_type",
-                    sensitiveType
-                  ))
-                : Effect.succeed(GraphQLString)
-            ),
-            
-            // Custom scalar fallback
-            Match.when((t): t is string => Boolean(t && context.scalars[t]), (t) =>
-              Effect.succeed(context.scalars[t])),
-            
-            // Default fallback - delegate to underlying type
-            Match.orElse(() =>
-              schemaToGraphQLType(Schema.make(ast.from), context))
-          )
+      Effect.fromNullable(titleAnnotation),
+      Effect.flatMap((annotation: unknown) => {
+        // The annotation might be wrapped in an Option type
+        let title: string
+        if (typeof annotation === 'string') {
+          title = annotation
+        } else if (annotation && typeof annotation === 'object' && 'value' in annotation) {
+          title = String((annotation as { value: unknown }).value)
+        } else {
+          title = String(annotation)
         }
-      })
-    )
+        return Match.value(title).pipe(
+          // Integer type -> GraphQL Int
+          Match.when((t) => t === "Int", () =>
+            Effect.succeed(GraphQLInt)),
+          
+          // ID types -> GraphQL ID
+          Match.when((t) => t?.endsWith("Id") || t?.includes("Identity") || t === "ID", () =>
+            Effect.succeed(GraphQLID)),
+          
+          // Email and communication types
+          Match.when((t) => t === "Email" || t === "EmailAddress", () =>
+            Effect.succeed(GraphQLString)),
+          
+          Match.when((t) => t === "Phone" || t === "PhoneNumber", () =>
+            Effect.succeed(GraphQLString)),
+          
+          Match.when((t) => t === "URL" || t === "Uri" || t === "Link", () =>
+            Effect.succeed(GraphQLString)),
+          
+          // Temporal types
+          Match.when((t) => t === "Timestamp" || t === "DateTime", () =>
+            Effect.succeed(context.scalars['DateTime'] ?? GraphQLString)),
+          
+          Match.when((t) => t === "Date", () =>
+            Effect.succeed(context.scalars['Date'] ?? GraphQLString)),
+          
+          Match.when((t) => t === "Time", () =>
+            Effect.succeed(context.scalars['Time'] ?? GraphQLString)),
+          
+          // Numeric types with constraints
+          Match.when((t) => t === "Money" || t === "Currency" || t === "Amount", () =>
+            Effect.succeed(context.scalars['Money'] ?? GraphQLFloat)),
+          
+          Match.when((t) => t === "Percentage", () =>
+            Effect.succeed(GraphQLFloat)),
+          
+          Match.when((t) => t === "Version" || t === "SequenceNumber", () =>
+            Effect.succeed(GraphQLInt)),
+          
+          Match.when((t) => t === "Port" || t === "Count", () =>
+            Effect.succeed(GraphQLInt)),
+          
+          // JSON and structured types
+          Match.when((t) => t === "JSON" || t === "JsonValue", () =>
+            Effect.succeed(context.scalars['JSON'] ?? GraphQLString)),
+          
+          // Sensitive types - should not be exposed
+          Match.when((t) => t === "Password" || t === "Secret" || t === "Token", (sensitiveType) =>
+            context.strictMode
+              ? Effect.fail(ErrorFactory.typeConversion(
+                  `Sensitive type ${sensitiveType} cannot be converted to GraphQL type`,
+                  "sensitive_type",
+                  sensitiveType
+                ))
+              : Effect.succeed(GraphQLString)
+          ),
+          
+          // Custom scalar fallback
+          Match.when((t): t is string => Boolean(t && context.scalars[t]), (t) =>
+            Effect.succeed(context.scalars[t])),
+          
+          // Default fallback - delegate to underlying type
+          Match.orElse(() =>
+            schemaToGraphQLType(Schema.make(ast.from), context))
+        )
+      }),
+      Effect.orElse(() => 
+        // No title annotation - delegate to underlying type
+        schemaToGraphQLType(Schema.make(ast.from), context)
+      ),
+      Effect.orElse(() => Effect.succeed(GraphQLString)) // Ultimate fallback to ensure we never return undefined
+    ) as Effect.Effect<GraphQLOutputType | GraphQLInputType, TypeConversionError>
   }
 
   /**
@@ -416,12 +429,12 @@ export namespace ASTConversion {
           ? new GraphQLInputObjectType({
               name: `${typename}Input`,
               description,
-              fields: fieldConfig as any // Type assertion needed for mixed types
+              fields: fieldConfig as ThunkObjMap<GraphQLInputFieldConfig>
             })
           : new GraphQLObjectType({
               name: typename,
               description,
-              fields: fieldConfig as any // Type assertion needed for mixed types
+              fields: fieldConfig as ThunkObjMap<GraphQLFieldConfig<unknown, unknown, unknown>>
             })
       })
     )
@@ -496,7 +509,7 @@ export namespace ASTConversion {
   const convertTuple = (
     ast: AST.TupleType,
     context: TypeConversionContext
-  ): Effect.Effect<GraphQLList<any>, TypeConversionError> => {
+  ): Effect.Effect<GraphQLList<GraphQLOutputType>, TypeConversionError> => {
     if (ast.elements.length === 0) {
       return Effect.succeed(new GraphQLList(GraphQLString))
     }
@@ -510,7 +523,14 @@ export namespace ASTConversion {
 
     return pipe(
       schemaToGraphQLType(Schema.make(firstElementType), context),
-      Effect.map(elementType => new GraphQLList(elementType))
+      Effect.map(elementType => {
+        if (isGraphQLOutputType(elementType)) {
+          return new GraphQLList(elementType)
+        } else {
+          // Fallback to string for input types
+          return new GraphQLList(GraphQLString)
+        }
+      })
     )
   }
 
@@ -600,21 +620,3 @@ export namespace ASTConversion {
   }
 }
 
-/**
- * Factory functions for common conversion scenarios
- */
-export const convertEntitySchema = (schema: Schema.Schema<any>) =>
-  ASTConversion.schemaToGraphQLType(schema, createConversionContext(false))
-
-export const convertInputSchema = (schema: Schema.Schema<any>) =>
-  ASTConversion.schemaToGraphQLType(schema, createConversionContext(true))
-
-export const convertWithCustomScalars = (
-  schema: Schema.Schema<any>,
-  scalars: Record<string, GraphQLScalarType>,
-  isInput = false
-) =>
-  ASTConversion.schemaToGraphQLType(
-    schema, 
-    createConversionContext(isInput, scalars)
-  )

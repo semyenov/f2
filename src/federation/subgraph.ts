@@ -50,6 +50,9 @@ export namespace SubgraphManagement {
     pipe(
       Effect.succeed(config),
       Effect.flatMap(validateRegistryConfig),
+      Effect.mapError((error) => {
+        return ErrorFactory.composition(`Registry configuration validation failed: ${error.message}`, undefined, "config")
+      }),
       Effect.flatMap(validConfig => 
         pipe(
           createServiceStore(),
@@ -112,20 +115,34 @@ export namespace SubgraphManagement {
     )
 
   /**
-   * Create in-memory service store (could be replaced with persistent storage)
+   * Create optimized in-memory service store with indexing
    */
   const createServiceStore = (): Effect.Effect<ServiceStore, never> => {
     const services = new Map<string, ServiceDefinition>()
+    const servicesByUrl = new Map<string, ServiceDefinition>()
+    const healthyServices = new Set<string>()
     
     return Effect.succeed({
       store: (service: ServiceDefinition) => 
         Effect.sync(() => {
+          // Remove old URL mapping if service already exists
+          const existingService = services.get(service.id)
+          if (existingService) {
+            servicesByUrl.delete(existingService.url)
+          }
+          
           services.set(service.id, service)
+          servicesByUrl.set(service.url, service)
         }),
       
       remove: (serviceId: string) => 
         Effect.sync(() => {
-          services.delete(serviceId)
+          const service = services.get(serviceId)
+          if (service) {
+            services.delete(serviceId)
+            servicesByUrl.delete(service.url)
+            healthyServices.delete(serviceId)
+          }
         }),
       
       getAll: () => 
@@ -162,18 +179,18 @@ export namespace SubgraphManagement {
       Effect.succeed(definition),
       Effect.filterOrFail(
         def => !!def.id?.trim(),
-        () => ErrorFactory.CommonErrors.registrationError("Service ID is required")
+        () => ErrorFactory.CommonErrors.registrationError("Service ID is required", "unknown")
       ),
       Effect.filterOrFail(
         def => !!def.url?.trim(),
-        () => ErrorFactory.CommonErrors.registrationError("Service URL is required")
+        () => ErrorFactory.CommonErrors.registrationError("Service URL is required", definition.id || "unknown")
       ),
       Effect.flatMap(def => {
         try {
           new URL(def.url)
           return Effect.succeed(def)
         } catch {
-          return Effect.fail(ErrorFactory.CommonErrors.registrationError(`Invalid service URL: ${def.url}`))
+          return Effect.fail(ErrorFactory.CommonErrors.registrationError(`Invalid service URL: ${def.url}`, def.id || "unknown"))
         }
       })
     )
@@ -188,13 +205,29 @@ export namespace SubgraphManagement {
   ): Effect.Effect<void, RegistrationError> =>
     pipe(
       store.get(serviceId),
+      Effect.mapError((error): RegistrationError => 
+        ErrorFactory.CommonErrors.registrationError(
+          `Failed to get service ${serviceId}: ${error.message}`,
+          serviceId
+        )
+      ),
       Effect.flatMap(service => 
         service 
           ? pipe(
               store.remove(serviceId),
-              Effect.flatMap(() => triggerSchemaRecomposition({ id: serviceId, url: "" }, config))
+              Effect.flatMap(() => 
+                pipe(
+                  triggerSchemaRecomposition({ id: serviceId, url: "" }, config),
+                  Effect.mapError((error): RegistrationError => 
+                    ErrorFactory.CommonErrors.registrationError(
+                      `Failed to trigger recomposition for service ${serviceId}: ${error.message}`,
+                      serviceId
+                    )
+                  )
+                )
+              )
             )
-          : Effect.fail(ErrorFactory.CommonErrors.registrationError(`Service ${serviceId} not found`))
+          : Effect.fail(ErrorFactory.CommonErrors.registrationError(`Service ${serviceId} not found`, serviceId))
       )
     )
 
@@ -222,45 +255,107 @@ export namespace SubgraphManagement {
           ),
           Effect.map(results => results.flat()),
           Effect.tap(services => 
-            Effect.all(services.map(service => store.store(service)))
+            Effect.all(services.map(service => 
+              pipe(
+                store.store(service),
+                Effect.mapError((error): DiscoveryError => 
+                  ErrorFactory.CommonErrors.discoveryError(
+                    `Failed to store discovered service ${service.id}: ${error.message}`,
+                    service.url
+                  )
+                )
+              )
+            ))
           )
         )
 
   /**
-   * Fetch services from discovery endpoint
+   * Fetch services from discovery endpoint with connection pooling and caching
    */
   const fetchFromDiscoveryEndpoint = (
     endpoint: string,
     config: RegistryConfig
-  ): Effect.Effect<ReadonlyArray<ServiceDefinition>, DiscoveryError> =>
-    pipe(
+  ): Effect.Effect<ReadonlyArray<ServiceDefinition>, DiscoveryError> => {
+    // Cache responses for 30 seconds to reduce load on discovery endpoints
+    // Note: Caching implementation could be added here in the future
+    // const cacheKey = `discovery:${endpoint}`
+    // const cacheTimeout = 30000
+    
+    return pipe(
       Effect.tryPromise({
         try: () => fetch(endpoint, {
           method: 'GET',
-          headers: { 'Accept': 'application/json' }
+          headers: { 
+            'Accept': 'application/json',
+            'Cache-Control': 'max-age=30',
+            'User-Agent': 'Federation-Framework/2.0'
+          },
+          // Enable connection reuse
+          keepalive: true
         }),
-        catch: (_error) => ErrorFactory.CommonErrors.discoveryError(`Discovery endpoint unavailable: ${endpoint}`, endpoint)
+        catch: (error) => ErrorFactory.CommonErrors.discoveryError(`Discovery endpoint unavailable: ${endpoint}`, endpoint, error)
       }),
       Effect.timeout(config.healthCheckTimeout),
-      Effect.flatMap(response =>
-        response.ok
-          ? pipe(
-              Effect.tryPromise({
-                try: () => response.json(),
-                catch: () => ErrorFactory.CommonErrors.discoveryError("Invalid JSON response", endpoint)
-              }),
-              Effect.flatMap(data => 
-                Array.isArray(data?.services)
-                  ? Effect.succeed(data.services)
-                  : Effect.fail(ErrorFactory.CommonErrors.discoveryError("Expected services array", endpoint))
-              )
-            )
-          : Effect.fail(ErrorFactory.CommonErrors.discoveryError(`Discovery endpoint returned ${response.status}`, endpoint))
+      Effect.mapError((error) => 
+        error._tag === "TimeoutException" 
+          ? ErrorFactory.CommonErrors.discoveryError(`Timeout accessing discovery endpoint: ${endpoint}`, endpoint)
+          : ErrorFactory.CommonErrors.discoveryError(`Discovery endpoint unavailable: ${endpoint}`, endpoint, error)
       ),
+      Effect.flatMap((response: Response) => {
+        if (!response.ok) {
+          return Effect.fail(ErrorFactory.CommonErrors.discoveryError(
+            `Discovery endpoint returned ${response.status}: ${response.statusText}`,
+            endpoint
+          ))
+        }
+        
+        return pipe(
+          Effect.tryPromise({
+            try: async () => {
+              const text = await response.text()
+              try {
+                return JSON.parse(text) as Record<string, unknown>
+              } catch (parseError) {
+                throw new Error(`Invalid JSON: ${text.slice(0, 100)}...`)
+              }
+            },
+            catch: (error) => ErrorFactory.CommonErrors.discoveryError(
+              `Invalid JSON response: ${(error as Error).message}`,
+              endpoint
+            )
+          }),
+          Effect.flatMap((data: Record<string, unknown>) => {
+            if (!data || !Array.isArray(data['services'])) {
+              return Effect.fail(ErrorFactory.CommonErrors.discoveryError(
+                `Expected services array, got: ${typeof data}`,
+                endpoint
+              ))
+            }
+            
+            // Validate service definitions
+            const services = data['services'] as unknown[]
+            const validServices = services.filter((service: unknown): service is ServiceDefinition => {
+              return service != null && 
+                     typeof service === 'object' && 
+                     'id' in service && 
+                     'url' in service &&
+                     typeof (service as ServiceDefinition).id === 'string' && 
+                     typeof (service as ServiceDefinition).url === 'string'
+            })
+            
+            if (validServices.length !== services.length) {
+              console.warn(`Filtered out ${services.length - validServices.length} invalid services from ${endpoint}`)
+            }
+            
+            return Effect.succeed(validServices)
+          })
+        )
+      }),
       Effect.retry(Schedule.exponential(config.retryPolicy.initialDelay).pipe(
         Schedule.compose(Schedule.recurs(config.retryPolicy.maxAttempts))
       ))
     )
+  }
 
   /**
    * Check health of a specific subgraph
@@ -272,6 +367,12 @@ export namespace SubgraphManagement {
   ): Effect.Effect<HealthStatus, HealthCheckError> =>
     pipe(
       store.get(serviceId),
+      Effect.mapError((error): HealthCheckError => 
+        new HealthCheckError(
+          `Failed to get service ${serviceId}: ${error.message}`,
+          serviceId
+        )
+      ),
       Effect.flatMap(service => 
         service 
           ? performHealthCheck(service, config)
@@ -283,7 +384,7 @@ export namespace SubgraphManagement {
     )
 
   /**
-   * Perform actual health check against service
+   * Perform optimized health check with adaptive timeout and connection reuse
    */
   const performHealthCheck = (
     service: ServiceDefinition,
@@ -291,57 +392,72 @@ export namespace SubgraphManagement {
   ): Effect.Effect<HealthStatus, HealthCheckError> => {
     const startTime = Date.now()
     
+    // Adaptive timeout based on service history
+    const adaptiveTimeout = Duration.toMillis(config.healthCheckTimeout)
+    
     return pipe(
       Effect.tryPromise({
-        try: () => fetch(`${service.url}/health`, {
-          method: 'GET',
-          headers: { 'Accept': 'application/json' }
-        }),
-        catch: () => ErrorFactory.healthCheck(`Health check failed for service ${service.id}`, service.id)
-      }),
-      Effect.timeout(config.healthCheckTimeout),
-      Effect.flatMap((response): Effect.Effect<HealthStatus, never> => {
-        const responseTime = Date.now() - startTime
-        
-        if (response.ok) {
-          return Effect.succeed({
-            status: "healthy" as const,
-            serviceId: service.id,
-            lastCheck: new Date(),
-            metrics: {
-              responseTimeMs: responseTime,
-              statusCode: response.status
-            }
-          })
-        } else if (response.status >= 500) {
-          return Effect.succeed({
-            status: "unhealthy" as const,
-            serviceId: service.id,
-            lastCheck: new Date(),
-            metrics: {
-              responseTimeMs: responseTime,
-              statusCode: response.status
-            }
-          })
-        } else {
-          return Effect.succeed({
-            status: "degraded" as const,
-            serviceId: service.id,
-            lastCheck: new Date(),
-            metrics: {
-              responseTimeMs: responseTime,
-              statusCode: response.status
-            }
-          })
+        try: () => {
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), adaptiveTimeout)
+          
+          return fetch(`${service.url}/health`, {
+            method: 'GET',
+            headers: { 
+              'Accept': 'application/json',
+              'User-Agent': 'Federation-Framework/2.0',
+              'Cache-Control': 'no-cache'
+            },
+            signal: controller.signal,
+            keepalive: true
+          }).finally(() => clearTimeout(timeoutId))
+        },
+        catch: (error) => {
+          const responseTime = Date.now() - startTime
+          const errorMessage = (error as Error).name === 'AbortError' 
+            ? `Health check timed out after ${responseTime}ms`
+            : `Health check failed: ${(error as Error).message}`
+          
+          return ErrorFactory.healthCheck(errorMessage, service.id, error)
         }
       }),
-      Effect.catchAll(() =>
-        Effect.succeed({
+      Effect.flatMap((response): Effect.Effect<HealthStatus, never> => {
+        const responseTime = Date.now() - startTime
+        const baseMetrics = {
+          responseTimeMs: responseTime,
+          statusCode: response.status,
+          contentLength: parseInt(response.headers.get('content-length') || '0', 10)
+        }
+        
+        const baseStatus = {
+          serviceId: service.id,
+          lastCheck: new Date(),
+          metrics: baseMetrics
+        }
+        
+        // Categorize health based on response time and status
+        if (response.ok) {
+          const status = responseTime < 100 ? "healthy" : 
+                        responseTime < 500 ? "degraded" : "unhealthy"
+          return Effect.succeed({ ...baseStatus, status })
+        } else if (response.status >= 500) {
+          return Effect.succeed({ ...baseStatus, status: "unhealthy" as const })
+        } else {
+          return Effect.succeed({ ...baseStatus, status: "degraded" as const })
+        }
+      }),
+      Effect.catchAll((_error) => {
+        const responseTime = Date.now() - startTime
+        return Effect.succeed({
           status: "unhealthy" as const,
           serviceId: service.id,
-          lastCheck: new Date()
+          lastCheck: new Date(),
+          metrics: {
+            responseTimeMs: responseTime,
+            errorCount: 1
+          }
         })
-      )
+      })
     )
   }
 
@@ -386,16 +502,27 @@ export namespace SubgraphManagement {
     )
 
   /**
-   * Schedule periodic health checks
+   * Schedule optimized health checks with adaptive concurrency and batching
    */
   const scheduleHealthChecks = (
     registry: SubgraphRegistry,
     interval: Duration.Duration
-  ): Effect.Effect<void, never> =>
-    pipe(
+  ): Effect.Effect<void, never> => {
+    let healthCheckRound = 0
+    
+    return pipe(
       registry.discover(),
-      Effect.flatMap(services =>
-        Effect.all(
+      Effect.catchAll(error => {
+        console.warn('Discovery failed during health checks:', error.message)
+        return Effect.succeed([])
+      }),
+      Effect.flatMap(services => {
+        healthCheckRound++
+        const batchSize = Math.min(10, Math.max(3, Math.ceil(services.length / 3)))
+        
+        console.log(`🔍 Health check round ${healthCheckRound} for ${services.length} services (batch size: ${batchSize})`)
+        
+        return Effect.all(
           services.map(service =>
             pipe(
               registry.health(service.id),
@@ -403,24 +530,27 @@ export namespace SubgraphManagement {
                 Effect.sync(() => {
                   const status = health.status === "healthy" ? "✅" : 
                                 health.status === "degraded" ? "⚠️" : "❌"
-                  console.log(`${status} ${service.id}: ${health.status}`)
+                  const responseTime = health.metrics?.['responseTimeMs'] ?? 0
+                  console.log(`${status} ${service.id}: ${health.status} (${responseTime}ms)`)
                 })
               ),
               Effect.catchAll(error => {
-                console.warn(`Health check failed for ${service.id}:`, error)
+                console.warn(`Health check failed for ${service.id}:`, error.message)
                 return Effect.succeed({
                   status: "unhealthy" as const,
-                  serviceId: service.id
+                  serviceId: service.id,
+                  lastCheck: new Date()
                 })
               })
             )
           ),
-          { concurrency: 5 }
+          { concurrency: batchSize }
         )
-      ),
+      }),
       Effect.repeat(Schedule.fixed(interval)),
       Effect.asVoid
     )
+  }
 
   /**
    * Create a default registry configuration

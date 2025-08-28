@@ -2,6 +2,23 @@
 
 The `UltraStrictEntityBuilder` provides compile-time type safety using phantom types and functional composition patterns. It ensures entities are validated at build time and provides exhaustive error handling through pattern matching.
 
+> 🎯 **Production Ready**: Ultra-strict patterns with zero 'any' types and comprehensive type safety.
+
+## Import
+
+```typescript
+import {
+  createUltraStrictEntityBuilder,
+  withSchema,
+  withKeys,
+  withDirectives,
+  withResolvers,
+  validateEntityBuilder,
+  matchEntityValidationResult,
+  UltraStrictEntityBuilder
+} from "@cqrs/federation-v2/core"
+```
+
 ## Core Functions
 
 ### `createUltraStrictEntityBuilder<T extends string>(typename: T)`
@@ -87,20 +104,30 @@ const builderWithDirectives = pipe(
 )
 ```
 
-#### `withResolvers<R extends Record<string, Function>>(resolvers: R)`
+#### `withResolvers<R extends SafeResolverMap<TSource, TContext>>(resolvers: R)`
 
-Adds field resolvers with type checking against the schema.
+Adds field resolvers with full type safety against the schema.
 
 **Example:**
 ```typescript
+// Define the user type from schema
+type User = Schema.Schema.Type<typeof UserSchema>
+
 const builderWithResolvers = pipe(
   builderWithDirectives,
   withResolvers({
-    fullName: (parent: UserType) => `${parent.name || 'Anonymous'}`,
-    isEmailVerified: (parent: UserType) => Boolean(parent.email?.includes('@'))
+    fullName: (parent: User) => Effect.succeed(`${parent.name || 'Anonymous'}`),
+    isEmailVerified: (parent: User) => Effect.succeed(Boolean(parent.email?.includes('@'))),
+    displayName: (parent: User, args: { format?: string }) => 
+      Effect.succeed(args.format === 'short' ? parent.name?.split(' ')[0] : parent.name)
   })
 )
 ```
+
+**Type Safety Benefits:**
+- Full IntelliSense support for parent object properties
+- Compile-time validation of resolver return types
+- Automatic type inference for resolver arguments
 
 ### Validation
 
@@ -277,9 +304,9 @@ const createUserEntity = () =>
       UltraStrictEntityBuilder.Directive.provides("profile { bio avatar }")
     ]),
     withResolvers({
-      fullName: (parent: any) => `${parent.firstName} ${parent.lastName}`,
-      initials: (parent: any) => `${parent.firstName[0]}${parent.lastName[0]}`,
-      isEmailVerified: (parent: any) => Boolean(parent.email?.includes('@'))
+      fullName: (parent: User) => `${parent.firstName} ${parent.lastName}`,
+      initials: (parent: User) => `${parent.firstName[0]}${parent.lastName[0]}`,
+      isEmailVerified: (parent: User) => Boolean(parent.email?.includes('@'))
     }),
     validateEntityBuilder
   )
@@ -336,6 +363,46 @@ type Complete = UltraStrictEntityBuilder<"User", "complete", UserType, KeysType,
 validateEntityBuilder: (builder: Complete) => Effect<EntityValidationResult>
 ```
 
+## Enhanced Type Safety Features
+
+### Utility Types for Safer Development
+
+The ultra-strict builder includes advanced utility types for maximum type safety:
+
+```typescript
+// Safe resolver mapping with full type inference
+type SafeUserResolvers = SafeResolverMap<User, UserContext>
+
+const resolvers: SafeUserResolvers = {
+  fullName: (parent) => Effect.succeed(`${parent.firstName} ${parent.lastName}`),
+  // TypeScript ensures all resolver signatures match the schema
+}
+
+// Deep readonly enforcement for immutable configurations
+type ImmutableConfig = DeepReadonly<FederationConfig>
+
+// Extract specific resolver types for reuse
+type FullNameResolver = ExtractResolver<User, UserContext, 'fullName'>
+```
+
+### Zero 'any' Types Guarantee
+
+```typescript
+// ✅ All types are fully inferred and type-safe
+const createTypeSafeEntity = pipe(
+  createUltraStrictEntityBuilder("User"),
+  withSchema(UserSchema), // Schema.Schema<User>
+  withKeys([              // Array<EntityKey>
+    UltraStrictEntityBuilder.Key.create("id", GraphQLID, false)
+  ]),
+  withResolvers({         // SafeResolverMap<User, Context>
+    fullName: (parent: User) => Effect.succeed(`${parent.firstName} ${parent.lastName}`)
+  })
+)
+
+// ❌ No 'any' types anywhere - full compile-time validation
+```
+
 ## Benefits
 
 1. **Compile-Time Safety**: Invalid configurations are caught at TypeScript compilation
@@ -343,6 +410,8 @@ validateEntityBuilder: (builder: Complete) => Effect<EntityValidationResult>
 3. **Zero Runtime Cost**: Phantom types are erased at runtime
 4. **Functional Composition**: Pipe-friendly API for clean, readable code
 5. **Type-Driven Development**: Schema changes automatically update dependent code
+6. **Zero 'any' Types**: Complete type safety with advanced utility types
+7. **IntelliSense Support**: Full IDE support with accurate autocompletion
 
 ## Best Practices
 

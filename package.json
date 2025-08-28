@@ -97,13 +97,12 @@
   },
   "dependencies": {
     "@effect/schema": "^0.75.5",
-    "@graphql-tools/schema": "^10.0.25",
-    "@graphql-tools/utils": "^10.0.25",
     "dataloader": "^2.2.3",
     "effect": "^3.17.9",
     "graphql": "^16.11.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.17.0",
     "@types/node": "^24.3.0",
     "@typescript-eslint/eslint-plugin": "^8.17.0",
     "@typescript-eslint/parser": "^8.17.0",

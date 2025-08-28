@@ -46,7 +46,7 @@ export const MinimalLayerLive = FederationConfigLive
 /**
  * Helper function to create environment-specific layers
  */
-export const createEnvironmentLayer = (environment?: string): Layer.Layer<FederationLogger | FederationConfigService, never, never> => {
+export const createEnvironmentLayer = (environment?: string) => {
   switch (environment) {
     case 'production':
       return ProductionLayerLive

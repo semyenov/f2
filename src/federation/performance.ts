@@ -1,6 +1,6 @@
 import { Effect, pipe, Duration } from "effect"
 import DataLoader from "dataloader"
-import type { GraphQLSchema, ExecutionResult } from "graphql"
+import type { ExecutionResult } from "graphql"
 import { GraphQLError } from "graphql"
 import type {
   FederatedSchema,
@@ -135,7 +135,7 @@ interface PerformanceMetrics {
 /**
  * Optimized executor interface
  */
-interface OptimizedExecutor {
+export interface OptimizedExecutor {
   readonly execute: (
     query: string,
     variables: Record<string, any>,
@@ -147,15 +147,16 @@ interface OptimizedExecutor {
  * Execution context
  */
 interface ExecutionContext {
-  readonly [key: string]: any
+  readonly [key: string]: unknown
   readonly dataLoader?: FederatedDataLoader
 }
 
 /**
  * Execution error
  */
-interface ExecutionError {
+interface ExecutionError extends Error {
   readonly _tag: "ExecutionError"
+  readonly name: "ExecutionError"
   readonly message: string
   readonly cause?: unknown
 }
@@ -182,16 +183,28 @@ export namespace PerformanceOptimizations {
       Effect.succeed(config),
       Effect.flatMap(config => 
         validatePerformanceConfig(config).pipe(
-          Effect.mapError(error => 
-            ErrorFactory.composition(`Performance configuration invalid: ${error.message}`, error, "performance")
+          Effect.mapError((error): CompositionError => 
+            ErrorFactory.composition(`Performance configuration invalid: ${error.message}`, schema.metadata.subgraphCount.toString(), "performance")
           )
         )
       ),
       Effect.flatMap(validConfig =>
         Effect.all({
-          queryPlanCache: createQueryPlanCache(validConfig.queryPlanCache),
-          dataLoader: createFederatedDataLoader(validConfig.dataLoaderConfig),
-          metricsCollector: createMetricsCollector(validConfig.metricsCollection)
+          queryPlanCache: createQueryPlanCache(validConfig.queryPlanCache).pipe(
+            Effect.mapError((error): CompositionError => 
+              ErrorFactory.composition(`Query plan cache creation failed: ${error.message}`, undefined, "cache")
+            )
+          ),
+          dataLoader: createFederatedDataLoader(validConfig.dataLoaderConfig).pipe(
+            Effect.mapError((error): CompositionError => 
+              ErrorFactory.composition(`DataLoader creation failed: ${error.message}`, undefined, "dataloader")
+            )
+          ),
+          metricsCollector: createMetricsCollector(validConfig.metricsCollection).pipe(
+            Effect.mapError((error): CompositionError => 
+              ErrorFactory.composition(`Metrics collector creation failed: ${error.message}`, undefined, "metrics")
+            )
+          )
         })
       ),
       Effect.map(({ queryPlanCache, dataLoader, metricsCollector }) => ({
@@ -238,11 +251,15 @@ export namespace PerformanceOptimizations {
 
       set: (queryHash: string, plan: QueryPlan) =>
         Effect.sync(() => {
-          // LRU eviction if cache is full
+          // LRU eviction if cache is full - evict multiple entries for better amortization
           if (cache.size >= config.maxSize) {
-            const oldestEntry = findOldestEntry(cache)
-            if (oldestEntry) {
-              cache.delete(oldestEntry)
+            const entriesToEvict = Math.max(1, Math.floor(config.maxSize * 0.1)) // Evict 10%
+            const sortedEntries = Array.from(cache.entries())
+              .sort(([, a], [, b]) => a.lastAccessed - b.lastAccessed)
+              .slice(0, entriesToEvict)
+            
+            for (const [key] of sortedEntries) {
+              cache.delete(key)
               stats.evictions++
             }
           }
@@ -284,7 +301,7 @@ export namespace PerformanceOptimizations {
   export const createFederatedDataLoader = (
     config: DataLoaderConfig
   ): Effect.Effect<FederatedDataLoader, ValidationError> => {
-    const loaders = new Map<string, DataLoader<any, any>>()
+    const loaders = new Map<string, DataLoader<unknown, unknown>>()
     const stats = new Map<string, {
       readonly loadCount: number
       readonly batchCount: number
@@ -316,17 +333,29 @@ export namespace PerformanceOptimizations {
             const subgraphStats = stats.get(subgraphId)!
 
             const instrumentedBatchFn = async (keys: readonly K[]): Promise<readonly V[]> => {
-              subgraphStats.batchCount++
-              subgraphStats.totalBatchSize += keys.length
+              const currentStats = stats.get(subgraphId)!
+              stats.set(subgraphId, {
+                ...currentStats,
+                batchCount: currentStats.batchCount + 1,
+                totalBatchSize: currentStats.totalBatchSize + keys.length
+              })
               
-              console.log(`🔄 DataLoader batch for ${subgraphId}: ${keys.length} keys`)
+              if (config.enableBatchLogging !== false) {
+                console.log(`🔄 DataLoader batch for ${subgraphId}: ${keys.length} keys`)
+              }
               
+              const startTime = Date.now()
               try {
                 const results = await batchLoadFn(keys)
-                console.log(`✅ DataLoader batch completed for ${subgraphId}`)
+                const duration = Date.now() - startTime
+                
+                if (config.enableBatchLogging !== false) {
+                  console.log(`✅ DataLoader batch completed for ${subgraphId} in ${duration}ms`)
+                }
                 return results
               } catch (error) {
-                console.error(`❌ DataLoader batch failed for ${subgraphId}:`, error)
+                const duration = Date.now() - startTime
+                console.error(`❌ DataLoader batch failed for ${subgraphId} after ${duration}ms:`, error)
                 throw error
               }
             }
@@ -337,26 +366,32 @@ export namespace PerformanceOptimizations {
               ...(config.batchWindowMs && { 
                 batchScheduleFn: (callback: () => void) => setTimeout(callback, config.batchWindowMs) 
               }),
-              cacheMap: {
-                get: (key: string) => {
-                  const result = new Map().get(key)
-                  if (result !== undefined) {
-                    subgraphStats.cacheHits++
-                  } else {
-                    subgraphStats.cacheMisses++
-                  }
-                  return result
-                },
-                set: (key: string, value: Promise<unknown>) => new Map().set(key, value),
-                delete: (key: string) => new Map().delete(key),
-                clear: () => new Map().clear()
-              }
+              cacheMap: (() => {
+                const map = new Map()
+                return {
+                  get: (key: string) => {
+                    const result = map.get(key)
+                    if (result !== undefined) {
+                      stats.set(subgraphId, { ...subgraphStats, cacheHits: subgraphStats.cacheHits + 1 })
+                    } else {
+                      stats.set(subgraphId, { ...subgraphStats, cacheMisses: subgraphStats.cacheMisses + 1 })
+                    }
+                    return result
+                  },
+                  set: (key: string, value: Promise<unknown>) => {
+                    map.set(key, value)
+                    return map
+                  },
+                  delete: (key: string) => map.delete(key),
+                  clear: () => map.clear()
+                }
+              })()
             }
 
             loaders.set(loaderKey, new DataLoader(instrumentedBatchFn, dataLoaderOptions))
           }
 
-          return loaders.get(loaderKey)!
+          return loaders.get(loaderKey) as DataLoader<K, V>
         }),
 
       clearAll: () =>
@@ -389,8 +424,8 @@ export namespace PerformanceOptimizations {
   export const createMetricsCollector = (
     config: MetricsConfig
   ): Effect.Effect<MetricsCollector, ValidationError> => {
-    const executionMetrics: readonly ExecutionMetrics[] = []
-    const cacheOperations: readonly CacheOperation[] = []
+    const executionMetrics: ExecutionMetrics[] = []
+    const cacheOperations: CacheOperation[] = []
 
     return Effect.succeed({
       recordExecution: (metrics: ExecutionMetrics) =>
@@ -402,9 +437,11 @@ export namespace PerformanceOptimizations {
               timestamp: Date.now()
             } as ExecutionMetrics & { readonly timestamp: number })
             
-            // Keep only recent metrics (last 1000 executions)
-            if (executionMetrics.length > 1000) {
-              executionMetrics.shift()
+            // Keep only recent metrics with efficient cleanup
+            const maxMetrics = config.maxExecutionMetrics ?? 1000
+            if (executionMetrics.length > maxMetrics) {
+              // Remove oldest 20% for better performance than shifting one by one
+              executionMetrics.splice(0, Math.floor(maxMetrics * 0.2))
             }
           }
         }),
@@ -417,9 +454,11 @@ export namespace PerformanceOptimizations {
               timestamp: Date.now()
             } as CacheOperation & { readonly timestamp: number })
             
-            // Keep only recent operations (last 1000)
-            if (cacheOperations.length > 1000) {
-              cacheOperations.shift()
+            // Keep only recent operations with efficient cleanup
+            const maxOperations = config.maxCacheOperations ?? 1000
+            if (cacheOperations.length > maxOperations) {
+              // Remove oldest 20% for better performance than shifting one by one
+              cacheOperations.splice(0, Math.floor(maxOperations * 0.2))
             }
           }
         }),
@@ -514,18 +553,19 @@ export namespace PerformanceOptimizations {
   }
 
   /**
-   * Create query hash for caching
+   * Create query hash for caching using FNV-1a algorithm for better distribution
    */
   const createQueryHash = (query: string, variables: Record<string, any>): string => {
-    // Simple hash function - in production, use a proper hash function
-    const content = query + JSON.stringify(variables)
-    let hash = 0
+    // Use FNV-1a hash for better distribution and fewer collisions
+    const content = query + JSON.stringify(variables, Object.keys(variables).sort())
+    let hash = 2166136261 // FNV offset basis
+    
     for (let i = 0; i < content.length; i++) {
-      const char = content.charCodeAt(i)
-      hash = ((hash << 5) - hash) + char
-      hash = hash & hash // Convert to 32-bit integer
+      hash ^= content.charCodeAt(i)
+      hash = Math.imul(hash, 16777619) // FNV prime
     }
-    return hash.toString(16)
+    
+    return (hash >>> 0).toString(16) // Convert to unsigned 32-bit
   }
 
   /**
@@ -552,11 +592,15 @@ export namespace PerformanceOptimizations {
             estimatedCost: 10
           }
         },
-        catch: (error) => ({
-          _tag: "ExecutionError" as const,
-          message: "Failed to create query plan",
-          cause: error
-        })
+        catch: (error) => {
+          const execError: ExecutionError = {
+            _tag: "ExecutionError",
+            name: "ExecutionError",
+            message: "Failed to create query plan",
+            cause: error
+          }
+          return execError
+        }
       })
     )
 
@@ -585,30 +629,18 @@ export namespace PerformanceOptimizations {
             }
           }
         },
-        catch: (error) => ({
-          _tag: "ExecutionError" as const,
-          message: "Query execution failed",
-          cause: error
-        })
+        catch: (error) => {
+          const execError: ExecutionError = {
+            _tag: "ExecutionError",
+            name: "ExecutionError", 
+            message: "Query execution failed",
+            cause: error
+          }
+          return execError
+        }
       })
     )
 
-  /**
-   * Find oldest entry in cache for LRU eviction
-   */
-  const findOldestEntry = (cache: ReadonlyMap<string, CachedQueryPlan>): string | null => {
-    let oldestKey: string | null = null
-    let oldestTime = Infinity
-
-    for (const [key, value] of cache.entries()) {
-      if (value.lastAccessed < oldestTime) {
-        oldestTime = value.lastAccessed
-        oldestKey = key
-      }
-    }
-
-    return oldestKey
-  }
 
   /**
    * Validate performance configuration
