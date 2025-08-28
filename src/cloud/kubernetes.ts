@@ -387,7 +387,7 @@ export class KubernetesOperator {
       Effect.flatMap(() => this.createNamespace()),
       // Setup RBAC if needed
       Effect.flatMap(() =>
-        this.config.security?.rbac ? this.setupRBAC() : Effect.succeed(undefined)
+        this.config.security?.rbac === true ? this.setupRBAC() : Effect.succeed(undefined)
       )
     )
   }
@@ -647,7 +647,7 @@ export class KubernetesOperator {
           kind: 'Deployment',
           metadata: {
             name: subgraph.name,
-            ...(this.config.namespace && { namespace: this.config.namespace }),
+            ...(this.config.namespace !== undefined && { namespace: this.config.namespace }),
             labels: {
               app: subgraph.name,
               component: 'subgraph',

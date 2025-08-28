@@ -1,7 +1,7 @@
 import * as Schema from 'effect/Schema'
 import * as Effect from 'effect/Effect'
 import { describe, expect, it } from 'vitest'
-import { ASTConversion, createConversionContext } from '../../../src/schema/ast-conversion.js'
+import { ASTConversion, createConversionContext } from '../../../src/schema/ast.js'
 import { GraphQLString, GraphQLFloat, GraphQLBoolean, isOutputType } from 'graphql'
 
 describe('AST Conversion Simple Tests', () => {

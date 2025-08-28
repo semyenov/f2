@@ -5,4 +5,4 @@
  * AST conversion utilities and Effect Schema integration.
  */
 
-export * from './ast-conversion.js'
+export * from './ast.js'

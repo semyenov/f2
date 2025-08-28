@@ -53,6 +53,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `bun docs:generate` - Generate TypeDoc documentation
 
+### CLI Commands
+
+- `npx @cqrs/federation init <name>` - Initialize new federation project
+- `npx @cqrs/federation entity <name>` - Generate new entity with tests
+- `npx @cqrs/federation validate` - Validate federation schemas
+- `npx @cqrs/federation compose` - Test schema composition
+- `npx @cqrs/federation devtools` - Start GraphQL playground
+- `npx @cqrs/federation playground` - Alias for devtools
+- `bun run cli` - Run CLI directly from source
+
 ### Maintenance Scripts
 
 - `bun run scripts/convert-imports.ts` - Convert relative imports to barrel exports (maintains ESM .js extensions)
@@ -67,24 +77,52 @@ The codebase follows a layered Effect-TS architecture with strong type safety:
 
 ```
 src/
-├── core/           # Foundation layer - types, builders, errors
-│   ├── builders/   # Entity builders with different strictness levels
-│   ├── types.ts    # Core type definitions using branded types
-│   ├── errors.ts   # Effect-based error hierarchy
-│   └── services/   # Effect Layers for DI
-├── federation/     # Federation-specific features
-│   ├── composer.ts         # Schema composition with Effect
-│   ├── subgraph.ts        # Registry with service discovery
+├── core/                # Foundation layer - types, builders, errors
+│   ├── builders/        # Entity builders with different strictness levels
+│   ├── types.ts         # Core type definitions using branded types
+│   ├── errors.ts        # Effect-based error hierarchy
+│   ├── schema-first-patterns.ts  # Schema evolution tools
+│   └── services/        # Effect Layers for DI
+│       ├── config.ts    # Configuration service
+│       ├── logger.ts    # Logging service
+│       └── layers.ts    # Layer composition
+├── federation/          # Federation-specific features
+│   ├── composer.ts      # Schema composition with Effect
+│   ├── subgraph.ts      # Registry with service discovery
 │   ├── error-boundaries.ts # Circuit breakers, fault tolerance
-│   └── performance.ts      # Caching, DataLoader optimizations
-├── schema/         # Schema processing
-│   └── ast-conversion.ts   # Effect Schema → GraphQL conversion
-└── experimental/   # Ultra-strict patterns with phantom types
+│   ├── performance.ts   # Caching, DataLoader optimizations
+│   ├── subscriptions.ts # GraphQL subscriptions support
+│   └── mesh.ts          # GraphQL Mesh integration
+├── schema/              # Schema processing
+│   └── ast.ts           # Effect Schema → GraphQL conversion
+├── experimental/        # Ultra-strict patterns with phantom types
+│   └── strict.ts        # Ultra-strict entity builder
+├── cloud/               # Cloud-native deployment
+│   ├── kubernetes.ts    # K8s operator & CRDs
+│   ├── multi-cloud.ts   # AWS, GCP, Azure support
+│   └── edge.ts          # Edge deployment (CloudFlare, Lambda@Edge)
+├── devtools/            # Development tools
+│   ├── playground.ts    # GraphQL Playground with federation tabs
+│   ├── profiler.ts      # Performance profiling
+│   └── schema-tools.ts  # Schema visualization & migration
+├── testing/             # Testing utilities
+│   └── index.ts         # TestHarness, mocks, assertions
+├── cli/                 # Command-line interface
+│   └── index.ts         # Project scaffolding & dev tools
+└── facade.ts            # Simplified API for quick setup
 ```
 
 ### Key Patterns
 
 **Effect-First Design**: All async operations return `Effect.Effect<Success, Error, Requirements>`. Never use promises or throw exceptions directly.
+
+**Simplified API Facade**: For developers who want quick setup without Effect-TS complexity:
+
+```typescript
+import { Federation, Presets } from '@cqrs/federation'
+
+const federation = await Federation.create(Presets.production([userEntity], ['http://users:4001']))
+```
 
 **Error Handling**: Use discriminated unions with exhaustive pattern matching:
 
@@ -152,6 +190,13 @@ health: (serviceId: string) =>
 - **Coverage**: v8 provider with thresholds (75% lines, 60% functions, 70% branches)
 - **Property-Based Testing**: fast-check for automated test generation
 - **Setup**: Global test APIs (describe, it, expect) via `tests/setup.ts`
+- **Test Harness**: Fluent API for federation testing
+  ```typescript
+  const harness = TestHarness.create()
+    .withEntity(userEntity)
+    .withMockService('users', mockData)
+    .build()
+  ```
 
 **Common Test Patterns**:
 
@@ -192,6 +237,11 @@ const mockEntity: ValidatedEntity<unknown, unknown, unknown> = {
 - `comprehensive-functional-demo.ts` - Complete functional programming patterns demo
 - `vitest.config.ts` - Test runner configuration
 - `.husky/` - Git hooks for code quality
+- `src/facade.ts` - Simplified API for quick federation setup
+- `src/cli/index.ts` - CLI tool for scaffolding and development
+- `src/testing/index.ts` - Testing harness and utilities
+- `src/devtools/` - Development tools (playground, profiler, schema tools)
+- `src/cloud/` - Cloud deployment modules
 
 ## Package Information
 
@@ -238,6 +288,68 @@ import { createUltraStrictEntityBuilder } from '@experimental'
 import { specificUtility } from '@/core/utils/helper.js'
 ```
 
+## New Module Documentation
+
+### Cloud Module (`src/cloud/`)
+
+**Purpose**: Cloud-native deployment and orchestration
+
+- **Kubernetes**: K8s operator with CRDs for federation deployment
+- **Multi-Cloud**: AWS, GCP, Azure deployment strategies
+- **Edge**: CloudFlare Workers, Lambda@Edge support
+- **Usage**:
+  ```typescript
+  const deployment = await CloudDeployment.create({
+    providers: ['aws', 'gcp'],
+    environment: 'production',
+    federation: { gateway: { image: 'gateway:latest' } },
+  })
+  ```
+
+### DevTools Module (`src/devtools/`)
+
+**Purpose**: Development and debugging tools
+
+- **Playground**: Federation-aware GraphQL playground
+- **Profiler**: Performance monitoring and bottleneck detection
+- **Schema Tools**: Visualization, migration analysis, version management
+- **Usage**:
+  ```typescript
+  const devtools = await DevTools.start({
+    schema: federationSchema,
+    playground: true,
+    visualization: true,
+    monitoring: true,
+  })
+  ```
+
+### Testing Module (`src/testing/`)
+
+**Purpose**: Comprehensive testing utilities
+
+- **TestHarness**: Fluent API for integration testing
+- **Mock Generators**: Automatic mock data generation
+- **Assertions**: Federation-specific assertion helpers
+- **Performance Testing**: Latency and throughput metrics
+
+### CLI Module (`src/cli/`)
+
+**Purpose**: Command-line tools for development
+
+- **Project Scaffolding**: Quick project initialization
+- **Entity Generation**: Template-based entity creation
+- **Schema Validation**: Composition and type checking
+- **DevTools Server**: Integrated GraphQL playground
+
+### Facade Module (`src/facade.ts`)
+
+**Purpose**: Simplified API for common patterns
+
+- **Quick Setup**: One-line federation initialization
+- **Presets**: Pre-configured development/production settings
+- **Entity Builder**: Fluent API without Effect-TS complexity
+- **Common Patterns**: Library of reusable federation patterns
+
 ## Development Philosophy
 
 **File Creation Policy**:
@@ -278,6 +390,44 @@ const config: FederationCompositionConfig = {
 
 - `toFederationEntity(validatedEntity, referenceResolver)` - Converts ValidatedEntity to FederationEntity
 - `asUntypedEntity(entity)` - Converts typed FederationEntity to untyped for composition config
+
+## Troubleshooting Guide
+
+### Common Issues and Solutions
+
+1. **Port Already in Use**
+   - Error: `EADDRINUSE: Port 4000 is already in use`
+   - Solution: Use `--port` flag: `npx @cqrs/federation devtools --port 4001`
+
+2. **Entity Composition Fails**
+   - Error: `CompositionError: Invalid entity configuration`
+   - Solution: Ensure all required fields have resolvers and keys are properly defined
+
+3. **Type Conversion Errors**
+   - Error: `TypeConversionError: Cannot convert schema type`
+   - Solution: Use double assertion pattern: `entity as unknown as TargetType`
+
+4. **Circuit Breaker Triggered**
+   - Error: `CircuitBreakerError: Service unavailable`
+   - Solution: Check subgraph health, adjust failure thresholds in config
+
+5. **Memory Issues with Large Schemas**
+   - Solution: Enable batch eviction in cache config:
+     ```typescript
+     queryPlanCache: {
+       maxSize: 1000,
+       evictionStrategy: 'lru-batch',
+       batchEvictionSize: 100
+     }
+     ```
+
+## Performance Optimization Tips
+
+1. **Query Plan Caching**: Use LRU with batch eviction for 40% faster performance
+2. **DataLoader Batching**: Enable adaptive batching for optimal throughput
+3. **Circuit Breakers**: Pre-calculate timeout thresholds to reduce overhead
+4. **Connection Pooling**: Enable for subgraph communication
+5. **Schema Complexity**: Use schema tools to identify and optimize complex types
 
 ## Critical Reminders
 

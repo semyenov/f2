@@ -367,7 +367,7 @@ export class MultiCloudFederation {
    * Handle failover for unhealthy region
    */
   private handleFailover(failedRegion: CloudRegion): void {
-    if (!this.config.routing?.failover) return
+    if (this.config.routing?.failover !== true) return
 
     // Find alternative healthy regions
     const alternatives = this.regions.filter(

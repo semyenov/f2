@@ -1,23 +1,23 @@
 /**
  * # Simplified Federation API Facade
- * 
+ *
  * This module provides a simplified, user-friendly API for common federation patterns.
  * It abstracts away the complexity of Effect-TS for developers who want quick setup
  * while still maintaining all the type safety and performance benefits.
- * 
+ *
  * @example Quick federation setup
  * ```typescript
  * import { Federation } from '@cqrs/federation'
- * 
+ *
  * const federation = await Federation.create({
  *   entities: [userEntity, productEntity],
  *   services: ['http://users:4001', 'http://products:4002']
  * })
- * 
+ *
  * // Start the federation
  * await federation.start()
  * ```
- * 
+ *
  * @module Facade
  * @since 2.1.0
  */
@@ -50,12 +50,12 @@ export interface SimplifiedFederationConfig {
    * Federation entities to compose
    */
   entities: Array<FederationEntity<unknown, unknown, unknown, unknown, Record<string, unknown>>>
-  
+
   /**
    * Service URLs or definitions
    */
   services: Array<string | ServiceDefinition>
-  
+
   /**
    * Optional performance configuration
    */
@@ -64,16 +64,16 @@ export interface SimplifiedFederationConfig {
     batchSize?: number
     enableMetrics?: boolean
   }
-  
+
   /**
-   * Optional resilience configuration  
+   * Optional resilience configuration
    */
   resilience?: {
     enableCircuitBreakers?: boolean
     timeoutSeconds?: number
     maxFailures?: number
   }
-  
+
   /**
    * Optional development configuration
    */
@@ -92,32 +92,32 @@ export interface SimplifiedEntityConfig<A = unknown, I = A, R = never> {
    * Entity type name
    */
   typename: string
-  
+
   /**
    * Entity schema
    */
   schema: Schema.Schema<A, I, R>
-  
+
   /**
    * Key fields for federation
    */
   keys: string[]
-  
+
   /**
    * Fields to mark as shareable
    */
   shareableFields?: string[]
-  
+
   /**
    * Fields to mark as inaccessible
    */
   inaccessibleFields?: string[]
-  
+
   /**
    * Field tags for organization
    */
   fieldTags?: Record<string, string[]>
-  
+
   /**
    * Reference resolver function
    */
@@ -132,25 +132,19 @@ export class Federation {
     private readonly schema: GraphQLSchema,
     _config: SimplifiedFederationConfig
   ) {}
-  
+
   /**
    * Create a new federation instance with simplified configuration
    */
   static async create(config: SimplifiedFederationConfig): Promise<Federation> {
-    const layer = Layer.mergeAll(
-      FederationComposerLive,
-      FederationLoggerLive,
-      FederationConfigLive
-    )
+    const layer = Layer.mergeAll(FederationComposerLive, FederationLoggerLive, FederationConfigLive)
 
     const effect = Effect.gen(function* () {
       // Convert string services to ServiceDefinition
       const services: ServiceDefinition[] = config.services.map((service, index) =>
-        typeof service === 'string'
-          ? { id: `service-${index}`, url: service }
-          : service
+        typeof service === 'string' ? { id: `service-${index}`, url: service } : service
       )
-      
+
       // Create full configuration
       const fullConfig: FederationCompositionConfig = {
         entities: config.entities,
@@ -189,77 +183,101 @@ export class Federation {
           },
         },
       }
-      
+
       // Compose schema using FederationComposer
       const composer = yield* FederationComposer
       const result = yield* composer.compose(fullConfig)
-      
+
       return new Federation(result.schema, config)
     })
 
     const providedEffect = Effect.provide(effect, layer)
     return Effect.runPromise(providedEffect)
   }
-  
+
   /**
    * Create a simplified entity builder
    */
-    static createEntity<A = unknown, I = A, R = never>(config: SimplifiedEntityConfig<A, I, R>): Effect.Effect<FederationEntity<A, I, R, I, R>, ValidationError | EntityResolutionError, never> {
+  static createEntity<A = unknown, I = A, R = never>(
+    config: SimplifiedEntityConfig<A, I, R>
+  ): Effect.Effect<
+    FederationEntity<A, R, I, I, R>,
+    ValidationError | EntityResolutionError,
+    never
+  > {
     return pipe(
       Effect.gen(function* () {
-        let builder = new FederationEntityBuilder(config.typename, config.schema as Schema.Schema<Record<string, unknown>, Record<string, unknown>, never>, config.keys)
-        
+        let builder = new FederationEntityBuilder(
+          config.typename,
+          config.schema as Schema.Schema<Record<string, unknown>, Record<string, unknown>, never>,
+          config.keys
+        )
+
         // Add shareable fields
         if (config.shareableFields) {
           for (const field of config.shareableFields) {
             builder = builder.withShareableField(field)
           }
         }
-        
+
         // Add inaccessible fields
         if (config.inaccessibleFields) {
           for (const field of config.inaccessibleFields) {
             builder = builder.withInaccessibleField(field)
           }
         }
-        
+
         // Add tagged fields
         if (config.fieldTags) {
           for (const [field, tags] of Object.entries(config.fieldTags)) {
             builder = builder.withTaggedField(field, tags)
           }
         }
-        
+
         // Add reference resolver
         if (config.resolveReference) {
-          builder = builder.withReferenceResolver(config.resolveReference as any)
+          builder = builder.withReferenceResolver(
+            config.resolveReference as EntityReferenceResolver<
+              Record<string, unknown>,
+              Record<string, unknown>,
+              Record<string, unknown>
+            >
+          )
         }
-        
+
         return yield* builder.build()
       }),
-      Effect.map(validatedEntity => 
-        toFederationEntity(
-          validatedEntity as unknown as typeof validatedEntity & { key: string[] },
-          config.resolveReference as unknown as EntityReferenceResolver<Record<string, unknown>, Record<string, unknown>, R>
-        ) as unknown as FederationEntity<A, I, R, I, R>
+      Effect.map(
+        validatedEntity =>
+          toFederationEntity(
+            validatedEntity as unknown as typeof validatedEntity & { key: string[] },
+            config.resolveReference as unknown as EntityReferenceResolver<
+              Record<string, unknown>,
+              Record<string, unknown>,
+              R
+            >
+          ) as unknown as FederationEntity<A, R, I, I, R>
       )
     )
   }
-  
+
   /**
    * Quick entity builder with fluent API
    */
-  static entity<A = unknown, I = A, R = never>(typename: string, schema: Schema.Schema<A, I, R>): QuickEntityBuilder<A, I, R> {
+  static entity<A = unknown, I = A, R = never>(
+    typename: string,
+    schema: Schema.Schema<A, I, R>
+  ): QuickEntityBuilder<A, I, R> {
     return new QuickEntityBuilder<A, I, R>(typename, schema)
   }
-  
+
   /**
    * Get the composed GraphQL schema
    */
   getSchema(): GraphQLSchema {
     return this.schema
   }
-  
+
   /**
    * Start the federation (for integration with GraphQL servers)
    */
@@ -267,7 +285,7 @@ export class Federation {
     // This would integrate with Apollo Server or other GraphQL servers
     console.log('🚀 Federation started successfully')
   }
-  
+
   /**
    * Stop the federation
    */
@@ -281,7 +299,7 @@ export class Federation {
  */
 export class QuickEntityBuilder<A = unknown, I = A, R = never> {
   private readonly config: SimplifiedEntityConfig<A, I, R>
-  
+
   constructor(typename: string, schema: Schema.Schema<A, I, R>) {
     this.config = {
       typename,
@@ -289,7 +307,7 @@ export class QuickEntityBuilder<A = unknown, I = A, R = never> {
       keys: [],
     }
   }
-  
+
   /**
    * Set key fields
    */
@@ -297,7 +315,7 @@ export class QuickEntityBuilder<A = unknown, I = A, R = never> {
     this.config.keys = fields
     return this
   }
-  
+
   /**
    * Mark fields as shareable
    */
@@ -305,7 +323,7 @@ export class QuickEntityBuilder<A = unknown, I = A, R = never> {
     this.config.shareableFields = [...(this.config.shareableFields ?? []), ...fields]
     return this
   }
-  
+
   /**
    * Mark fields as inaccessible
    */
@@ -313,7 +331,7 @@ export class QuickEntityBuilder<A = unknown, I = A, R = never> {
     this.config.inaccessibleFields = [...(this.config.inaccessibleFields ?? []), ...fields]
     return this
   }
-  
+
   /**
    * Tag a field
    */
@@ -324,19 +342,25 @@ export class QuickEntityBuilder<A = unknown, I = A, R = never> {
     }
     return this
   }
-  
+
   /**
    * Set reference resolver
    */
-  resolver(fn: (reference: unknown) => Effect.Effect<A | null, EntityResolutionError, never>): this {
+  resolver(
+    fn: (reference: unknown) => Effect.Effect<A | null, EntityResolutionError, never>
+  ): this {
     this.config.resolveReference = fn
     return this
   }
-  
+
   /**
    * Build the entity
    */
-  build(): Effect.Effect<FederationEntity<A, I, R, I, R>, ValidationError | EntityResolutionError, never> {
+  build(): Effect.Effect<
+    FederationEntity<A, R, I, I, R>,
+    ValidationError | EntityResolutionError,
+    never
+  > {
     return Federation.createEntity(this.config)
   }
 }
@@ -348,7 +372,10 @@ export const Presets = {
   /**
    * Development configuration with hot reload and debug logging
    */
-  development: (entities: FederationEntity<unknown, unknown, unknown, unknown, Record<string, unknown>  >[], services: string[]): SimplifiedFederationConfig => ({
+  development: (
+    entities: FederationEntity<unknown, unknown, unknown, unknown, Record<string, unknown>>[],
+    services: string[]
+  ): SimplifiedFederationConfig => ({
     entities,
     services,
     performance: {
@@ -367,11 +394,14 @@ export const Presets = {
       enableDevTools: true,
     },
   }),
-  
+
   /**
    * Production configuration with optimizations
    */
-  production: (entities: FederationEntity<unknown, unknown, unknown, unknown, Record<string, unknown>>[], services: string[]): SimplifiedFederationConfig => ({
+  production: (
+    entities: FederationEntity<unknown, unknown, unknown, unknown, Record<string, unknown>>[],
+    services: string[]
+  ): SimplifiedFederationConfig => ({
     entities,
     services,
     performance: {
@@ -390,15 +420,15 @@ export const Presets = {
       enableDevTools: false,
     },
   }),
-  
+
   /**
    * Testing configuration with minimal setup
    */
-  testing: (entities: FederationEntity<unknown, unknown, unknown, unknown>[]): SimplifiedFederationConfig => ({
+  testing: (
+    entities: FederationEntity<unknown, unknown, unknown, unknown>[]
+  ): SimplifiedFederationConfig => ({
     entities,
-    services: [
-      { id: 'mock-service', url: 'http://localhost:4001' },
-    ],
+    services: [{ id: 'mock-service', url: 'http://localhost:4001' }],
     performance: {
       cacheSize: 10,
       batchSize: 5,
@@ -429,7 +459,7 @@ export const Patterns = {
     schema: Schema.Schema<A, unknown, never>,
     keyField: string = 'id'
   ) => Federation.entity(typename, schema).keys(keyField).build(),
-  
+
   /**
    * Create a shareable entity
    */
@@ -438,11 +468,12 @@ export const Patterns = {
     schema: Schema.Schema<A, unknown, never>,
     keyField: string,
     shareableFields: string[]
-  ) => Federation.entity(typename, schema)
-    .keys(keyField)
-    .shareable(...shareableFields)
-    .build(),
-  
+  ) =>
+    Federation.entity(typename, schema)
+      .keys(keyField)
+      .shareable(...shareableFields)
+      .build(),
+
   /**
    * Create an entity with PII field protection
    */
@@ -451,10 +482,11 @@ export const Patterns = {
     schema: Schema.Schema<A, unknown, A>,
     keyField: string,
     piiFields: string[]
-  ) => Federation.entity(typename, schema as Schema.Schema<A, unknown, never>)
-    .keys(keyField)
-    .inaccessible(...piiFields)
-    .build(),
+  ) =>
+    Federation.entity(typename, schema as Schema.Schema<A, unknown, never>)
+      .keys(keyField)
+      .inaccessible(...piiFields)
+      .build(),
 }
 
 // Re-export key types and utilities for convenience

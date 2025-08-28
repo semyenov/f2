@@ -27,9 +27,9 @@ const IMPORT_REPLACEMENTS: ImportReplacement[] = [
     description: 'Convert ../core/types.js → @core'
   },
   {
-    pattern: /from\s+['"]\.\.\/experimental\/ultra-strict-entity-builder\.js['"]/g,
+    pattern: /from\s+['"]\.\.\/experimental\/strict\.js['"]/g,
     replacement: "from '@experimental'",
-    description: 'Convert ../experimental/ultra-strict-entity-builder.js → @experimental'
+    description: 'Convert ../experimental/strict.js → @experimental'
   },
   {
     pattern: /from\s+['"]\.\.\/experimental\/index\.js['"]/g,

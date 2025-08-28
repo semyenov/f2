@@ -30,7 +30,7 @@ import type {
 } from './src/core/types.js'
 import type {
   ValidatedEntity
-} from './src/experimental/ultra-strict-entity-builder.js'
+} from './src/experimental/strict.js'
 import {
   createEntityBuilder,
   DevelopmentLayerLive,

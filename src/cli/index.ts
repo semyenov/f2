@@ -253,19 +253,18 @@ async function startDevTools(options: Partial<CLIConfig>) {
             import { createGraphiQLFetcher } from '@graphiql/toolkit';
             import { explorerPlugin } from '@graphiql/plugin-explorer';
             import 'graphiql/setup-workers/esm.sh';
+            
+            const fetcher = createGraphiQLFetcher({ url: 'http://localhost:${port}/graphql' });
+            const explorer = explorerPlugin();
+            
+            const graphiql = React.createElement(GraphiQL, {
+              fetcher: fetcher,
+              defaultQuery: '# Welcome to GraphQL Playground\\n# Try running an introspection query:\\n\\n{\\n  __schema {\\n    types {\\n      name\\n    }\\n  }\\n}',
+              plugins: [explorer],
+            })
 
-            const fetcher = createGraphiQLFetcher({
-              url: 'http://localhost:${port}/graphql',
-            });
-            const root = ReactDOM.createRoot(
-              document.getElementById('graphiql')
-            );
-            root.render(
-              React.createElement(GraphiQL, {
-                fetcher: fetcher,
-                defaultQuery: '# Welcome to GraphQL Playground\\n# Try running an introspection query:\\n\\n{\\n  __schema {\\n    types {\\n      name\\n    }\\n  }\\n}',
-              }),
-            );
+            const root = ReactDOM.createRoot(document.getElementById('graphiql'));
+            root.render(graphiql);
           </script>
         </body>
         </html>

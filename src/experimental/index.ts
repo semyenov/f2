@@ -248,4 +248,4 @@ export {
   withKeys,
   withResolvers,
   withSchema,
-} from './ultra-strict-entity-builder.js'
+} from './strict.js'

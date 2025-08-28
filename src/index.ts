@@ -84,19 +84,19 @@
  */
 
 // Core exports
-export * from './core/index.js'
+export * from './core'
 
 // Federation exports
-export * from './federation/index.js'
+export * from './federation'
 
 // Schema exports
-export * from './schema/ast-conversion.js'
+export * from './schema'
 
 // Experimental features (advanced patterns)
-export * as Experimental from './experimental/index.js'
+export * as Experimental from './experimental'
 
 // Simplified API facade for easier usage
-export { Federation, Presets, Patterns, QuickEntityBuilder } from './facade.js'
+export { Federation, Presets, Patterns, QuickEntityBuilder } from './facade'
 export type { SimplifiedFederationConfig, SimplifiedEntityConfig } from './facade.js'
 
 /**

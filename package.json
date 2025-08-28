@@ -91,8 +91,8 @@
       "require": "./dist/index.cjs"
     },
     "./schema": {
-      "types": "./dist/schema/ast-conversion.d.ts",
-      "import": "./dist/schema/ast-conversion.js",
+      "types": "./dist/schema/ast.d.ts",
+      "import": "./dist/schema/ast.js",
       "require": "./dist/index.cjs"
     },
     "./experimental": {
@@ -210,7 +210,7 @@
     "pattern-matching",
     "phantom-types",
     "schema-first",
-    "ast-conversion",
+    "ast",
     "circuit-breaker",
     "error-boundaries",
     "performance-optimization",

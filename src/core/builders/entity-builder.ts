@@ -6,7 +6,7 @@ import type {
   EntityKey,
   EntityMetadata,
   ValidatedEntity,
-} from '../../experimental/ultra-strict-entity-builder.js'
+} from '../../experimental/strict.js'
 import { ErrorFactory } from '../errors.js'
 import type {
   EntityReferenceResolver,
@@ -633,7 +633,10 @@ export class FederationEntityBuilder<
       Effect.flatMap(keys =>
         Effect.all(
           keys.map(key =>
-            typeof reference === 'object' && reference !== null && key in reference && reference[key as keyof TReference] !== undefined
+            typeof reference === 'object' &&
+            reference !== null &&
+            key in reference &&
+            reference[key as keyof TReference] !== undefined
               ? Effect.succeed(reference[key as keyof TReference])
               : Effect.fail(
                   ErrorFactory.validation(`Missing key field: ${String(key)}`, String(key))
