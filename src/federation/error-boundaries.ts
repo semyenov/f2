@@ -33,7 +33,7 @@
  *
  * @example Basic error boundary setup
  * ```typescript
- * import { FederationErrorBoundaries } from '@cqrs/federation-v2'
+ * import { FederationErrorBoundaries } from '@cqrs/federation'
  * import { Duration } from 'effect'
  *
  * const errorBoundary = yield* FederationErrorBoundaries.create({

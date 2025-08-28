@@ -1,5 +1,5 @@
 {
-  "name": "@cqrs/federation-v2",
+  "name": "@cqrs/federation",
   "version": "2.0.0",
   "description": "Apollo Federation framework with Effect-TS, ultra-strict TypeScript patterns, schema-first development, and enterprise-grade resilience features",
   "type": "module",
@@ -89,7 +89,7 @@
     "demo:advanced": "bun src/examples/advanced-federation.ts",
     "demo:ultra-strict": "bun src/examples/ultra-strict-entity-example.ts",
     "demo:schema-first": "bun src/examples/schema-first-workflow-example.ts",
-    "demo:complete": "bun src/examples/complete-federation-v2-demo.ts",
+    "demo:complete": "bun src/examples/complete-federation-demo.ts",
     "dev": "bun --watch src/examples/basic-entity.ts",
     "validate": "bun run typecheck && bun run lint && bun run test:complete",
     "prepare": "husky",

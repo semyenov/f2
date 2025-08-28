@@ -37,7 +37,7 @@
   },
   "navigationLinks": {
     "🏠 Homepage": "https://github.com/cqrs/federation",
-    "📦 NPM": "https://www.npmjs.com/package/@cqrs/federation-v2",
+    "📦 NPM": "https://www.npmjs.com/package/@cqrs/federation",
     "🐙 GitHub": "https://github.com/cqrs/federation",
     "📖 Apollo Federation": "https://www.apollographql.com/docs/federation/",
     "⚡ Effect-TS": "https://effect.website/"
@@ -75,7 +75,6 @@
   "searchInDocuments": true,
   "searchCategoryBoosts": {
     "Entity Builders": 1.3,
-    "Federation": 1.4,
     "Schema Processing": 1.2,
     "Performance Optimizations": 1.1,
     "Performance & Caching": 1.1,
@@ -169,7 +168,7 @@
     "*",
     "Other"
   ],
-  "hostedBaseUrl": "https://federation-v2-docs.netlify.app/",
+  "hostedBaseUrl": "https://federation-docs.netlify.app/",
   "customCss": "./docs-assets/custom.css",
   "customFooterHtml": "<p>Built with ❤️ using <a href='https://effect.website/'>Effect-TS</a> and <a href='https://www.apollographql.com/docs/federation/'>Apollo Federation 2.x</a></p>",
   "includeHierarchySummary": true,

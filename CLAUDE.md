@@ -35,7 +35,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `bun run lint:fix` - ESLint with automatic fixing
 - `bun run format` - Prettier code formatting
 - `bun run format:check` - Check formatting without changes
-- `bun run validate` - Full validation: typecheck + test:complete
+- `bun run validate` - Full validation: typecheck + lint + test:complete
+
+### Documentation
+
+- `bun docs:generate` - Generate TypeDoc documentation
 
 ## Architecture Overview
 
@@ -132,6 +136,14 @@ health: (serviceId: string) =>
 - `tests/utils/test-layers.ts` - Test mock services and helpers
 - `comprehensive-functional-demo.ts` - Complete functional programming patterns demo
 
+## Package Information
+
+- **Package Name**: `@cqrs/federation` (was `@cqrs/federation-v2`)
+- **Build System**: tsdown for production builds
+- **Test Runner**: Bun test
+- **TypeScript**: Strict mode with all safety flags enabled
+- **Module System**: ESM with `.js` extensions required
+
 ## Critical Reminders
 
 - Always use Effect.fail for errors in mocks, never throw
@@ -143,3 +155,5 @@ health: (serviceId: string) =>
 - Schema-first patterns may use `any` for generic entity types due to interface constraints
 - Entity builder's `build()` method returns `Effect.Effect<ValidatedEntity<>, ValidationError>`
 - For compatibility, entity builder adds a `key` property alongside `keys`
+- FederationComposer is the main composer class
+- Use `downlevelIteration: true` in tsconfig for generator functions

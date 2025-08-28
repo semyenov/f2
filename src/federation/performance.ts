@@ -79,7 +79,7 @@ export interface CachedQueryPlan {
  *
  * @example Basic cache usage
  * ```typescript
- * import { PerformanceOptimizations } from '@cqrs/federation-v2'
+ * import { PerformanceOptimizations } from '@cqrs/federation'
  *
  * const cache = yield* PerformanceOptimizations.createQueryPlanCache({
  *   maxSize: 1000,
@@ -134,7 +134,7 @@ export interface CacheStats {
  *
  * @example Basic DataLoader usage
  * ```typescript
- * import { PerformanceOptimizations } from '@cqrs/federation-v2'
+ * import { PerformanceOptimizations } from '@cqrs/federation'
  *
  * const dataLoader = yield* PerformanceOptimizations.createFederatedDataLoader({
  *   maxBatchSize: 100,
@@ -293,7 +293,7 @@ export interface ExecutionError extends Error {
  *
  * ### Basic Performance Setup
  * ```typescript
- * import { PerformanceOptimizations } from '@cqrs/federation-v2'
+ * import { PerformanceOptimizations } from '@cqrs/federation'
  * import { Effect } from 'effect'
  *
  * // Create optimized executor

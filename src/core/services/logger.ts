@@ -28,7 +28,7 @@
  *
  * @example Basic logging usage
  * ```typescript
- * import { FederationLogger } from '@cqrs/federation-v2'
+ * import { FederationLogger } from '@cqrs/federation'
  * import { Effect } from 'effect'
  *
  * const program = Effect.gen(function* () {
@@ -56,7 +56,7 @@
  *
  * @example Distributed tracing with spans
  * ```typescript
- * import { withSpan, info, error } from '@cqrs/federation-v2'
+ * import { withSpan, info, error } from '@cqrs/federation'
  *
  * const processOrder = (orderId: string) =>
  *   withSpan('process-order', Effect.gen(function* () {
@@ -146,7 +146,7 @@
  *   developmentLogger,
  *   productionLogger,
  *   testLogger
- * } from '@cqrs/federation-v2'
+ * } from '@cqrs/federation'
  *
  * // Development: Pretty-printed logs with DEBUG level
  * const devApp = app.pipe(Effect.provide(developmentLogger))

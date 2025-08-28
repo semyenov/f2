@@ -36,7 +36,7 @@
  *
  * @example Basic layer usage
  * ```typescript
- * import { DevelopmentLayerLive } from '@cqrs/federation-v2'
+ * import { DevelopmentLayerLive } from '@cqrs/federation'
  * import { Effect } from 'effect'
  *
  * const myProgram = Effect.gen(function* () {
@@ -56,7 +56,7 @@
  *
  * @example Environment-specific deployment
  * ```typescript
- * import { createEnvironmentLayer } from '@cqrs/federation-v2'
+ * import { createEnvironmentLayer } from '@cqrs/federation'
  *
  * const environment = process.env.NODE_ENV || 'development'
  * const layer = createEnvironmentLayer(environment)
@@ -79,7 +79,7 @@
  * @example Custom layer composition
  * ```typescript
  * import { Layer } from 'effect'
- * import { CoreServicesLive, FederationLoggerLive } from '@cqrs/federation-v2'
+ * import { CoreServicesLive, FederationLoggerLive } from '@cqrs/federation'
  *
  * // Create custom layer with additional services
  * const CustomDatabaseService = Layer.succeed(DatabaseService, {
@@ -98,7 +98,7 @@
  *
  * @example Layer testing and mocking
  * ```typescript
- * import { TestLayerLive } from '@cqrs/federation-v2'
+ * import { TestLayerLive } from '@cqrs/federation'
  * import { Layer } from 'effect'
  *
  * // Mock external services for testing

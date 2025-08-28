@@ -112,7 +112,7 @@ interface ServiceStore {
  *
  * @example Basic registry setup
  * ```typescript
- * import { SubgraphManagement } from '@cqrs/federation-v2'
+ * import { SubgraphManagement } from '@cqrs/federation'
  * import { Duration } from 'effect'
  *
  * const registry = yield* SubgraphManagement.createRegistry({

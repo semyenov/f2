@@ -18,7 +18,7 @@
  * ## 📚 Quick Start
  *
  * ```typescript
- * import { createEntityBuilder, FederationEntityBuilder } from '@cqrs/federation-v2'
+ * import { createEntityBuilder, FederationEntityBuilder } from '@cqrs/federation'
  * import { Effect } from 'effect'
  * import * as Schema from '@effect/schema/Schema'
  *
@@ -104,7 +104,7 @@ export const VERSION = '2.0.0' as const
  * Framework metadata
  */
 export const FRAMEWORK_INFO = {
-  name: '@cqrs/federation-v2',
+  name: '@cqrs/federation',
   version: VERSION,
   description: 'Apollo Federation 2.x with Effect-TS',
   features: [

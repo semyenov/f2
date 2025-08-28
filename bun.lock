@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "@cqrs/federation-v2",
+      "name": "@cqrs/federation",
       "dependencies": {
         "@effect/schema": "^0.75.5",
         "dataloader": "^2.2.3",

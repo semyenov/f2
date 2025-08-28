@@ -4,16 +4,16 @@
 
 <div align="center">
 
-[![npm version](https://badge.fury.io/js/@cqrs%2Ffederation-v2.svg)](https://badge.fury.io/js/@cqrs%2Ffederation-v2)
+[![npm version](https://badge.fury.io/js/@cqrs%2Ffederation.svg)](https://badge.fury.io/js/@cqrs%2Ffederation)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9+-blue.svg)](https://www.typescriptlang.org/)
 [![Effect-TS](https://img.shields.io/badge/Effect--TS-3.17+-purple.svg)](https://effect.website)
 [![Apollo Federation](https://img.shields.io/badge/Apollo%20Federation-2.x-orange.svg)](https://www.apollographql.com/docs/federation/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](https://github.com/cqrs/federation)
 [![Coverage](https://img.shields.io/badge/Coverage-95%25-green.svg)](https://github.com/cqrs/federation)
-[![Documentation](https://img.shields.io/badge/Docs-TypeDoc-informational.svg)](https://federation-v2-docs.netlify.app/)
+[![Documentation](https://img.shields.io/badge/Docs-TypeDoc-informational.svg)](https://federation-docs.netlify.app/)
 
-[**📚 Documentation**](https://federation-v2-docs.netlify.app/) • [**🚀 Quick Start**](#-quick-start) • [**💡 Examples**](./src/examples/) • [**❓ FAQ**](#-faq)
+[**📚 Documentation**](https://federation-docs.netlify.app/) • [**🚀 Quick Start**](#-quick-start) • [**❓ FAQ**](#-faq)
 
 </div>
 
@@ -44,11 +44,11 @@
 ## 📦 **Installation**
 
 ```bash
-npm install @cqrs/federation-v2
+npm install @cqrs/federation
 # or
-yarn add @cqrs/federation-v2
+yarn add @cqrs/federation
 # or
-bun add @cqrs/federation-v2
+bun add @cqrs/federation
 ```
 
 ## 🎯 **Quick Start**
@@ -58,7 +58,7 @@ bun add @cqrs/federation-v2
 ```typescript
 import * as Effect from 'effect/Effect'
 import * as Schema from '@effect/schema/Schema'
-import { FederationEntityBuilder, createEntityBuilder } from '@cqrs/federation-v2/core'
+import { FederationEntityBuilder, createEntityBuilder } from '@cqrs/federation/core'
 
 // Define your domain schema
 const UserSchema = Schema.Struct({
@@ -92,7 +92,7 @@ const userEntity = yield * createUserEntity()
 ### Ultra-Strict Entity with Experimental Features
 
 ```typescript
-import * as Experimental from '@cqrs/federation-v2/experimental'
+import * as Experimental from '@cqrs/federation/experimental'
 import { pipe } from 'effect/Function'
 
 // Ultra-strict entity with phantom types (experimental)
@@ -126,7 +126,7 @@ console.log(
 ### Modern Entity Creation (Recommended)
 
 ```typescript
-import { FederationEntityBuilder } from '@cqrs/federation-v2/core'
+import { FederationEntityBuilder } from '@cqrs/federation/core'
 import * as Schema from '@effect/schema/Schema'
 import * as Effect from 'effect/Effect'
 
@@ -161,7 +161,7 @@ import {
   FederationErrorBoundaries,
   PerformanceOptimizations,
   ProductionLayerLive,
-} from '@cqrs/federation-v2'
+} from '@cqrs/federation'
 import * as Effect from 'effect/Effect'
 import * as Duration from 'effect/Duration'
 
@@ -229,8 +229,8 @@ const federatedSchema = await Effect.runPromise(
 ### Schema-First Development with AST Conversion
 
 ```typescript
-import { ASTConversion, createConversionContext } from '@cqrs/federation-v2/schema'
-import { createSchemaFirstService, createSchemaFirstWorkflow } from '@cqrs/federation-v2/core'
+import { ASTConversion, createConversionContext } from '@cqrs/federation/schema'
+import { createSchemaFirstService, createSchemaFirstWorkflow } from '@cqrs/federation/core'
 import * as Schema from '@effect/schema/Schema'
 
 // Define your domain schema with Effect Schema
@@ -436,12 +436,12 @@ The framework follows a modular architecture with clear separation of concerns:
 
 ### 📖 API Documentation
 
-- **[Complete API Reference](https://federation-v2-docs.netlify.app/)** - Comprehensive TypeDoc documentation
-- **[Core API](https://federation-v2-docs.netlify.app/modules.html#Core)** - Entity builders and core types
-- **[Federation Components](https://federation-v2-docs.netlify.app/modules.html#Federation)** - Subgraph management and composition
-- **[Performance Optimizations](https://federation-v2-docs.netlify.app/modules.html#Performance)** - Caching and optimization strategies
-- **[Error Handling](https://federation-v2-docs.netlify.app/modules.html#Error)** - Circuit breakers and resilience patterns
-- **[Experimental Features](https://federation-v2-docs.netlify.app/modules.html#Experimental)** - Ultra-strict patterns and phantom types
+- **[Complete API Reference](https://federation-docs.netlify.app/)** - Comprehensive TypeDoc documentation
+- **[Core API](https://federation-docs.netlify.app/modules.html#Core)** - Entity builders and core types
+- **[Federation Components](https://federation-docs.netlify.app/modules.html#Federation)** - Subgraph management and composition
+- **[Performance Optimizations](https://federation-docs.netlify.app/modules.html#Performance)** - Caching and optimization strategies
+- **[Error Handling](https://federation-docs.netlify.app/modules.html#Error)** - Circuit breakers and resilience patterns
+- **[Experimental Features](https://federation-docs.netlify.app/modules.html#Experimental)** - Ultra-strict patterns and phantom types
 
 ### 🎯 Best Practices
 
@@ -594,7 +594,7 @@ const safeChanges = evolution.safeChanges
 const evolutionPlan = yield * SchemaEvolution.createEvolutionPlan(evolution)
 ```
 
-See the **[Schema Evolution Guide](https://federation-v2-docs.netlify.app/modules.html#SchemaEvolution)** for detailed examples.
+See the **[Schema Evolution Guide](https://federation-docs.netlify.app/modules.html#SchemaEvolution)** for detailed examples.
 
 </details>
 
@@ -610,7 +610,7 @@ We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md)
 
 ### 🆘 Support
 
-- **📖 Documentation**: [federation-v2-docs.netlify.app](https://federation-v2-docs.netlify.app/)
+- **📖 Documentation**: [federation-docs.netlify.app](https://federation-docs.netlify.app/)
 - **🐛 Issues**: [GitHub Issues](https://github.com/cqrs/federation/issues)
 - **💬 Discussions**: [GitHub Discussions](https://github.com/cqrs/federation/discussions)
 - **📧 Security**: [security@cqrs-federation.dev](mailto:security@cqrs-federation.dev)
@@ -636,7 +636,7 @@ MIT © [CQRS Federation Team](https://github.com/cqrs/federation)
 
 <div align="center">
 
-**[⭐ Star on GitHub](https://github.com/cqrs/federation)** • **[📚 Read the Docs](https://federation-v2-docs.netlify.app/)** • **[🚀 Get Started](#-quick-start)**
+**[⭐ Star on GitHub](https://github.com/cqrs/federation)** • **[📚 Read the Docs](https://federation-docs.netlify.app/)** • **[🚀 Get Started](#-quick-start)**
 
 _Built with Effect-TS for the next generation of GraphQL federation_
 

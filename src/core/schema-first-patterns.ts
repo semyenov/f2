@@ -37,7 +37,7 @@
  *
  * @example Basic schema-first workflow
  * ```typescript
- * import { SchemaFirstDevelopment } from '@cqrs/federation-v2'
+ * import { SchemaFirstDevelopment } from '@cqrs/federation'
  * import { readFileSync } from 'fs'
  *
  * const schemaSDL = readFileSync('./user-schema.graphql', 'utf-8')
@@ -235,7 +235,7 @@ export type SchemaLifecycleState = Data.TaggedEnum<{
   readonly Draft: { readonly schema: DocumentNode; readonly version: string }
   readonly Validated: {
     readonly schema: DocumentNode
-    readonly entities: readonly ValidatedEntity<any, any, any>[] // TODO: fix this
+    readonly entities: readonly ValidatedEntity<unknown, unknown, unknown>[]
     readonly version: string
   }
   readonly Composed: {
@@ -332,6 +332,10 @@ export interface SchemaFirstService {
     schema: DocumentNode
   ) => Effect.Effect<readonly string[], SchemaFirstError>
 
+  readonly generateEntityBuilders: (
+    schema: DocumentNode
+  ) => Effect.Effect<readonly ValidatedEntity<unknown, unknown, unknown>[], SchemaFirstError>
+
   readonly validateSchemaEvolution: (
     currentSchema: DocumentNode,
     proposedSchema: DocumentNode
@@ -390,6 +394,24 @@ export const createSchemaFirstService = (): SchemaFirstService => ({
           new SchemaFirstError({
             message: `Failed to extract entities: ${error}`,
             suggestion: 'Ensure entities have proper @key directives',
+          })
+        )
+      )
+    ),
+
+  generateEntityBuilders: (schema: DocumentNode) =>
+    pipe(
+      Effect.succeed(schema),
+      Effect.map(() => {
+        // Generate mock entity builders for testing
+        // Return empty array for now - proper implementation would analyze schema
+        return [] as readonly ValidatedEntity<unknown, unknown, unknown>[]
+      }),
+      Effect.catchAll(error =>
+        Effect.fail(
+          new SchemaFirstError({
+            message: `Failed to generate entity builders: ${error}`,
+            suggestion: 'Ensure schema is valid',
           })
         )
       )
@@ -516,9 +538,17 @@ const generateTypeScriptTypes = <A, I, R>(
   entities: readonly ValidatedEntity<A, I, R>[]
 ): Effect.Effect<string, never> =>
   Effect.succeed(
-    entities
-      .map(
-        entity => `
+    entities.length === 0
+      ? `// TypeScript type definitions for federated entities
+export interface BaseEntity {
+  readonly id: string
+}
+
+// Add your entity interfaces here
+`
+      : entities
+          .map(
+            entity => `
 export interface ${entity.typename} {
   ${entity.keys.map(key => `readonly ${key.field}: string`).join('\n  ')}
   // Additional fields from schema would be generated here
@@ -526,8 +556,8 @@ export interface ${entity.typename} {
 
 export type ${entity.typename}Input = Omit<${entity.typename}, 'id'>
 `
-      )
-      .join('\n')
+          )
+          .join('\n')
   )
 
 const generateGoTypes = <A, I, R>(

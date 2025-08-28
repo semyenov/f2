@@ -36,7 +36,7 @@ import { ErrorFactory } from '../errors.js'
  * ## Basic Usage
  *
  * ```typescript
- * import { createEntityBuilder } from '@cqrs/federation-v2'
+ * import { createEntityBuilder } from '@cqrs/federation'
  * import { Effect } from 'effect'
  * import * as Schema from '@effect/schema/Schema'
  *

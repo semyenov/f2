@@ -47,7 +47,7 @@
  *
  * @example Basic configuration usage
  * ```typescript
- * import { FederationConfigService } from '@cqrs/federation-v2'
+ * import { FederationConfigService } from '@cqrs/federation'
  * import { Effect } from 'effect'
  *
  * const program = Effect.gen(function* () {

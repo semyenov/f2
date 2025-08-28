@@ -30,7 +30,7 @@
  *
  * @example Basic federation composition
  * ```typescript
- * import { FederationComposer } from '@cqrs/federation-v2'
+ * import { FederationComposer } from '@cqrs/federation'
  * import { Effect } from 'effect'
  *
  * const composeSchema = Effect.gen(function* () {

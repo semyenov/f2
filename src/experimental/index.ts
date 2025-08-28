@@ -73,7 +73,7 @@
  *   validateEntityBuilder,
  *   matchEntityValidationResult,
  *   UltraStrictEntityBuilder
- * } from '@cqrs/federation-v2/experimental'
+ * } from '@cqrs/federation/experimental'
  *
  * const UserSchema = Schema.Struct({
  *   id: Schema.String,
