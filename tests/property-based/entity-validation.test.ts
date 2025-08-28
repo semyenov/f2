@@ -200,9 +200,9 @@ describe('Property-Based Entity Validation', () => {
 
             const result = await Effect.runPromise(
               Effect.gen(function* () {
-                const builder = createUltraStrictEntityBuilder(entityName, testSchema as Schema.Schema<unknown, unknown, never>)
+                const builder = createUltraStrictEntityBuilder(entityName, testSchema as Schema.Schema<unknown>)
                 const composed = withResolvers({
-                  displayName: (parent: unknown) => (parent as { id?: string }).id || 'Unknown'
+                  displayName: (parent: unknown) => ((parent as { id?: string }).id ?? 'Unknown')
                 })(
                   withDirectives(directives)(
                     withKeys(keys)(

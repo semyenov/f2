@@ -437,7 +437,7 @@ export const withDirectives =
  * ```
  */
 export const withResolvers =
-  <A, I = A, R = never>(resolvers?: Record<string, GraphQLFieldResolver<A, I, R>>) =>
+  <A = unknown, I = A, R = never>(resolvers?: Record<string, GraphQLFieldResolver<A, I, R>>) =>
   (
     builder: UltraStrictEntityBuilder<PhantomStates.HasDirectives, A, I, R>
   ): UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R> => {
