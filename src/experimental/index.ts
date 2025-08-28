@@ -1,6 +1,6 @@
 /**
  * Experimental Features Module
- * 
+ *
  * This module contains advanced patterns and experimental features
  * that showcase the framework's capabilities but are not part of the
  * core API surface. Use these patterns when you need advanced type
@@ -21,5 +21,9 @@ export {
   type EntityKey,
   type EntityDirective,
   type EntityMetadata,
-  type PhantomStates
-} from "./ultra-strict-entity-builder.js"
+  type PhantomStates,
+  SchemaValidationError,
+  KeyValidationError,
+  DirectiveValidationError,
+  EntityBuilderError,
+} from './ultra-strict-entity-builder.js'

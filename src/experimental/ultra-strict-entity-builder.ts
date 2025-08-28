@@ -102,12 +102,20 @@ export const EntityValidationResult = Data.taggedEnum<EntityValidationResult>()
 // Error Types
 // ============================================================================
 
+/**
+ * Schema validation error for ultra-strict entity builder
+ * @category Experimental
+ */
 export class SchemaValidationError extends Data.TaggedError('SchemaValidationError')<{
   readonly message: string
   readonly schemaPath: readonly string[]
   readonly suggestion?: string
 }> {}
 
+/**
+ * Key validation error for ultra-strict entity builder
+ * @category Experimental
+ */
 export class KeyValidationError extends Data.TaggedError('KeyValidationError')<{
   readonly message: string
   readonly keyField: string
@@ -115,6 +123,10 @@ export class KeyValidationError extends Data.TaggedError('KeyValidationError')<{
   readonly suggestion?: string
 }> {}
 
+/**
+ * Directive validation error for ultra-strict entity builder
+ * @category Experimental
+ */
 export class DirectiveValidationError extends Data.TaggedError('DirectiveValidationError')<{
   readonly message: string
   readonly directive: string
@@ -122,6 +134,10 @@ export class DirectiveValidationError extends Data.TaggedError('DirectiveValidat
   readonly suggestion?: string
 }> {}
 
+/**
+ * Entity builder error for ultra-strict entity builder
+ * @category Experimental
+ */
 export class EntityBuilderError extends Data.TaggedError('EntityBuilderError')<{
   readonly message: string
   readonly builderState: string
@@ -132,18 +148,30 @@ export class EntityBuilderError extends Data.TaggedError('EntityBuilderError')<{
 // Entity Types
 // ============================================================================
 
+/**
+ * Entity key definition for ultra-strict entity builder
+ * @category Experimental
+ */
 export interface EntityKey {
   readonly field: string
   readonly type: GraphQLOutputType
   readonly isComposite: boolean
 }
 
+/**
+ * Entity directive definition for ultra-strict entity builder
+ * @category Experimental
+ */
 export interface EntityDirective {
   readonly name: string
   readonly args: Record<string, unknown>
   readonly applicableFields?: readonly string[] | undefined
 }
 
+/**
+ * Entity metadata for ultra-strict entity builder
+ * @category Experimental
+ */
 export interface EntityMetadata {
   readonly typename: string
   readonly version: string
@@ -152,6 +180,10 @@ export interface EntityMetadata {
   readonly dependencies: readonly string[]
 }
 
+/**
+ * Validated entity for ultra-strict entity builder
+ * @category Experimental
+ */
 export interface ValidatedEntity {
   readonly typename: string
   readonly schema: Schema.Schema<unknown>

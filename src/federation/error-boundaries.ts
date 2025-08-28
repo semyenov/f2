@@ -16,8 +16,9 @@ import { ErrorFactory } from '../core/errors.js'
 
 /**
  * GraphQL resolver function type
+ * @category Error Handling
  */
-type GraphQLResolver = (
+export type GraphQLResolver = (
   parent: unknown,
   args: unknown,
   context: unknown,
@@ -42,12 +43,17 @@ export interface ErrorBoundary {
 
 /**
  * Subgraph execution results
+ * @category Error Handling
  */
-interface SubgraphResults {
+export interface SubgraphResults {
   readonly [subgraphId: string]: SubgraphResult
 }
 
-interface SubgraphResult {
+/**
+ * Single subgraph execution result
+ * @category Error Handling
+ */
+export interface SubgraphResult {
   readonly subgraphId: string
   readonly success: boolean
   readonly data?: unknown
@@ -56,16 +62,18 @@ interface SubgraphResult {
 
 /**
  * Processed results after partial failure handling
+ * @category Error Handling
  */
-interface ProcessedResults {
+export interface ProcessedResults {
   readonly data: unknown
   readonly errors: ReadonlyArray<unknown>
 }
 
 /**
  * Error context for transformation
+ * @category Error Handling
  */
-interface ErrorContext {
+export interface ErrorContext {
   readonly subgraphId: string
   readonly fieldPath: ReadonlyArray<string>
   readonly operationType: 'query' | 'mutation' | 'subscription'
@@ -74,8 +82,9 @@ interface ErrorContext {
 
 /**
  * Transformed error for client consumption
+ * @category Error Handling
  */
-interface TransformedError {
+export interface TransformedError {
   readonly message: string
   readonly code: string
   readonly path?: ReadonlyArray<string>

@@ -127,7 +127,7 @@ npm update @cqrs/federation-v2
 bun update @cqrs/federation-v2
 
 # Ensure peer dependencies are current
-npm install effect@^3.19.0 @effect/schema@^0.74.0
+npm install effect@^3.17.9 @effect/schema@^0.75.5
 ```
 
 ### Step 2: Replace Legacy Composers
@@ -135,7 +135,7 @@ npm install effect@^3.19.0 @effect/schema@^0.74.0
 Find and replace legacy composer patterns:
 
 **Search for:** `FederationComposer.create`
-**Replace with:** `createFederatedSchema`
+**Replace with:** `ModernFederationComposer.create`
 
 **Before:**
 
@@ -157,15 +157,23 @@ const setupFederation = Effect.gen(function* () {
   const userEntity = yield* createUserEntity()
   const productEntity = yield* createProductEntity()
 
-  return yield* createFederatedSchema({
-    entities: [userEntity, productEntity],
+  const registry = yield* SubgraphManagement.createRegistry({
     services: services,
-    errorBoundaries: errorConfig,
-    // New performance options
-    performance: {
-      queryPlanCache: { maxSize: 1000 },
-      dataLoaderConfig: { adaptiveBatching: true },
-    },
+    healthCheckInterval: Duration.seconds(30),
+  })
+
+  const errorBoundary = yield* FederationErrorBoundaries.createBoundary(errorConfig)
+
+  const performance = yield* PerformanceOptimizations.createOptimizedExecutor({
+    queryPlanCache: { maxSize: 1000 },
+    dataLoaderConfig: { adaptiveBatching: true },
+  })
+
+  return yield* ModernFederationComposer.create({
+    entities: [userEntity, productEntity],
+    registry,
+    errorBoundary,
+    performance,
   })
 }).pipe(Effect.provide(layers))
 ```

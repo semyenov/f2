@@ -15,15 +15,20 @@ import { ErrorFactory } from '../core/errors.js'
 
 /**
  * Query plan representation
+ * @category Performance Optimizations
  */
-interface QueryPlan {
+export interface QueryPlan {
   readonly id: string
   readonly steps: ReadonlyArray<QueryStep>
   readonly complexity: number
   readonly estimatedCost: number
 }
 
-interface QueryStep {
+/**
+ * Query step representation
+ * @category Performance Optimizations
+ */
+export interface QueryStep {
   readonly subgraphId: string
   readonly operation: string
   readonly dependencies: ReadonlyArray<string>
@@ -31,8 +36,9 @@ interface QueryStep {
 
 /**
  * Cached query plan with metadata
+ * @category Performance Optimizations
  */
-interface CachedQueryPlan {
+export interface CachedQueryPlan {
   readonly plan: QueryPlan
   readonly createdAt: number
   readonly accessCount: number
@@ -41,8 +47,9 @@ interface CachedQueryPlan {
 
 /**
  * Query plan cache interface
+ * @category Performance Optimizations
  */
-interface QueryPlanCache {
+export interface QueryPlanCache {
   readonly get: (queryHash: string) => Effect.Effect<CachedQueryPlan | undefined, never>
   readonly set: (queryHash: string, plan: QueryPlan) => Effect.Effect<void, never>
   readonly invalidate: (pattern?: string) => Effect.Effect<void, never>
@@ -51,8 +58,9 @@ interface QueryPlanCache {
 
 /**
  * Cache statistics
+ * @category Performance Optimizations
  */
-interface CacheStats {
+export interface CacheStats {
   readonly size: number
   readonly hitRate: number
   readonly missRate: number
@@ -61,8 +69,9 @@ interface CacheStats {
 
 /**
  * Federated DataLoader interface
+ * @category Performance Optimizations
  */
-interface FederatedDataLoader {
+export interface FederatedDataLoader {
   readonly getLoader: <K, V>(
     subgraphId: string,
     batchLoadFn: (keys: readonly K[]) => Promise<readonly V[]>
@@ -73,8 +82,9 @@ interface FederatedDataLoader {
 
 /**
  * DataLoader statistics
+ * @category Performance Optimizations
  */
-interface DataLoaderStats {
+export interface DataLoaderStats {
   readonly [subgraphId: string]: {
     readonly loadCount: number
     readonly batchCount: number
@@ -85,8 +95,9 @@ interface DataLoaderStats {
 
 /**
  * Metrics collector interface
+ * @category Performance Optimizations
  */
-interface MetricsCollector {
+export interface MetricsCollector {
   readonly recordExecution: (metrics: ExecutionMetrics) => Effect.Effect<void, never>
   readonly recordCacheOperation: (operation: CacheOperation) => Effect.Effect<void, never>
   readonly getMetrics: () => Effect.Effect<PerformanceMetrics, never>
@@ -94,8 +105,9 @@ interface MetricsCollector {
 
 /**
  * Execution metrics
+ * @category Performance Optimizations
  */
-interface ExecutionMetrics {
+export interface ExecutionMetrics {
   readonly queryHash: string
   readonly duration: number
   readonly success: boolean
@@ -103,7 +115,11 @@ interface ExecutionMetrics {
   readonly cacheHit?: boolean
 }
 
-interface SubgraphCall {
+/**
+ * Subgraph call metrics
+ * @category Performance Optimizations
+ */
+export interface SubgraphCall {
   readonly subgraphId: string
   readonly duration: number
   readonly success: boolean
@@ -112,8 +128,9 @@ interface SubgraphCall {
 
 /**
  * Cache operation metrics
+ * @category Performance Optimizations
  */
-interface CacheOperation {
+export interface CacheOperation {
   readonly type: 'hit' | 'miss' | 'set' | 'evict'
   readonly key: string
   readonly duration?: number
@@ -121,8 +138,9 @@ interface CacheOperation {
 
 /**
  * Performance metrics summary
+ * @category Performance Optimizations
  */
-interface PerformanceMetrics {
+export interface PerformanceMetrics {
   readonly executionMetrics: {
     readonly totalExecutions: number
     readonly averageDuration: number
@@ -145,16 +163,18 @@ export interface OptimizedExecutor {
 
 /**
  * Execution context
+ * @category Performance Optimizations
  */
-interface ExecutionContext {
+export interface ExecutionContext {
   readonly [key: string]: unknown
   readonly dataLoader?: FederatedDataLoader
 }
 
 /**
  * Execution error
+ * @category Error Handling
  */
-interface ExecutionError extends Error {
+export interface ExecutionError extends Error {
   readonly _tag: 'ExecutionError'
   readonly name: 'ExecutionError'
   readonly message: string

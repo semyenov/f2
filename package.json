@@ -94,7 +94,7 @@
     "validate": "bun run typecheck && bun run lint && bun run test:complete",
     "prepare": "husky",
     "prepublishOnly": "bun run clean && bun run build && bun run validate",
-    "docs:generate": "typedoc src/index.ts --out docs --theme default"
+    "docs:generate": "typedoc --options typedoc.json"
   },
   "dependencies": {
     "@effect/schema": "^0.75.5",
@@ -103,21 +103,21 @@
     "graphql": "^16.11.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.17.0",
+    "@eslint/js": "^9.34.0",
     "@types/node": "^24.3.0",
-    "@typescript-eslint/eslint-plugin": "^8.17.0",
-    "@typescript-eslint/parser": "^8.17.0",
+    "@typescript-eslint/eslint-plugin": "^8.41.0",
+    "@typescript-eslint/parser": "^8.41.0",
     "bun-types": "^1.2.21",
-    "eslint": "^9.17.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-functional": "^7.0.2",
+    "eslint": "^9.34.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-functional": "^9.0.2",
     "fast-check": "^4.2.0",
     "husky": "^9.1.7",
-    "lint-staged": "^15.3.0",
-    "prettier": "^3.4.2",
-    "tsdown": "^0.14.1",
-    "typedoc": "^0.27.4",
-    "typescript": "^5.7.2"
+    "lint-staged": "^16.1.5",
+    "prettier": "^3.6.2",
+    "tsdown": "^0.14.2",
+    "typedoc": "^0.28.11",
+    "typescript": "^5.9.2"
   },
   "peerDependencies": {
     "graphql": "^16.11.0"
@@ -190,5 +190,5 @@
       "prettier --write"
     ]
   },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "packageManager": "yarn@1.22.22"
 }

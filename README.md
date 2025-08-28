@@ -3,8 +3,8 @@
 > **Complete Apollo Federation 2.x framework with Effect-TS, ultra-strict TypeScript patterns, schema-first development, and enterprise-grade resilience features**
 
 [![npm version](https://badge.fury.io/js/@cqrs%2Ffederation-v2.svg)](https://badge.fury.io/js/@cqrs%2Ffederation-v2)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9+-blue.svg)](https://www.typescriptlang.org/)
-[![Effect-TS](https://img.shields.io/badge/Effect--TS-3.19+-purple.svg)](https://effect.website)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue.svg)](https://www.typescriptlang.org/)
+[![Effect-TS](https://img.shields.io/badge/Effect--TS-3.17+-purple.svg)](https://effect.website)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 🚀 **What's New in v2.0.0**
@@ -45,22 +45,12 @@ bun add @cqrs/federation-v2
 
 ## 🎯 **Quick Start**
 
-### Ultra-Strict Entity with Pattern Matching
+### Basic Entity Creation
 
 ```typescript
 import * as Effect from 'effect/Effect'
 import * as Schema from '@effect/schema/Schema'
-import {
-  UltraStrictEntityBuilder,
-  createUltraStrictEntityBuilder,
-  withSchema,
-  withKeys,
-  withDirectives,
-  withResolvers,
-  validateEntityBuilder,
-  matchEntityValidationResult,
-} from '@cqrs/federation-v2'
-import { pipe } from 'effect/Function'
+import { FederationEntityBuilder, createEntityBuilder } from '@cqrs/federation-v2/core'
 
 // Define your domain schema
 const UserSchema = Schema.Struct({
@@ -70,40 +60,59 @@ const UserSchema = Schema.Struct({
   isActive: Schema.Boolean,
 })
 
-// Create entity with compile-time type safety
+// Create entity with Effect-TS patterns
 const createUserEntity = () =>
+  Effect.gen(function* () {
+    const builder = new FederationEntityBuilder('User', UserSchema, ['id'])
+      .withShareableField('email')
+      .withTaggedField('name', ['pii'])
+      .withReferenceResolver((reference, context) =>
+        fetchUserById(reference.id).pipe(
+          Effect.mapError(
+            error => new EntityResolutionError('User not found', 'User', reference.id, error)
+          )
+        )
+      )
+
+    return builder.build()
+  })
+
+// Use in your application
+const userEntity = yield * createUserEntity()
+```
+
+### Ultra-Strict Entity with Experimental Features
+
+```typescript
+import * as Experimental from '@cqrs/federation-v2/experimental'
+import { pipe } from 'effect/Function'
+
+// Ultra-strict entity with phantom types (experimental)
+const createUltraStrictUserEntity = () =>
   pipe(
-    createUltraStrictEntityBuilder('User'),
-    withSchema(UserSchema),
-    withKeys([UltraStrictEntityBuilder.Key.create('id', GraphQLID, false)]),
-    withDirectives([
-      UltraStrictEntityBuilder.Directive.shareable(),
-      UltraStrictEntityBuilder.Directive.tag('user-management'),
+    Experimental.createUltraStrictEntityBuilder('User'),
+    Experimental.withSchema(UserSchema),
+    Experimental.withKeys([
+      Experimental.UltraStrictEntityBuilder.Key.create('id', 'String', false),
     ]),
-    withResolvers({
-      fullName: (parent: any) => `${parent.name || 'Anonymous'}`,
-      isNewUser: (parent: any) => isRecent(parent.createdAt),
-    }),
-    validateEntityBuilder
+    Experimental.withDirectives([
+      Experimental.UltraStrictEntityBuilder.Directive.shareable(),
+      Experimental.UltraStrictEntityBuilder.Directive.tag('user-management'),
+    ]),
+    Experimental.validateEntityBuilder
   )
 
-// Handle validation result with exhaustive pattern matching
-const handleResult = (result: EntityValidationResult) =>
-  matchEntityValidationResult({
-    Valid: ({ entity }) => console.log(`✅ Entity '${entity.typename}' is valid!`),
-    InvalidSchema: ({ errors }) =>
-      console.error(`❌ Schema errors: ${errors.map(e => e.message).join(', ')}`),
-    InvalidKeys: ({ errors }) =>
-      console.error(`❌ Key errors: ${errors.map(e => e.message).join(', ')}`),
-    InvalidDirectives: ({ errors }) =>
-      console.error(`❌ Directive errors: ${errors.map(e => e.message).join(', ')}`),
-    CircularDependency: ({ cycle }) =>
-      console.error(`❌ Circular dependency: ${cycle.join(' → ')}`),
-    IncompatibleVersion: ({ entity, requiredVersion, currentVersion }) =>
-      console.error(
-        `❌ ${entity} version mismatch: needs ${requiredVersion}, got ${currentVersion}`
-      ),
+// Handle validation with pattern matching
+const result = createUltraStrictUserEntity()
+console.log(
+  Experimental.matchEntityValidationResult({
+    Valid: ({ entity }) => `✅ Entity '${entity.typename}' is valid!`,
+    InvalidSchema: ({ errors }) => `❌ Schema errors: ${errors.join(', ')}`,
+    InvalidKeys: ({ errors }) => `❌ Key errors: ${errors.join(', ')}`,
+    InvalidDirectives: ({ errors }) => `❌ Directive errors: ${errors.join(', ')}`,
+    CircularDependency: ({ cycle }) => `❌ Circular dependency: ${cycle.join(' → ')}`,
   })(result)
+)
 ```
 
 ### Modern Entity Creation (Recommended)
@@ -139,7 +148,7 @@ const createUserEntity = () => {
 
 ```typescript
 import {
-  createFederatedSchema,
+  ModernFederationComposer,
   SubgraphManagement,
   FederationErrorBoundaries,
   PerformanceOptimizations,
@@ -152,55 +161,52 @@ const setupEnterpriseFederation = Effect.gen(function* () {
   // Create user entity
   const userEntity = yield* createUserEntity()
 
-  // Configure performance-optimized federation
-  const federatedSchema = yield* createFederatedSchema({
-    entities: [userEntity],
+  // Configure subgraph registry with health monitoring
+  const registry = yield* SubgraphManagement.createRegistry({
     services: [
       { id: 'users', url: 'http://users-service:4001', healthEndpoint: '/health' },
       { id: 'products', url: 'http://products-service:4002', healthEndpoint: '/health' },
     ],
-    // Enhanced error boundaries with pre-calculated timeouts
-    errorBoundaries: {
-      subgraphTimeouts: {
-        users: Duration.seconds(5),
-        products: Duration.seconds(3),
-      },
-      circuitBreakerConfig: {
-        failureThreshold: 5,
-        resetTimeout: Duration.seconds(30),
-        halfOpenMaxCalls: 3, // Optimized half-open state
-      },
-      partialFailureHandling: {
-        allowPartialFailure: true,
-        criticalSubgraphs: ['users'], // Critical services
-        fallbackValues: {
-          products: { products: [] }, // Graceful degradation
-        },
+    healthCheckInterval: Duration.seconds(30),
+    connectionPooling: true,
+  })
+
+  // Setup error boundaries with circuit breakers
+  const errorBoundary = yield* FederationErrorBoundaries.createBoundary({
+    circuitBreakerConfig: {
+      failureThreshold: 5,
+      resetTimeout: Duration.seconds(30),
+      halfOpenMaxCalls: 3,
+    },
+    partialFailureHandling: {
+      allowPartialFailure: true,
+      criticalSubgraphs: ['users'],
+      fallbackValues: {
+        products: { products: [] },
       },
     },
-    // Performance optimizations with LRU cache and adaptive batching
-    performance: {
-      queryPlanCache: {
-        maxSize: 1000,
-        evictionStrategy: 'lru-batch', // 40% faster eviction
-        ttl: Duration.minutes(10),
-      },
-      dataLoaderConfig: {
-        maxBatchSize: 100,
-        adaptiveBatching: true, // Dynamic batch size adjustment
-        batchWindow: Duration.millis(10),
-      },
-      connectionPool: {
-        maxConnections: 10,
-        reuseConnections: true, // Service discovery optimization
-      },
+  })
+
+  // Configure performance optimizations
+  const performance = yield* PerformanceOptimizations.createOptimizedExecutor({
+    queryPlanCache: {
+      maxSize: 1000,
+      evictionStrategy: 'lru-batch',
+      ttl: Duration.minutes(10),
     },
-    // Service discovery with health monitoring
-    discovery: {
-      mode: 'dynamic',
-      healthCheckInterval: Duration.seconds(30),
-      connectionPooling: true,
+    dataLoaderConfig: {
+      maxBatchSize: 100,
+      adaptiveBatching: true,
+      batchWindow: Duration.millis(10),
     },
+  })
+
+  // Compose federation schema
+  const federatedSchema = yield* ModernFederationComposer.create({
+    entities: [userEntity],
+    registry,
+    errorBoundary,
+    performance,
   })
 
   return federatedSchema
@@ -212,50 +218,48 @@ const federatedSchema = await Effect.runPromise(
 )
 ```
 
-### Schema-First Development with Evolution Safety
+### Schema-First Development with AST Conversion
 
 ```typescript
-import {
-  SchemaFirst,
-  createSchemaFirstService,
-  createSchemaFirstWorkflow,
-} from '@cqrs/federation-v2'
+import { ASTConversion, createConversionContext } from '@cqrs/federation-v2/schema'
+import { createSchemaFirstService, createSchemaFirstWorkflow } from '@cqrs/federation-v2/core'
+import * as Schema from '@effect/schema/Schema'
 
-// Define your GraphQL schema
-const schema = `
-  type User @key(fields: "id") @shareable {
-    id: ID!
-    email: String!
-    name: String
-    profile: UserProfile
-  }
-  
-  type UserProfile {
-    bio: String
-    avatar: String  
-  }
-  
-  type Query {
-    user(id: ID!): User
-    users: [User!]!
-  }
-`
+// Define your domain schema with Effect Schema
+const UserProfileSchema = Schema.Struct({
+  bio: Schema.optional(Schema.String),
+  avatar: Schema.optional(Schema.String),
+})
 
-// Create schema-first workflow with breaking change detection
-const service = createSchemaFirstService()
-const workflow = createSchemaFirstWorkflow(service)
+const UserSchema = Schema.Struct({
+  id: Schema.String,
+  email: Schema.String,
+  name: Schema.optional(Schema.String),
+  profile: Schema.optional(UserProfileSchema),
+})
 
+// Create schema-first workflow with AST conversion
 const developSchema = Effect.gen(function* () {
-  // Parse and validate schema
-  const schemaState = yield* workflow.developSchema(schema)
+  // Create conversion context for type conversion
+  const context = createConversionContext(false, {}, true) // output types, no custom scalars, strict mode
 
-  // Generate code for multiple languages
-  const generatedCode = yield* workflow.generateCode(schemaState, ['resolvers', 'types'])
+  // Convert Effect Schema to GraphQL types
+  const userType = yield* ASTConversion.schemaToGraphQLType(UserSchema, context)
+  const profileType = yield* ASTConversion.schemaToGraphQLType(UserProfileSchema, context)
 
-  // Safe schema evolution with breaking change detection
-  const evolvedState = yield* workflow.evolveSchema(schemaState, newSchema)
+  // Convert multiple schemas concurrently for better performance
+  const convertedSchemas = yield* ASTConversion.convertSchemasParallel(
+    [
+      { name: 'User', schema: UserSchema },
+      { name: 'UserProfile', schema: UserProfileSchema },
+    ],
+    context
+  )
 
-  return { schemaState, generatedCode, evolvedState }
+  // Create complete GraphQL schema
+  const graphqlSchema = yield* ASTConversion.createGraphQLSchema(convertedSchemas)
+
+  return { userType, profileType, convertedSchemas, graphqlSchema }
 })
 ```
 
@@ -342,6 +346,7 @@ bun run audit                   # NPM security audit
 bun run audit:fix               # Fix security vulnerabilities automatically
 
 # Demo specific features
+bun run demo                    # Run basic entity example (simple-entity.ts)
 bun run demo:ultra-strict       # Ultra-strict entity patterns
 bun run demo:schema-first       # Schema-first development
 bun run demo:complete           # Complete feature demonstration

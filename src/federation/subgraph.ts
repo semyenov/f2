@@ -14,8 +14,9 @@ import {
 
 /**
  * Registry configuration for subgraph management
+ * @category Federation
  */
-interface RegistryConfig {
+export interface RegistryConfig {
   readonly discoveryMode: 'static' | 'dynamic'
   readonly staticServices: ReadonlyArray<ServiceDefinition>
   readonly discoveryEndpoints: ReadonlyArray<string>

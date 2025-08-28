@@ -32,8 +32,9 @@ const MAX_RECURSION_DEPTH = 10 as const
 
 /**
  * Type conversion context with caching and configuration
+ * @category Schema Processing
  */
-interface TypeConversionContext {
+export interface TypeConversionContext {
   readonly cache: Map<string, GraphQLType>
   readonly isInput: boolean
   readonly scalars: Record<string, GraphQLScalarType>
