@@ -159,7 +159,6 @@
  * ```
  *
  * @category Core Services
- * @since 2.0.0
  * @see {@link https://effect.website/docs/observability/logging | Effect Logging Guide}
  * @see {@link https://effect.website/docs/observability/tracing | Effect Tracing Guide}
  */

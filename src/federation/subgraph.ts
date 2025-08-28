@@ -55,7 +55,6 @@ import {
  * ```
  *
  * @category Federation Components
- * @since 2.0.0
  */
 export interface RegistryConfig {
   readonly discoveryMode: 'static' | 'dynamic'
@@ -146,7 +145,6 @@ interface ServiceStore {
  *
  * @namespace SubgraphManagement
  * @category Federation Components
- * @since 2.0.0
  */
 export namespace SubgraphManagement {
   /**

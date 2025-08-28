@@ -1,5 +1,5 @@
 /**
- * # Federation Framework v2
+ * # Federation Framework
  *
  * Complete Apollo Federation 2.x framework with Effect-TS, ultra-strict TypeScript patterns,
  * and enterprise-grade resilience features for building production-ready GraphQL federation systems.
@@ -77,8 +77,6 @@
  * 6. **Developer Experience**: Comprehensive tooling and excellent error messages
  *
  * @packageDocumentation
- * @version 2.0.0
- * @since 2.0.0
  * @author CQRS Federation Team
  * @see {@link https://github.com/cqrs/federation | GitHub Repository}
  * @see {@link https://www.apollographql.com/docs/federation/ | Apollo Federation Docs}

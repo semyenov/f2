@@ -182,7 +182,6 @@
  * ```
  *
  * @category Federation Components
- * @since 2.0.0
  * @see {@link https://www.apollographql.com/docs/federation/federated-schemas/composition/ | Federation Composition}
  * @see {@link https://effect.website/docs/guides/context-management | Effect Context Management}
  */

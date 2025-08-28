@@ -223,7 +223,6 @@
  * ```
  *
  * @category Experimental Features
- * @since 2.0.0
  * @experimental
  * @see {@link UltraStrictEntityBuilder} - Ultra-strict entity builder with phantom types
  * @see {@link EntityValidationResult} - Discriminated union for validation results

@@ -244,7 +244,6 @@
  * ```
  *
  * @category Error Handling & Resilience
- * @since 2.0.0
  * @see {@link https://martinfowler.com/bliki/CircuitBreaker.html | Circuit Breaker Pattern}
  * @see {@link https://www.apollographql.com/docs/federation/errors/ | Federation Error Handling}
  */

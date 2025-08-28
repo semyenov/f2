@@ -75,7 +75,6 @@ import { ErrorFactory } from '../errors.js'
  * @template TReference - Reference type containing key fields for entity resolution
  *
  * @category Entity Builders
- * @since 2.0.0
  * @see {@link createEntityBuilder} - Factory function for creating entity builders
  * @see {@link https://www.apollographql.com/docs/federation/entities/ | Apollo Federation Entities}
  * @see {@link https://effect.website/docs/essentials/effect-type | Effect Documentation}

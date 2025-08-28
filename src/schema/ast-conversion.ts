@@ -61,7 +61,6 @@ const MAX_RECURSION_DEPTH = 10 as const
  * ```
  *
  * @category Schema Processing
- * @since 2.0.0
  */
 export interface TypeConversionContext {
   readonly cache: Map<string, GraphQLType>
@@ -102,7 +101,6 @@ export interface TypeConversionContext {
  * ```
  *
  * @category Schema Processing
- * @since 2.0.0
  */
 export const createConversionContext = (
   isInput = false,

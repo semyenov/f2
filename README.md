@@ -13,17 +13,13 @@
 [![Coverage](https://img.shields.io/badge/Coverage-95%25-green.svg)](https://github.com/cqrs/federation)
 [![Documentation](https://img.shields.io/badge/Docs-TypeDoc-informational.svg)](https://federation-v2-docs.netlify.app/)
 
-[**📚 Documentation**](https://federation-v2-docs.netlify.app/) • [**🚀 Quick Start**](#-quick-start) • [**💡 Examples**](./src/examples/) • [**🔄 Migration**](./MIGRATION.md) • [**❓ FAQ**](#-faq)
+[**📚 Documentation**](https://federation-v2-docs.netlify.app/) • [**🚀 Quick Start**](#-quick-start) • [**💡 Examples**](./src/examples/) • [**❓ FAQ**](#-faq)
 
 </div>
 
 ---
 
-## 🚀 **What's New in v2.0.0**
-
-Federation Framework v2 is a complete rewrite that brings cutting-edge functional programming patterns, ultra-strict type safety, and enterprise-grade resilience to Apollo Federation development.
-
-### ✨ **Core Features**
+## ✨ **Core Features**
 
 - 🎯 **Ultra-Strict Entity Builder** - Phantom types and compile-time validation
 - 📝 **Schema-First Development** - Safe evolution with breaking change detection
@@ -37,11 +33,11 @@ Federation Framework v2 is a complete rewrite that brings cutting-edge functiona
 - **Apollo Federation 2.x Support**: Full directive support (@shareable, @inaccessible, @tag, @override, @external, @provides, @requires)
 - **Hot Reload**: Development-friendly schema updates
 
-### 🚀 **Recent Performance Improvements**
+### 🚀 **Performance Highlights**
 
-- **40% faster query plan caching** with LRU batch eviction strategy
+- **Optimized query plan caching** with LRU batch eviction strategy
 - **Adaptive DataLoader batching** with performance monitoring
-- **Optimized circuit breakers** with pre-calculated timeout thresholds
+- **Circuit breakers** with pre-calculated timeout thresholds
 - **Connection pooling** for service discovery and subgraph communication
 - **Zero 'any' types** in public API surface for maximum type safety
 
@@ -555,16 +551,16 @@ try {
 </details>
 
 <details>
-<summary><strong>Can I migrate from Apollo Federation v1?</strong></summary>
+<summary><strong>How does this work with Apollo Federation?</strong></summary>
 
-Yes! Check our **[Migration Guide](./MIGRATION.md)** for step-by-step instructions:
+This framework provides full support for Apollo Federation 2.x:
 
-1. **Schema Migration**: Convert v1 entities to v2 builders
-2. **Directive Updates**: Map v1 directives to v2 equivalents
-3. **Error Handling**: Replace throw/catch with Effect error types
-4. **Testing**: Update test infrastructure for Effect patterns
+1. **Complete Directive Support**: All Federation 2.x directives (@shareable, @key, @requires, etc.)
+2. **Entity Resolution**: Type-safe reference resolvers with Effect patterns
+3. **Schema Composition**: Automatic subgraph composition with validation
+4. **Query Planning**: Optimized query plan caching and execution
 
-The migration guide includes automated migration scripts and compatibility layers.
+The framework seamlessly integrates with Apollo Gateway and Router.
 
 </details>
 
@@ -583,7 +579,7 @@ Our benchmarks show **improved performance** compared to Promise-based implement
 </details>
 
 <details>
-<summary><strong>How do I handle breaking changes?</strong></summary>
+<summary><strong>How do I handle schema evolution?</strong></summary>
 
 The framework includes built-in schema evolution tools:
 

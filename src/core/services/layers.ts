@@ -169,7 +169,6 @@
  * ```
  *
  * @category Core Services
- * @since 2.0.0
  * @see {@link https://effect.website/docs/guides/layers | Effect Layers Guide}
  * @see {@link https://effect.website/docs/guides/dependency-injection | Effect Dependency Injection}
  */

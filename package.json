@@ -1,7 +1,7 @@
 {
   "name": "@cqrs/federation-v2",
   "version": "2.0.0",
-  "description": "Complete Apollo Federation 2.x framework with Effect-TS, ultra-strict TypeScript patterns, schema-first development, and enterprise-grade resilience features",
+  "description": "Apollo Federation framework with Effect-TS, ultra-strict TypeScript patterns, schema-first development, and enterprise-grade resilience features",
   "type": "module",
   "sideEffects": false,
   "exports": {

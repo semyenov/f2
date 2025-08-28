@@ -134,7 +134,6 @@
  * ```
  *
  * @category Core Services
- * @since 2.0.0
  * @see {@link https://effect.website/docs/guides/configuration | Effect Configuration Guide}
  */
 
@@ -167,7 +166,6 @@ import * as Schema from '@effect/schema/Schema'
  * ```
  *
  * @category Core Services
- * @since 2.0.0
  */
 export const FederationConfigSchema = Schema.Struct({
   // Server configuration

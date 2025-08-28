@@ -371,7 +371,6 @@ let ErrorFactory;
 * @template TReference - Reference type containing key fields for entity resolution
 *
 * @category Entity Builders
-* @since 2.0.0
 * @see {@link createEntityBuilder} - Factory function for creating entity builders
 * @see {@link https://www.apollographql.com/docs/federation/entities/ | Apollo Federation Entities}
 * @see {@link https://effect.website/docs/essentials/effect-type | Effect Documentation}
@@ -497,8 +496,8 @@ var FederationEntityBuilder = class FederationEntityBuilder {
 	* @example Basic field override
 	* ```typescript
 	* const entity = createEntityBuilder('Product', ProductSchema, ['id'])
-	*   .withOverrideField('price', 'legacy-service', 
-	*     (product, args, context) => 
+	*   .withOverrideField('price', 'legacy-service',
+	*     (product, args, context) =>
 	*       context.pricingService.getPrice(product.id)
 	*   )
 	*   .build()
@@ -538,7 +537,7 @@ var FederationEntityBuilder = class FederationEntityBuilder {
 	* ```typescript
 	* const entity = createEntityBuilder('Order', OrderSchema, ['id'])
 	*   .withExternalField('userId')      // Defined in user service
-	*   .withExternalField('productId')   // Defined in product service  
+	*   .withExternalField('productId')   // Defined in product service
 	*   .withRequiredFields('total', 'userId productId', calculateOrderTotal)
 	*   .build()
 	* ```
@@ -962,7 +961,6 @@ const testLogger = effect_Layer.merge(FederationLoggerLive, effect_Logger.minimu
 * ```
 *
 * @category Core Services
-* @since 2.0.0
 */
 const FederationConfigSchema = __effect_schema_Schema.Struct({
 	server: __effect_schema_Schema.Struct({
@@ -2198,7 +2196,6 @@ const MAX_RECURSION_DEPTH = 10;
 * ```
 *
 * @category Schema Processing
-* @since 2.0.0
 */
 const createConversionContext = (isInput = false, scalars = {}, options = {}) => ({
 	cache: /* @__PURE__ */ new Map(),

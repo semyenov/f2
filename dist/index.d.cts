@@ -294,7 +294,7 @@ interface FederationDirectiveMap {
   readonly [fieldName: string]: ReadonlyArray<FederationDirective>;
 }
 interface FederationDirective {
-  readonly type: "@shareable" | "@inaccessible" | "@tag" | "@override" | "@external" | "@provides" | "@requires";
+  readonly type: '@shareable' | '@inaccessible' | '@tag' | '@override' | '@external' | '@provides' | '@requires';
   readonly args?: Record<string, unknown>;
 }
 /**
@@ -465,7 +465,7 @@ interface HotReloadableSchema {
   readonly reload: () => Effect.Effect<FederatedSchema, CompositionError>;
 }
 interface SchemaWatcher {
-  readonly on: (event: "schemaChanged" | "error", handler: (data: unknown) => void) => void;
+  readonly on: (event: 'schemaChanged' | 'error', handler: (data: unknown) => void) => void;
   readonly off: (event: string, handler?: (data: unknown) => void) => void;
   readonly close: () => Effect.Effect<void, never>;
 }
@@ -502,7 +502,7 @@ interface SubgraphRegistry {
  */
 interface HealthStatus {
   /** Current health status of the service */
-  readonly status: "healthy" | "unhealthy" | "degraded";
+  readonly status: 'healthy' | 'unhealthy' | 'degraded';
   /** Unique identifier of the service */
   readonly serviceId: string;
   /** Timestamp when health check was last performed */
@@ -526,7 +526,7 @@ interface HealthStatus {
  *
  * @see {@link https://martinfowler.com/bliki/CircuitBreaker.html}
  */
-type CircuitBreakerState = "closed" | "open" | "half-open";
+type CircuitBreakerState = 'closed' | 'open' | 'half-open';
 interface CircuitBreaker {
   readonly protect: <A, E>(effect: Effect.Effect<A, E>) => Effect.Effect<A, E | CircuitBreakerError>;
   readonly getState: () => CircuitBreakerState;
@@ -557,7 +557,7 @@ interface SyncResult {
   readonly success: boolean;
 }
 interface SchemaChange {
-  readonly type: "add" | "modify" | "remove";
+  readonly type: 'add' | 'modify' | 'remove';
   readonly path: string;
   readonly description: string;
 }
@@ -565,7 +565,7 @@ interface SchemaConflict {
   readonly path: string;
   readonly local: unknown;
   readonly remote: unknown;
-  readonly resolution?: "local" | "remote" | "merge";
+  readonly resolution?: 'local' | 'remote' | 'merge';
 }
 /**
  * Union type for all domain errors with exhaustive matching support
@@ -602,16 +602,16 @@ type DomainError = EntityResolutionError | FieldResolutionError | ValidationErro
  * ```
  */
 type ServiceId = string & {
-  readonly __brand: "ServiceId";
+  readonly __brand: 'ServiceId';
 };
 type EntityTypename = string & {
-  readonly __brand: "EntityTypename";
+  readonly __brand: 'EntityTypename';
 };
 type FieldName = string & {
-  readonly __brand: "FieldName";
+  readonly __brand: 'FieldName';
 };
 type QueryHash = string & {
-  readonly __brand: "QueryHash";
+  readonly __brand: 'QueryHash';
 };
 /**
  * Utility types for advanced type-level programming
@@ -638,7 +638,7 @@ type Prettify<T> = { readonly [K in keyof T]: T[K] } & {};
  * const empty: NonEmptyArray<string> = []              // ✗ Type error
  * ```
  */
-type NonEmptyArray<T> = readonly [T, ...readonly T[]];
+type NonEmptyArray<T> = readonly [T, ...(readonly T[])];
 /**
  * Require at least one property from a set of optional properties
  *
@@ -1304,7 +1304,6 @@ declare namespace UltraStrictEntityBuilder {
  * @template TReference - Reference type containing key fields for entity resolution
  *
  * @category Entity Builders
- * @since 2.0.0
  * @see {@link createEntityBuilder} - Factory function for creating entity builders
  * @see {@link https://www.apollographql.com/docs/federation/entities/ | Apollo Federation Entities}
  * @see {@link https://effect.website/docs/essentials/effect-type | Effect Documentation}
@@ -2594,7 +2593,6 @@ declare const testLogger: Layer.Layer<FederationLogger, never, never>;
  * ```
  *
  * @category Core Services
- * @since 2.0.0
  */
 declare const FederationConfigSchema: Schema.Struct<{
   server: Schema.Struct<{
@@ -2815,7 +2813,6 @@ declare const createFederatedSchema: (config: FederationCompositionConfig) => Ef
  * ```
  *
  * @category Federation Components
- * @since 2.0.0
  */
 interface RegistryConfig {
   readonly discoveryMode: 'static' | 'dynamic';
@@ -2876,7 +2873,6 @@ interface RegistryConfig {
  *
  * @namespace SubgraphManagement
  * @category Federation Components
- * @since 2.0.0
  */
 declare namespace SubgraphManagement {
   /**
@@ -3046,7 +3042,6 @@ declare const createProductionBoundary: (subgraphTimeouts: Record<string, Durati
  * ```
  *
  * @category Performance & Caching
- * @since 2.0.0
  */
 interface QueryPlan {
   readonly id: string;
@@ -3108,7 +3103,6 @@ interface CachedQueryPlan {
  * ```
  *
  * @category Performance & Caching
- * @since 2.0.0
  */
 interface QueryPlanCache {
   readonly get: (queryHash: string) => Effect.Effect<CachedQueryPlan | undefined, never>;
@@ -3165,7 +3159,6 @@ interface CacheStats {
  * ```
  *
  * @category Performance & Caching
- * @since 2.0.0
  */
 interface FederatedDataLoader {
   readonly getLoader: <K, V>(subgraphId: string, batchLoadFn: (keys: readonly K[]) => Promise<readonly V[]>) => Effect.Effect<DataLoader<K, V>, never>;
@@ -3368,7 +3361,6 @@ interface ExecutionError extends Error {
  *
  * @namespace PerformanceOptimizations
  * @category Performance & Caching
- * @since 2.0.0
  * @see {@link https://www.apollographql.com/docs/federation/performance/ | Federation Performance Guide}
  * @see {@link https://github.com/graphql/dataloader | DataLoader Documentation}
  */
@@ -3441,7 +3433,6 @@ declare const createDevelopmentOptimizedExecutor: (schema: FederatedSchema) => E
  * ```
  *
  * @category Schema Processing
- * @since 2.0.0
  */
 interface TypeConversionContext {
   readonly cache: Map<string, GraphQLType>;
@@ -3481,7 +3472,6 @@ interface TypeConversionContext {
  * ```
  *
  * @category Schema Processing
- * @since 2.0.0
  */
 declare const createConversionContext: (isInput?: boolean, scalars?: Record<string, GraphQLScalarType>, options?: {
   readonly maxDepth?: number;

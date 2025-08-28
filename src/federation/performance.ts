@@ -42,7 +42,6 @@ import { ErrorFactory } from '../core/errors.js'
  * ```
  *
  * @category Performance & Caching
- * @since 2.0.0
  */
 export interface QueryPlan {
   readonly id: string
@@ -107,7 +106,6 @@ export interface CachedQueryPlan {
  * ```
  *
  * @category Performance & Caching
- * @since 2.0.0
  */
 export interface QueryPlanCache {
   readonly get: (queryHash: string) => Effect.Effect<CachedQueryPlan | undefined, never>
@@ -166,7 +164,6 @@ export interface CacheStats {
  * ```
  *
  * @category Performance & Caching
- * @since 2.0.0
  */
 export interface FederatedDataLoader {
   readonly getLoader: <K, V>(
@@ -386,7 +383,6 @@ export interface ExecutionError extends Error {
  *
  * @namespace PerformanceOptimizations
  * @category Performance & Caching
- * @since 2.0.0
  * @see {@link https://www.apollographql.com/docs/federation/performance/ | Federation Performance Guide}
  * @see {@link https://github.com/graphql/dataloader | DataLoader Documentation}
  */

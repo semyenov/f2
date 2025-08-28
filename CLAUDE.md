@@ -126,21 +126,11 @@ health: (serviceId: string) =>
 - **Circuit Breakers**: Pre-calculated timeout thresholds
 - **Metrics**: Buffered with batch flushing to reduce I/O
 
-### Migration from v1
-
-When updating code:
-
-1. Replace promise-based code with Effect
-2. Use discriminated unions for errors
-3. Apply pattern matching for exhaustive handling
-4. Use Effect Layers for dependency injection
-5. Follow test patterns with proper Effect error handling
-
 ## Important Files
 
-- `MIGRATION.md` - Complete v1 to v2 migration guide
 - `test-complete.ts` - Comprehensive integration test
 - `tests/utils/test-layers.ts` - Test mock services and helpers
+- `comprehensive-functional-demo.ts` - Complete functional programming patterns demo
 
 ## Critical Reminders
 

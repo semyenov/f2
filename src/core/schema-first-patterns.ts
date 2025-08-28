@@ -210,7 +210,6 @@
  * ```
  *
  * @category Schema-First Development
- * @since 2.0.0
  * @see {@link https://www.apollographql.com/docs/federation/federated-types/composition/ | Federation Composition}
  * @see {@link https://graphql-code-generator.com/ | GraphQL Code Generator}
  */
