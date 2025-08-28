@@ -42,6 +42,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `bun docs:generate` - Generate TypeDoc documentation
 
+### Maintenance Scripts
+
+- `bun run scripts/convert-imports.ts` - Convert relative imports to barrel exports (maintains ESM .js extensions)
+
 ## Architecture Overview
 
 **Federation Framework** - Apollo Federation framework built with Effect-TS, emphasizing functional programming and enterprise resilience.
@@ -96,7 +100,7 @@ Match.value(error).pipe(
 - Never use `any` - use proper type assertions or unknown
 - All imports use `.js` extension (ESM requirement)
 - Entity builders use phantom types for compile-time validation
-- HealthStatus has `lastCheck` and `metrics` fields (with `responseTime` accessed via bracket notation)
+- HealthStatus has `timestamp` and `responseTime` fields (not `lastCheck`/`metrics`)
 - ValidatedEntity structure uses `keys` array not single `key` property
 - When using `any` is unavoidable (e.g., generic entity mocks), document the reason
 
@@ -187,34 +191,48 @@ const mockEntity: ValidatedEntity<unknown, unknown, unknown> = {
 - **`tsconfig.build.json`** - Production build configuration (extends main)
 - **`tsconfig.test.json`** - Test-specific configuration (relaxed unused variable rules, test type definitions)
 
-### Path Mappings
+### Path Mappings & Barrel Exports
 
-All configurations support clean import paths:
+The codebase uses barrel exports (index.ts files) with clean import paths:
 
-- `@/*` → `./src/*` (main source directory)
-- `@core/*` → `./src/core/*` (core functionality)
-- `@federation/*` → `./src/federation/*` (federation features)
-- `@experimental/*` → `./src/experimental/*` (experimental patterns)
-- `@schema/*` → `./src/schema/*` (schema processing)
+- `@core` → `./src/core` (barrel export for all core functionality)
+- `@federation` → `./src/federation` (federation features barrel export)
+- `@experimental` → `./src/experimental` (experimental patterns barrel export)
+- `@schema` → `./src/schema` (schema processing barrel export)
+- `@/*` → `./src/*` (fallback for specific file access)
 - `@tests/*` → `./tests/*` (test utilities - tests only)
+
+**Barrel Export Structure**:
+
+- All major folders have index.ts files that re-export their contents
+- Use `scripts/convert-imports.ts` to convert relative imports to barrel exports
+- Always import from barrel exports (e.g., `@core`) rather than specific files
 
 **Usage Examples**:
 
 ```typescript
-// Instead of relative imports like '../../../src/core/types.js'
-import { DomainError } from '@/core/types.js'
-import { createUltraStrictEntityBuilder } from '@/experimental/ultra-strict-entity-builder.js'
-import { FederationComposer } from '@/federation/composer.js'
+// Preferred: Use barrel exports
+import { ErrorFactory, ValidationError } from '@core'
+import { FederationComposer } from '@federation'
+import { createUltraStrictEntityBuilder } from '@experimental'
 
-// Or more specific paths
-import type { ValidationError } from '@core/errors.js'
-import { SubgraphManagement } from '@federation/subgraph.js'
+// Fallback: Specific file access when needed
+import { specificUtility } from '@/core/utils/helper.js'
 ```
+
+## Development Philosophy
+
+**File Creation Policy**:
+
+- ALWAYS prefer editing existing files over creating new ones
+- NEVER create documentation files (\*.md) or README files unless explicitly requested
+- Only create files when absolutely necessary for functionality
+- Maintain existing code conventions and patterns
 
 ## Critical Reminders
 
 - Always use Effect.fail for errors in mocks, never throw
-- HealthStatus uses `lastCheck` and `metrics` fields (with `responseTime` accessed via `metrics?.['responseTime']`)
+- HealthStatus uses `timestamp` and `responseTime` fields (not `lastCheck`/`metrics`)
 - Test failures should use expectEffectFailure helper
 - DataLoader stats require proper key generation
 - **NEVER use `any` type** - this is strictly enforced. Use `unknown`, proper type parameters, or specific type assertions
