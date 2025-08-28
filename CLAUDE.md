@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Testing
 
-- `bun test` - Run all tests
+- `bun test` - Run all tests using Bun's test runner
 - `bun test tests/unit/federation/subgraph.test.ts` - Run a specific test file
 - `bun test --watch` - Run tests in watch mode
 - `bun test:unit` - Run unit tests only (tests/unit)
@@ -15,6 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `bun test:complete` - Run comprehensive integration test (test-complete.ts)
 - `bun test:ui` - Run tests with interactive UI (Vitest UI)
 - `vitest` - Run tests in watch mode using Vitest directly
+- `vitest run` - Run all tests once with Vitest
 - `vitest --ui` - Alternative command for interactive UI
 
 ### Development
@@ -27,6 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Building
 
 - `bun run build` - Production build using tsdown
+- `bun run build:tsc` - Alternative build using TypeScript compiler
 - `bun run build:watch` - Build in watch mode
 - `bun run clean` - Remove dist directory
 
@@ -38,6 +40,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `bun run format` - Prettier code formatting
 - `bun run format:check` - Check formatting without changes
 - `bun run validate` - Full validation: typecheck + lint + test:complete
+- `bun run audit` - Security audit with moderate severity threshold
+- `bun run audit:fix` - Auto-fix security vulnerabilities
+- `bun run security` - Combined audit + lint check
+
+### Publishing
+
+- `bun run prepublishOnly` - Clean, build, and validate before publishing
+- `bun run prepare` - Setup git hooks with husky
 
 ### Documentation
 
@@ -180,6 +190,8 @@ const mockEntity: ValidatedEntity<unknown, unknown, unknown> = {
 - `test-complete.ts` - Comprehensive integration test
 - `tests/utils/test-layers.ts` - Test mock services and helpers
 - `comprehensive-functional-demo.ts` - Complete functional programming patterns demo
+- `vitest.config.ts` - Test runner configuration
+- `.husky/` - Git hooks for code quality
 
 ## Package Information
 
@@ -286,3 +298,4 @@ const config: FederationCompositionConfig = {
 - **Match.exhaustive**: Ensure all error types in DomainError union are handled (includes HealthCheckError)
 - **ErrorTransformation Config**: All ErrorBoundaryConfig objects must include `errorTransformation` property with `includeStackTrace` and `sanitizeErrors`
 - **Package.json Exports**: The `types` field must come before `import` and `require` in export definitions
+- **Git Hooks**: Husky is configured for pre-commit and pre-push hooks (lint-staged runs on commits)
