@@ -182,14 +182,116 @@ export interface ExecutionError extends Error {
 }
 
 /**
- * PerformanceOptimizations - Query planning cache, DataLoader batching, and performance monitoring
+ * # PerformanceOptimizations
  *
- * Features:
- * - Query plan caching with LRU eviction
- * - DataLoader batching integration per subgraph
- * - Performance metrics collection and monitoring
- * - Cache warming and preloading strategies
- * - Execution optimization with parallelization
+ * Comprehensive performance optimization suite for Apollo Federation 2.x with Effect-TS,
+ * featuring intelligent query plan caching, DataLoader batching, and real-time performance monitoring.
+ *
+ * ## 🚀 Key Features
+ * - **⚡ Query Plan Caching**: LRU cache with intelligent eviction strategies
+ * - **📦 DataLoader Batching**: Automatic request batching per subgraph
+ * - **📊 Performance Metrics**: Real-time monitoring and analytics
+ * - **🔥 Cache Warming**: Preload frequently accessed queries
+ * - **⚙️ Execution Optimization**: Parallel execution with circuit breakers
+ * - **🎯 Smart Eviction**: Context-aware cache invalidation
+ *
+ * ## 📚 Usage Examples
+ *
+ * ### Basic Performance Setup
+ * ```typescript
+ * import { PerformanceOptimizations } from '@cqrs/federation-v2'
+ * import { Effect } from 'effect'
+ *
+ * // Create optimized executor
+ * const executor = yield* PerformanceOptimizations.createOptimizedExecutor(
+ *   schema,
+ *   {
+ *     queryPlanCache: {
+ *       maxSize: 1000,
+ *       ttl: Duration.minutes(15),
+ *       evictionStrategy: 'lru-with-priority'
+ *     },
+ *     dataLoader: {
+ *       batchSize: 50,
+ *       maxBatchDelay: Duration.milliseconds(10),
+ *       cacheKeyFn: (key) => `subgraph:${key.subgraphId}:${key.id}`
+ *     },
+ *     metrics: {
+ *       enabled: true,
+ *       bufferSize: 1000,
+ *       flushInterval: Duration.seconds(10)
+ *     }
+ *   }
+ * )
+ * ```
+ *
+ * ### Advanced Caching Configuration
+ * ```typescript
+ * const queryCache = yield* PerformanceOptimizations.createQueryPlanCache({
+ *   maxSize: 5000,
+ *   ttl: Duration.minutes(30),
+ *   evictionStrategy: 'lru-with-priority',
+ *   warmupQueries: [
+ *     'query GetPopularProducts { ... }',
+ *     'query GetUserProfile { ... }'
+ *   ],
+ *   priorityFn: (query) => query.includes('popular') ? 10 : 1
+ * })
+ *
+ * // Warm the cache
+ * yield* queryCache.warmup()
+ * ```
+ *
+ * ### DataLoader with Custom Batching
+ * ```typescript
+ * const dataLoader = yield* PerformanceOptimizations.createFederatedDataLoader({
+ *   batchSize: 100,
+ *   maxBatchDelay: Duration.milliseconds(5),
+ *   cacheKeyFn: (key) => `${key.type}:${key.id}`,
+ *   batchScheduleFn: 'immediate' // or 'nextTick' | 'timeout'
+ * })
+ *
+ * // Use with subgraph-specific loaders
+ * const userLoader = yield* dataLoader.getLoader(
+ *   'users-service',
+ *   (userIds) => fetchUsersBatch(userIds)
+ * )
+ *
+ * const user = yield* userLoader.load('user-123')
+ * ```
+ *
+ * ## 📈 Performance Monitoring
+ *
+ * ```typescript
+ * const metrics = yield* PerformanceOptimizations.createMetricsCollector({
+ *   bufferSize: 1000,
+ *   flushInterval: Duration.seconds(5),
+ *   aggregationWindow: Duration.minutes(1)
+ * })
+ *
+ * // Monitor execution metrics
+ * yield* metrics.recordExecution({
+ *   queryHash: 'abc123',
+ *   duration: 45,
+ *   success: true,
+ *   subgraphCalls: [
+ *     { subgraphId: 'users', duration: 20, success: true, batchSize: 5 },
+ *     { subgraphId: 'orders', duration: 25, success: true, batchSize: 3 }
+ *   ],
+ *   cacheHit: true
+ * })
+ *
+ * // Get performance insights
+ * const performanceData = yield* metrics.getMetrics()
+ * console.log(`Cache hit rate: ${performanceData.cacheMetrics.hitRate * 100}%`)
+ * console.log(`Avg response time: ${performanceData.executionMetrics.averageDuration}ms`)
+ * ```
+ *
+ * @namespace PerformanceOptimizations
+ * @category Performance & Caching
+ * @since 2.0.0
+ * @see {@link https://www.apollographql.com/docs/federation/performance/ | Federation Performance Guide}
+ * @see {@link https://github.com/graphql/dataloader | DataLoader Documentation}
  */
 export namespace PerformanceOptimizations {
   /**

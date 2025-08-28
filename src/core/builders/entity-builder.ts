@@ -16,12 +16,63 @@ import { ErrorFactory } from '../errors.js'
 /**
  * Modern Federation Entity Builder with full Apollo Federation 2.x directive support
  *
- * Features:
- * - Fluent builder pattern for entity configuration
- * - Full support for @shareable, @inaccessible, @tag, @override directives
- * - Effect-based reference resolution with comprehensive error handling
- * - Type-safe field resolver binding
- * - Directive validation and conflict detection
+ * A fluent builder for creating federated GraphQL entities with comprehensive directive support,
+ * Effect-based error handling, and type-safe field resolution.
+ *
+ * ## Features
+ * - 🏗️ **Fluent Builder Pattern**: Chainable methods for entity configuration
+ * - 🌐 **Full Federation 2.x Support**: All directives (@shareable, @inaccessible, @tag, @override, @external, @requires, @provides)
+ * - ⚡ **Effect-Based Operations**: Type-safe error handling with Effect.Effect
+ * - 🔒 **Type Safety**: Generic constraints ensure compile-time validation
+ * - 🛡️ **Directive Validation**: Automatic conflict detection and validation
+ * - 🎯 **Reference Resolution**: Seamless entity resolution across subgraphs
+ *
+ * ## Basic Usage
+ *
+ * ```typescript
+ * import { createEntityBuilder } from '@cqrs/federation-v2'
+ * import { Effect } from 'effect'
+ * import * as Schema from '@effect/schema/Schema'
+ *
+ * // Define entity schema
+ * const UserSchema = Schema.Struct({
+ *   id: Schema.String,
+ *   email: Schema.String,
+ *   name: Schema.String,
+ *   avatar: Schema.String
+ * })
+ *
+ * // Build federated entity
+ * const userEntity = createEntityBuilder('User', UserSchema, ['id'])
+ *   .withShareableField('name')
+ *   .withInaccessibleField('email')
+ *   .withTaggedField('avatar', ['public', 'cdn'])
+ *   .withReferenceResolver(resolveUserFromReference)
+ *   .build()
+ * ```
+ *
+ * ## Advanced Directive Usage
+ *
+ * ```typescript
+ * // Override field from another subgraph
+ * const productEntity = createEntityBuilder('Product', ProductSchema, ['id'])
+ *   .withOverrideField('price', 'inventory-service', resolvePriceFromInventory)
+ *   .withRequiredFields('availability', 'id sku', resolveAvailability)
+ *   .withProvidedFields('summary', 'name description', resolveSummary)
+ *   .build()
+ * ```
+ *
+ * ## Type Parameters
+ * @template TSource - Source data type (e.g., from database or API)
+ * @template TContext - GraphQL execution context type containing services, user info, etc.
+ * @template TResult - Resolved entity type returned to GraphQL clients
+ * @template TReference - Reference type containing key fields for entity resolution
+ *
+ * @category Entity Builders
+ * @since 2.0.0
+ * @see {@link createEntityBuilder} - Factory function for creating entity builders
+ * @see {@link https://www.apollographql.com/docs/federation/entities/ | Apollo Federation Entities}
+ * @see {@link https://effect.website/docs/essentials/effect-type | Effect Documentation}
  */
 export class FederationEntityBuilder<
   TSource extends Record<string, unknown> = Record<string, unknown>,
@@ -51,8 +102,31 @@ export class FederationEntityBuilder<
   }
 
   /**
-   * Federation 2.x directive support
-   * Marks field as @shareable - Field can be resolved by multiple subgraphs
+   * Marks a field as @shareable, indicating it can be resolved by multiple subgraphs
+   *
+   * The @shareable directive allows multiple subgraphs to define and resolve the same field.
+   * This is useful for common fields that can be computed by different services.
+   *
+   * @example Basic shareable field
+   * ```typescript
+   * const entity = createEntityBuilder('Product', ProductSchema, ['id'])
+   *   .withShareableField('name') // Multiple subgraphs can resolve 'name'
+   *   .build()
+   * ```
+   *
+   * @example Shareable field with custom resolver
+   * ```typescript
+   * const entity = createEntityBuilder('User', UserSchema, ['id'])
+   *   .withShareableField('displayName', (user, args, context) =>
+   *     Effect.succeed(`${user.firstName} ${user.lastName}`)
+   *   )
+   *   .build()
+   * ```
+   *
+   * @param field - Field name to mark as shareable
+   * @param resolver - Optional custom resolver for this field
+   * @returns New builder instance with the shareable directive applied
+   * @see {@link https://www.apollographql.com/docs/federation/federated-types/federated-directives/#shareable | @shareable Directive}
    */
   withShareableField<K extends keyof TSource>(
     field: K,
@@ -68,7 +142,31 @@ export class FederationEntityBuilder<
   }
 
   /**
-   * Marks field as @inaccessible - Field hidden from public schema but available for federation
+   * Marks a field as @inaccessible, hiding it from the public schema while keeping it available for federation
+   *
+   * The @inaccessible directive prevents a field from appearing in the supergraph schema
+   * but allows it to be used internally for federation operations like @requires and @provides.
+   *
+   * @example Hide sensitive internal field
+   * ```typescript
+   * const entity = createEntityBuilder('User', UserSchema, ['id'])
+   *   .withInaccessibleField('internalId') // Hidden from public API
+   *   .withInaccessibleField('auditLog')   // Internal tracking field
+   *   .build()
+   * ```
+   *
+   * @example Use inaccessible field in other directives
+   * ```typescript
+   * const entity = createEntityBuilder('Order', OrderSchema, ['id'])
+   *   .withInaccessibleField('userId')  // Hidden but available for federation
+   *   .withRequiredFields('total', 'userId', calculateTotal) // Can reference userId
+   *   .build()
+   * ```
+   *
+   * @param field - Field name to mark as inaccessible
+   * @param resolver - Optional custom resolver for this field
+   * @returns New builder instance with the inaccessible directive applied
+   * @see {@link https://www.apollographql.com/docs/federation/federated-types/federated-directives/#inaccessible | @inaccessible Directive}
    */
   withInaccessibleField<K extends keyof TSource>(
     field: K,

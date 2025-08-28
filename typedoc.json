@@ -1,12 +1,17 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "name": "@cqrs/federation-v2",
+  "name": "Federation Framework v2",
   "entryPoints": ["src/index.ts"],
+  "entryPointStrategy": "expand",
   "out": "docs",
   "theme": "default",
   "readme": "README.md",
   "includeVersion": true,
-  "sort": ["source-order", "alphabetical"],
+  "emit": "docs",
+  "lightHighlightTheme": "github-light",
+  "darkHighlightTheme": "github-dark",
+  "favicon": "https://raw.githubusercontent.com/apollographql/federation/main/docs/source/img/favicon.ico",
+  "sort": ["source-order", "alphabetical", "kind"],
   "kindSortOrder": [
     "Project",
     "Module",
@@ -22,14 +27,28 @@
     "Method",
     "Accessor"
   ],
+  "visibilityFilters": {
+    "protected": false,
+    "private": false,
+    "@internal": false,
+    "@alpha": true,
+    "@beta": true,
+    "@experimental": true
+  },
   "navigationLinks": {
-    "GitHub": "https://github.com/cqrs/federation",
-    "NPM": "https://www.npmjs.com/package/@cqrs/federation-v2"
+    "🏠 Homepage": "https://github.com/cqrs/federation",
+    "📦 NPM": "https://www.npmjs.com/package/@cqrs/federation-v2",
+    "🐙 GitHub": "https://github.com/cqrs/federation",
+    "📖 Apollo Federation": "https://www.apollographql.com/docs/federation/",
+    "⚡ Effect-TS": "https://effect.website/"
   },
   "sidebarLinks": {
-    "Getting Started": "https://github.com/cqrs/federation#getting-started",
-    "Migration Guide": "https://github.com/cqrs/federation/blob/main/MIGRATION.md",
-    "Examples": "https://github.com/cqrs/federation/tree/main/src/examples"
+    "🚀 Getting Started": "https://github.com/cqrs/federation#getting-started",
+    "📋 Migration Guide": "https://github.com/cqrs/federation/blob/main/MIGRATION.md",
+    "💡 Examples": "https://github.com/cqrs/federation/tree/main/src/examples",
+    "🔧 Configuration": "https://github.com/cqrs/federation#configuration",
+    "🎯 Best Practices": "https://github.com/cqrs/federation#best-practices",
+    "❓ FAQ": "https://github.com/cqrs/federation#faq"
   },
   "exclude": [
     "**/*.test.ts",
@@ -37,28 +56,46 @@
     "**/test-*.ts",
     "**/tests/**/*",
     "**/node_modules/**/*",
-    "src/examples/**/*"
+    "src/examples/**/*",
+    "**/dist/**/*"
   ],
+  "externalPattern": ["**/node_modules/**/*", "**/@types/**/*"],
   "excludePrivate": true,
   "excludeProtected": false,
   "excludeInternal": false,
   "excludeExternals": true,
+  "excludeNotDocumented": false,
+  "excludeReferences": false,
   "disableSources": false,
   "sourceLinkTemplate": "https://github.com/cqrs/federation/blob/{gitRevision}/{path}#L{line}",
   "gitRevision": "main",
   "gitRemote": "origin",
+  "basePath": "./src",
   "hideGenerator": false,
   "searchInComments": true,
   "searchInDocuments": true,
+  "searchCategoryBoosts": {
+    "Entity Builders": 1.3,
+    "Federation": 1.4,
+    "Schema Processing": 1.2,
+    "Performance Optimizations": 1.1,
+    "Performance & Caching": 1.1,
+    "Error Handling": 1.1,
+    "Experimental": 0.8
+  },
   "cleanOutputDir": true,
   "treatWarningsAsErrors": false,
+  "treatValidationWarningsAsErrors": false,
+  "intentionallyNotExported": [],
   "validation": {
     "notExported": true,
     "invalidLink": true,
     "notDocumented": false
   },
+  "commentStyle": "all",
   "blockTags": [
     "@param",
+    "@typeParam",
     "@returns",
     "@throws",
     "@example",
@@ -68,10 +105,20 @@
     "@author",
     "@version",
     "@todo",
+    "@remarks",
     "@internal",
     "@beta",
     "@alpha",
     "@public",
+    "@experimental",
+    "@defaultValue",
+    "@eventProperty",
+    "@group",
+    "@groupDescription",
+    "@category",
+    "@categoryDescription",
+    "@module",
+    "@namespace",
     "@shareable",
     "@inaccessible",
     "@tag",
@@ -81,9 +128,9 @@
     "@override",
     "@key",
     "@packageDocumentation",
-    "@template",
-    "@category"
+    "@template"
   ],
+  "inlineTags": ["@link", "@linkcode", "@linkplain", "@label"],
   "modifierTags": [
     "@override",
     "@internal",
@@ -92,25 +139,54 @@
     "@experimental",
     "@sealed",
     "@virtual",
-    "@readonly"
+    "@readonly",
+    "@hidden",
+    "@ignore",
+    "@deprecated"
   ],
   "categorizeByGroup": true,
+  "groupOrder": [
+    "Constructors",
+    "Properties",
+    "Methods",
+    "Functions",
+    "Classes",
+    "Interfaces",
+    "Type Aliases",
+    "Variables",
+    "Namespaces",
+    "*"
+  ],
   "defaultCategory": "Other",
   "categoryOrder": [
-    "Core",
+    "Core API",
     "Entity Builders",
-    "Federation",
+    "Federation Components",
     "Schema Processing",
-    "Performance Optimizations",
-    "Error Handling",
-    "Experimental",
+    "Performance & Caching",
+    "Error Handling & Resilience",
+    "Experimental Features",
+    "Utilities",
     "*",
     "Other"
   ],
-  "groupOrder": ["Classes", "Interfaces", "Types", "Functions", "Variables", "*"],
-  "markdownItOptions": {
-    "mangle": false
-  },
+  "hostedBaseUrl": "https://federation-v2-docs.netlify.app/",
+  "customCss": "./docs-assets/custom.css",
+  "customFooterHtml": "<p>Built with ❤️ using <a href='https://effect.website/'>Effect-TS</a> and <a href='https://www.apollographql.com/docs/federation/'>Apollo Federation 2.x</a></p>",
+  "includeHierarchySummary": true,
   "titleLink": "https://github.com/cqrs/federation",
-  "tsconfig": "tsconfig.json"
+  "tsconfig": "tsconfig.json",
+  "logLevel": "Info",
+  "plugin": [],
+  "watch": false,
+  "preserveWatchOutput": false,
+  "skipErrorChecking": false,
+  "showConfig": false,
+  "cacheBust": true,
+  "markdownItOptions": {
+    "html": true,
+    "linkify": true,
+    "typographer": true,
+    "breaks": false
+  }
 }
