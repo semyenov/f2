@@ -1,13 +1,13 @@
 /**
  * # Cloud-Native Federation Support
- * 
+ *
  * Provides cloud-native deployment, orchestration, and management capabilities
  * for federated GraphQL services across multiple cloud providers and edge locations.
- * 
+ *
  * @example Multi-cloud deployment
  * ```typescript
  * import { CloudDeployment } from '@cqrs/federation/cloud'
- * 
+ *
  * const deployment = await CloudDeployment.create({
  *   providers: ['aws', 'gcp', 'azure'],
  *   regions: ['us-east-1', 'europe-west1', 'eastus'],
@@ -16,10 +16,10 @@
  *     subgraphs: subgraphConfigs
  *   }
  * })
- * 
+ *
  * await deployment.deploy()
  * ```
- * 
+ *
  * @module Cloud
  * @since 2.4.0
  */
@@ -49,17 +49,17 @@ export interface CloudDeploymentConfig {
    * Cloud providers
    */
   providers: CloudProvider[]
-  
+
   /**
    * Deployment environment
    */
   environment: DeploymentEnvironment
-  
+
   /**
    * Region configuration
    */
   regions?: string[]
-  
+
   /**
    * Federation configuration
    */
@@ -75,7 +75,7 @@ export interface CloudDeploymentConfig {
         memory?: string
       }
     }
-    
+
     /**
      * Subgraph configurations
      */
@@ -85,7 +85,7 @@ export interface CloudDeploymentConfig {
       replicas?: number
     }>
   }
-  
+
   /**
    * Infrastructure as Code
    */
@@ -94,13 +94,13 @@ export interface CloudDeploymentConfig {
      * IaC provider
      */
     provider?: 'terraform' | 'pulumi' | 'cdk'
-    
+
     /**
      * Auto-provision infrastructure
      */
     autoProvision?: boolean
   }
-  
+
   /**
    * CI/CD configuration
    */
@@ -109,18 +109,18 @@ export interface CloudDeploymentConfig {
      * CI/CD provider
      */
     provider?: 'github' | 'gitlab' | 'jenkins' | 'circleci'
-    
+
     /**
      * Auto-deploy on push
      */
     autoDeploy?: boolean
-    
+
     /**
      * Rollback on failure
      */
     autoRollback?: boolean
   }
-  
+
   /**
    * Cost optimization
    */
@@ -129,12 +129,12 @@ export interface CloudDeploymentConfig {
      * Enable spot instances
      */
     useSpotInstances?: boolean
-    
+
     /**
      * Auto-shutdown in non-prod
      */
     autoShutdown?: boolean
-    
+
     /**
      * Budget alerts
      */
@@ -153,12 +153,12 @@ export interface CloudDeploymentStatus {
    * Deployment ID
    */
   id: string
-  
+
   /**
    * Current status
    */
   status: 'pending' | 'deploying' | 'running' | 'failed' | 'terminated'
-  
+
   /**
    * Deployed regions
    */
@@ -168,7 +168,7 @@ export interface CloudDeploymentStatus {
     status: string
     endpoint?: string
   }>
-  
+
   /**
    * Metrics
    */
@@ -177,7 +177,7 @@ export interface CloudDeploymentStatus {
     totalCost: number
     requestsPerSecond: number
   }
-  
+
   /**
    * Last updated
    */
@@ -190,16 +190,16 @@ export interface CloudDeploymentStatus {
 export class CloudDeployment {
   private readonly operators: Map<string, KubernetesOperator> = new Map()
   private readonly status: CloudDeploymentStatus
-  
+
   constructor(private readonly config: CloudDeploymentConfig) {
     this.status = {
       id: Math.random().toString(36).substring(7),
       status: 'pending',
       regions: [],
-      lastUpdated: new Date()
+      lastUpdated: new Date(),
     }
   }
-  
+
   /**
    * Create cloud deployment
    */
@@ -208,7 +208,7 @@ export class CloudDeployment {
     await Effect.runPromise(deployment.initialize())
     return deployment
   }
-  
+
   /**
    * Initialize deployment
    */
@@ -223,7 +223,7 @@ export class CloudDeployment {
       Effect.flatMap(() => this.setupIaC())
     )
   }
-  
+
   /**
    * Validate configuration
    */
@@ -240,40 +240,39 @@ export class CloudDeployment {
       Effect.catchAll(error => Effect.fail(error as Error))
     )
   }
-  
+
   /**
    * Setup Infrastructure as Code
    */
   private setupIaC(): Effect.Effect<void, Error> {
-    if (!this.config.iac?.autoProvision) {
+    if (this.config.iac?.autoProvision !== true) {
       return Effect.succeed(undefined)
     }
-    
+
     return pipe(
       Effect.sync(() => {
-        console.log(`🏗️  Setting up IaC with ${this.config.iac?.provider || 'terraform'}`)
+        console.log(`🏗️  Setting up IaC with ${this.config.iac?.provider ?? 'terraform'}`)
         // Would generate Terraform/Pulumi/CDK configs here
       })
     )
   }
-  
+
   /**
    * Deploy to all regions
    */
   async deploy(): Promise<void> {
     this.status.status = 'deploying'
-    
+
     await Effect.runPromise(
       pipe(
-        Effect.forEach(
-          this.config.providers,
-          (provider) => this.deployToProvider(provider)
+        Effect.forEach(this.config.providers, provider => this.deployToProvider(provider)),
+        Effect.tap(() =>
+          Effect.sync(() => {
+            this.status.status = 'running'
+            this.status.lastUpdated = new Date()
+            console.log(`✅ Deployment complete: ${this.status.id}`)
+          })
         ),
-        Effect.tap(() => Effect.sync(() => {
-          this.status.status = 'running'
-          this.status.lastUpdated = new Date()
-          console.log(`✅ Deployment complete: ${this.status.id}`)
-        })),
         Effect.catchAll(error => {
           this.status.status = 'failed'
           return Effect.fail(error)
@@ -281,7 +280,7 @@ export class CloudDeployment {
       )
     )
   }
-  
+
   /**
    * Deploy to specific provider
    */
@@ -299,17 +298,19 @@ export class CloudDeployment {
         this.operators.set(provider, operator)
         return Effect.tryPromise(() => operator.deploy())
       }),
-      Effect.tap(() => Effect.sync(() => {
-        this.status.regions.push({
-          provider,
-          region: this.getRegion(provider),
-          status: 'running',
-          endpoint: `https://federation-${provider}.example.com`
+      Effect.tap(() =>
+        Effect.sync(() => {
+          this.status.regions.push({
+            provider,
+            region: this.getRegion(provider),
+            status: 'running',
+            endpoint: `https://federation-${provider}.example.com`,
+          })
         })
-      }))
+      )
     )
   }
-  
+
   /**
    * Get K8s configuration for provider
    */
@@ -319,81 +320,86 @@ export class CloudDeployment {
       federation: {
         gateway: {
           name: 'gateway',
-          image: this.config.federation.gateway?.image || 'federation-gateway:latest',
-          replicas: this.config.federation.gateway?.replicas || this.getReplicaCount(),
-          ...(this.config.federation.gateway?.resources && { resources: this.config.federation.gateway.resources })
+          image: this.config.federation.gateway?.image ?? 'federation-gateway:latest',
+          replicas: this.config.federation.gateway?.replicas ?? this.getReplicaCount(),
+          ...(this.config.federation.gateway?.resources && {
+            resources: this.config.federation.gateway.resources,
+          }),
         },
         ...(this.config.federation.subgraphs && {
           subgraphs: this.config.federation.subgraphs.map(sg => ({
             name: sg.name,
             image: sg.image,
-            replicas: sg.replicas || 2
-          }))
-        })
-      }
+            replicas: sg.replicas ?? 2,
+          })),
+        }),
+      },
     }
-    
+
     // Add provider-specific configuration
     switch (provider) {
       case 'aws':
         return {
           ...baseConfig,
-          cluster: { endpoint: 'https://eks.amazonaws.com' }
+          cluster: { endpoint: 'https://eks.amazonaws.com' },
         }
       case 'gcp':
         return {
           ...baseConfig,
-          cluster: { endpoint: 'https://gke.googleapis.com' }
+          cluster: { endpoint: 'https://gke.googleapis.com' },
         }
       case 'azure':
         return {
           ...baseConfig,
-          cluster: { endpoint: 'https://aks.azure.com' }
+          cluster: { endpoint: 'https://aks.azure.com' },
         }
       default:
         return baseConfig
     }
   }
-  
+
   /**
    * Get replica count based on environment
    */
   private getReplicaCount(): number {
     switch (this.config.environment) {
-      case 'production': return 3
-      case 'staging': return 2
-      case 'development': return 1
-      default: return 1
+      case 'production':
+        return 3
+      case 'staging':
+        return 2
+      case 'development':
+        return 1
+      default:
+        return 1
     }
   }
-  
+
   /**
    * Get region for provider
    */
   private getRegion(provider: CloudProvider): string {
     const regionMap: Record<CloudProvider, string> = {
-      'aws': 'us-east-1',
-      'gcp': 'us-central1',
-      'azure': 'eastus',
-      'alibaba': 'cn-hangzhou',
-      'digitalocean': 'nyc1',
-      'on-premise': 'local'
+      aws: 'us-east-1',
+      gcp: 'us-central1',
+      azure: 'eastus',
+      alibaba: 'cn-hangzhou',
+      digitalocean: 'nyc1',
+      'on-premise': 'local',
     }
-    return this.config.regions?.[0] || regionMap[provider]
+    return this.config.regions?.[0] ?? regionMap[provider]
   }
-  
+
   /**
    * Scale deployment
    */
   async scale(component: string, replicas: number): Promise<void> {
     await Effect.runPromise(
-      Effect.forEach(
-        Array.from(this.operators.values()),
-        (operator) => Effect.tryPromise(() => operator.scale(component, replicas))
+      Effect.forEach(Array.from(this.operators.values()), operator =>
+        Effect.tryPromise(() => operator.scale(component, replicas))
       )
     )
   }
-  
+
   /**
    * Get deployment status
    */
@@ -402,12 +408,12 @@ export class CloudDeployment {
     this.status.metrics = {
       totalInstances: this.operators.size * 5, // Mock calculation
       totalCost: this.calculateCost(),
-      requestsPerSecond: 1000 // Mock value
+      requestsPerSecond: 1000, // Mock value
     }
-    
+
     return this.status
   }
-  
+
   /**
    * Calculate estimated cost
    */
@@ -416,22 +422,23 @@ export class CloudDeployment {
     const multiplier = this.config.environment === 'production' ? 3 : 1
     return this.operators.size * baseCost * multiplier
   }
-  
+
   /**
    * Terminate deployment
    */
   async terminate(): Promise<void> {
     await Effect.runPromise(
       pipe(
-        Effect.forEach(
-          Array.from(this.operators.values()),
-          (operator) => Effect.tryPromise(() => operator.teardown())
+        Effect.forEach(Array.from(this.operators.values()), operator =>
+          Effect.tryPromise(() => operator.teardown())
         ),
-        Effect.tap(() => Effect.sync(() => {
-          this.status.status = 'terminated'
-          this.status.lastUpdated = new Date()
-          console.log(`🛑 Deployment terminated: ${this.status.id}`)
-        }))
+        Effect.tap(() =>
+          Effect.sync(() => {
+            this.status.status = 'terminated'
+            this.status.lastUpdated = new Date()
+            console.log(`🛑 Deployment terminated: ${this.status.id}`)
+          })
+        )
       )
     )
   }
@@ -448,40 +455,43 @@ export const CloudPresets = {
     providers: [provider],
     environment: 'production',
     federation: {
-      gateway: { image: gateway, replicas: 3 }
-    }
+      gateway: { image: gateway, replicas: 3 },
+    },
   }),
-  
+
   /**
    * Multi-region deployment
    */
-  multiRegion: (gateway: string, subgraphs: Array<{ name: string; image: string }>): CloudDeploymentConfig => ({
+  multiRegion: (
+    gateway: string,
+    subgraphs: Array<{ name: string; image: string }>
+  ): CloudDeploymentConfig => ({
     providers: ['aws', 'gcp', 'azure'],
     environment: 'production',
     regions: ['us-east-1', 'europe-west1', 'eastasia'],
     federation: {
-      gateway: { 
-        image: gateway, 
+      gateway: {
+        image: gateway,
         replicas: 3,
-        resources: { cpu: '1000m', memory: '1Gi' }
+        resources: { cpu: '1000m', memory: '1Gi' },
       },
-      subgraphs
+      subgraphs,
     },
     iac: {
       provider: 'terraform',
-      autoProvision: true
+      autoProvision: true,
     },
     cicd: {
       provider: 'github',
       autoDeploy: true,
-      autoRollback: true
+      autoRollback: true,
     },
     costOptimization: {
       useSpotInstances: true,
-      budgetAlerts: { threshold: 5000 }
-    }
+      budgetAlerts: { threshold: 5000 },
+    },
   }),
-  
+
   /**
    * Edge deployment
    */
@@ -490,13 +500,13 @@ export const CloudPresets = {
     environment: 'production',
     regions: ['us-east-1', 'eu-west-1', 'ap-southeast-1'],
     federation: {
-      gateway: { 
+      gateway: {
         image: gateway,
-        replicas: 1 // Edge functions scale automatically
-      }
-    }
+        replicas: 1, // Edge functions scale automatically
+      },
+    },
   }),
-  
+
   /**
    * Development deployment
    */
@@ -504,10 +514,10 @@ export const CloudPresets = {
     providers: ['on-premise'],
     environment: 'development',
     federation: {
-      gateway: { image: gateway, replicas: 1 }
+      gateway: { image: gateway, replicas: 1 },
     },
     costOptimization: {
-      autoShutdown: true
-    }
-  })
+      autoShutdown: true,
+    },
+  }),
 }

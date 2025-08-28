@@ -1,26 +1,26 @@
 /**
  * # GraphQL Subscription Support for Federation
- * 
+ *
  * WebSocket-based subscription support for Apollo Federation with Effect-TS patterns.
  * Provides real-time data streaming, event sourcing, and resilient connection management.
- * 
+ *
  * @example Basic subscription setup
  * ```typescript
  * import { SubscriptionManager } from '@cqrs/federation'
- * 
+ *
  * const manager = await SubscriptionManager.create({
  *   schema,
  *   transport: 'ws',
  *   endpoint: 'ws://localhost:4000/graphql'
  * })
- * 
+ *
  * const subscription = manager.subscribe(
  *   'onUserUpdate',
  *   { userId: '123' },
  *   (data) => console.log('Update:', data)
  * )
  * ```
- * 
+ *
  * @module Subscriptions
  * @since 2.2.0
  */
@@ -41,17 +41,17 @@ export interface SubscriptionConfig {
    * GraphQL schema
    */
   schema: GraphQLSchema
-  
+
   /**
    * Transport type
    */
   transport: SubscriptionTransport
-  
+
   /**
    * WebSocket endpoint
    */
   endpoint: string
-  
+
   /**
    * Connection options
    */
@@ -60,28 +60,28 @@ export interface SubscriptionConfig {
      * Reconnect on failure
      */
     reconnect?: boolean
-    
+
     /**
      * Max reconnect attempts
      */
     maxReconnectAttempts?: number
-    
+
     /**
      * Reconnect delay
      */
     reconnectDelay?: Duration.Duration
-    
+
     /**
      * Keep-alive interval
      */
     keepAlive?: Duration.Duration
-    
+
     /**
      * Connection timeout
      */
     timeout?: Duration.Duration
   }
-  
+
   /**
    * Authentication
    */
@@ -90,13 +90,13 @@ export interface SubscriptionConfig {
      * Auth token
      */
     token?: string
-    
+
     /**
      * Custom headers
      */
     headers?: Record<string, string>
   }
-  
+
   /**
    * Event handlers
    */
@@ -109,7 +109,7 @@ export interface SubscriptionConfig {
 /**
  * Subscription state
  */
-export type SubscriptionState = 
+export type SubscriptionState =
   | { _tag: 'disconnected' }
   | { _tag: 'connecting' }
   | { _tag: 'connected'; connectionId: string }
@@ -124,27 +124,27 @@ export interface ActiveSubscription<T = unknown> {
    * Subscription ID
    */
   id: string
-  
+
   /**
    * Subscription name
    */
   name: string
-  
+
   /**
    * Variables
    */
   variables?: Record<string, unknown>
-  
+
   /**
    * Data stream
    */
   stream: Stream.Stream<T, Error>
-  
+
   /**
    * Unsubscribe
    */
   unsubscribe: () => Effect.Effect<void, Error>
-  
+
   /**
    * Subscription metrics
    */
@@ -159,27 +159,27 @@ export interface SubscriptionMetrics {
    * Messages received
    */
   messagesReceived: number
-  
+
   /**
    * Errors occurred
    */
   errors: number
-  
+
   /**
    * Start time
    */
   startTime: Date
-  
+
   /**
    * Last message time
    */
   lastMessageTime?: Date
-  
+
   /**
    * Average latency
    */
   averageLatency: number
-  
+
   /**
    * Reconnections
    */
@@ -196,9 +196,9 @@ class ConnectionManager {
   private connection: WebSocket | undefined
   private state: SubscriptionState = { _tag: 'disconnected' }
   private reconnectAttempt = 0
-  
+
   constructor(private readonly config: SubscriptionConfig) {}
-  
+
   /**
    * Connect to WebSocket
    */
@@ -208,41 +208,41 @@ class ConnectionManager {
       if (self.state._tag === 'connected') {
         return
       }
-      
+
       self.state = { _tag: 'connecting' }
-      
+
       yield* Effect.tryPromise({
         try: async () => {
           return new Promise<void>((resolve, reject) => {
             const ws = new WebSocket(self.config.endpoint)
-            
+
             ws.onopen = () => {
               self.connection = ws
-              self.state = { 
-                _tag: 'connected', 
-                connectionId: Math.random().toString(36).substring(7) 
+              self.state = {
+                _tag: 'connected',
+                connectionId: Math.random().toString(36).substring(7),
               }
               self.reconnectAttempt = 0
               self.config.onConnect?.()
               resolve()
             }
-            
-            ws.onerror = (event) => {
+
+            ws.onerror = event => {
               const error = new Error(`WebSocket error: ${event.type}`)
               self.state = { _tag: 'error', error }
               self.config.onError?.(error)
               reject(error)
             }
-            
-            ws.onclose = (event) => {
+
+            ws.onclose = event => {
               self.state = { _tag: 'disconnected' }
               self.config.onDisconnect?.(event.reason)
-              
-              if (self.config.connectionOptions?.reconnect) {
+
+              if (self.config.connectionOptions?.reconnect ?? false) {
                 Effect.runPromise(self.reconnect()).catch(() => {})
               }
             }
-            
+
             // Set connection timeout
             if (self.config.connectionOptions?.timeout) {
               setTimeout(() => {
@@ -254,16 +254,16 @@ class ConnectionManager {
             }
           })
         },
-        catch: (error) => new Error(`Connection failed: ${error}`)
+        catch: error => new Error(`Connection failed: ${error}`),
       })
-      
+
       // Setup keep-alive if needed
       if (self.config.connectionOptions?.keepAlive && self.connection) {
         yield* Effect.fork(self.startKeepAlive())
       }
     })
   }
-  
+
   /**
    * Reconnect with backoff
    */
@@ -271,26 +271,26 @@ class ConnectionManager {
     const self = this
     return Effect.gen(function* () {
       const maxAttempts = self.config.connectionOptions?.maxReconnectAttempts ?? 5
-      
+
       if (self.reconnectAttempt >= maxAttempts) {
         return yield* Effect.fail(new Error('Max reconnection attempts reached'))
       }
-      
+
       self.reconnectAttempt++
       self.state = { _tag: 'reconnecting', attempt: self.reconnectAttempt }
       self.config.onReconnecting?.(self.reconnectAttempt)
-      
+
       // Exponential backoff
       const delay = self.config.connectionOptions?.reconnectDelay ?? Duration.seconds(1)
       const backoffDelay = Duration.millis(
         Duration.toMillis(delay) * Math.pow(2, self.reconnectAttempt - 1)
       )
-      
+
       yield* Effect.sleep(backoffDelay)
       yield* self.connect()
     })
   }
-  
+
   /**
    * Start keep-alive ping
    */
@@ -298,7 +298,7 @@ class ConnectionManager {
     const self = this
     return Effect.gen(function* () {
       const interval = self.config.connectionOptions?.keepAlive ?? Duration.seconds(30)
-      
+
       yield* Effect.repeat(
         Effect.gen(function* () {
           if (self.connection?.readyState === WebSocket.OPEN) {
@@ -309,7 +309,7 @@ class ConnectionManager {
       )
     })
   }
-  
+
   /**
    * Send message
    */
@@ -319,11 +319,11 @@ class ConnectionManager {
       if (!self.connection || self.connection.readyState !== WebSocket.OPEN) {
         return yield* Effect.fail(new Error('WebSocket not connected'))
       }
-      
+
       self.connection.send(JSON.stringify(message))
     })
   }
-  
+
   /**
    * Disconnect
    */
@@ -337,7 +337,7 @@ class ConnectionManager {
       }
     })
   }
-  
+
   /**
    * Get state
    */
@@ -352,11 +352,11 @@ class ConnectionManager {
 export class SubscriptionManager {
   private readonly connectionManager: ConnectionManager
   private readonly subscriptions = new Map<string, ActiveSubscription>()
-  
+
   constructor(config: SubscriptionConfig) {
     this.connectionManager = new ConnectionManager(config)
   }
-  
+
   /**
    * Create subscription manager
    */
@@ -365,14 +365,14 @@ export class SubscriptionManager {
     await Effect.runPromise(manager.connect())
     return manager
   }
-  
+
   /**
    * Connect to server
    */
   connect(): Effect.Effect<void, Error> {
     return this.connectionManager.connect()
   }
-  
+
   /**
    * Subscribe to events
    */
@@ -385,22 +385,18 @@ export class SubscriptionManager {
     const self = this
     return Effect.gen(function* () {
       const subscriptionId = Math.random().toString(36).substring(7)
-      
+
       // Create subscription stream
-      const stream = Stream.async<T, Error>((emit) => {
+      const stream = Stream.async<T, Error>(emit => {
         // Mock implementation for now
         setTimeout(() => {
-          emit(Effect.fail(Option.none()))
+          void emit(Effect.fail(Option.none()))
         }, 100)
       }).pipe(
-        Stream.tapError((error) => 
-          Effect.sync(() => onError?.(error))
-        ),
-        Stream.tap((data) => 
-          Effect.sync(() => onData?.(data))
-        )
+        Stream.tapError(error => Effect.sync(() => onError?.(error))),
+        Stream.tap(data => Effect.sync(() => onData?.(data)))
       )
-      
+
       // Create subscription object
       const subscription: ActiveSubscription<T> = {
         id: subscriptionId,
@@ -416,10 +412,10 @@ export class SubscriptionManager {
           reconnections: 0,
         },
       }
-      
+
       // Store subscription
       self.subscriptions.set(subscriptionId, subscription as ActiveSubscription)
-      
+
       // Send subscription to server
       yield* self.connectionManager.send({
         id: subscriptionId,
@@ -429,11 +425,11 @@ export class SubscriptionManager {
           variables,
         },
       })
-      
+
       return subscription
     })
   }
-  
+
   /**
    * Unsubscribe
    */
@@ -444,18 +440,18 @@ export class SubscriptionManager {
       if (!subscription) {
         return yield* Effect.fail(new Error(`Subscription ${subscriptionId} not found`))
       }
-      
+
       // Send unsubscribe to server
       yield* self.connectionManager.send({
         id: subscriptionId,
         type: 'unsubscribe',
       })
-      
+
       // Remove subscription
       self.subscriptions.delete(subscriptionId)
     })
   }
-  
+
   /**
    * Unsubscribe all
    */
@@ -463,11 +459,11 @@ export class SubscriptionManager {
     const self = this
     return Effect.forEach(
       Array.from(self.subscriptions.keys()),
-      (id) => self.unsubscribe(id).pipe(Effect.orElseSucceed(() => undefined)),
+      id => self.unsubscribe(id).pipe(Effect.orElseSucceed(() => undefined)),
       { discard: true }
     )
   }
-  
+
   /**
    * Disconnect
    */
@@ -480,21 +476,21 @@ export class SubscriptionManager {
       })
     )
   }
-  
+
   /**
    * Get connection state
    */
   getState(): SubscriptionState {
     return this.connectionManager.getState()
   }
-  
+
   /**
    * Get active subscriptions
    */
   getSubscriptions(): ReadonlyArray<ActiveSubscription> {
     return Array.from(this.subscriptions.values())
   }
-  
+
   /**
    * Get metrics
    */
@@ -505,21 +501,15 @@ export class SubscriptionManager {
     connectionState: SubscriptionState
   } {
     const subscriptions = this.getSubscriptions()
-    
+
     return {
       totalSubscriptions: subscriptions.length,
-      totalMessages: subscriptions.reduce(
-        (sum, s) => sum + s.metrics.messagesReceived, 
-        0
-      ),
-      totalErrors: subscriptions.reduce(
-        (sum, s) => sum + s.metrics.errors, 
-        0
-      ),
+      totalMessages: subscriptions.reduce((sum, s) => sum + s.metrics.messagesReceived, 0),
+      totalErrors: subscriptions.reduce((sum, s) => sum + s.metrics.errors, 0),
       connectionState: this.getState(),
     }
   }
-  
+
   /**
    * Build subscription query
    */
@@ -536,7 +526,10 @@ export const SubscriptionPresets = {
   /**
    * Development preset
    */
-  development: (schema: GraphQLSchema, endpoint = 'ws://localhost:4000/graphql'): SubscriptionConfig => ({
+  development: (
+    schema: GraphQLSchema,
+    endpoint = 'ws://localhost:4000/graphql'
+  ): SubscriptionConfig => ({
     schema,
     transport: 'ws',
     endpoint,
@@ -548,11 +541,11 @@ export const SubscriptionPresets = {
       timeout: Duration.seconds(5),
     },
     onConnect: () => console.log('🔌 WebSocket connected'),
-    onDisconnect: (reason) => console.log('🔌 WebSocket disconnected:', reason),
-    onError: (error) => console.error('❌ WebSocket error:', error),
-    onReconnecting: (attempt) => console.log(`🔄 Reconnecting... (attempt ${attempt})`),
+    onDisconnect: reason => console.log('🔌 WebSocket disconnected:', reason),
+    onError: error => console.error('❌ WebSocket error:', error),
+    onReconnecting: attempt => console.log(`🔄 Reconnecting... (attempt ${attempt})`),
   }),
-  
+
   /**
    * Production preset
    */
@@ -568,7 +561,7 @@ export const SubscriptionPresets = {
       timeout: Duration.seconds(10),
     },
   }),
-  
+
   /**
    * Testing preset
    */
@@ -595,18 +588,18 @@ export interface FederationSubscriptionConfig extends SubscriptionConfig {
      * Entity type
      */
     typename: string
-    
+
     /**
      * Subscription events
      */
     events: Array<'created' | 'updated' | 'deleted'>
-    
+
     /**
      * Filter function
      */
     filter?: (entity: unknown) => boolean
   }[]
-  
+
   /**
    * Cross-subgraph subscriptions
    */
@@ -615,7 +608,7 @@ export interface FederationSubscriptionConfig extends SubscriptionConfig {
      * Enable cross-subgraph events
      */
     enabled: boolean
-    
+
     /**
      * Event propagation delay
      */
@@ -630,27 +623,23 @@ export const createFederationSubscriptionManager = async (
   config: FederationSubscriptionConfig
 ): Promise<SubscriptionManager> => {
   const manager = await SubscriptionManager.create(config)
-  
+
   // Setup entity subscriptions
   if (config.entitySubscriptions) {
     for (const entityConfig of config.entitySubscriptions) {
       for (const event of entityConfig.events) {
         const subscriptionName = `on${entityConfig.typename}${event.charAt(0).toUpperCase() + event.slice(1)}`
-        
+
         await Effect.runPromise(
-          manager.subscribe(
-            subscriptionName,
-            undefined,
-            (data) => {
-              if (!entityConfig.filter || entityConfig.filter(data)) {
-                console.log(`📨 ${entityConfig.typename} ${event}:`, data)
-              }
+          manager.subscribe(subscriptionName, undefined, data => {
+            if (!entityConfig.filter || entityConfig.filter(data)) {
+              console.log(`📨 ${entityConfig.typename} ${event}:`, data)
             }
-          )
+          })
         )
       }
     }
   }
-  
+
   return manager
 }

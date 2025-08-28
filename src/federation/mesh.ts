@@ -1,14 +1,14 @@
 /**
  * # GraphQL Mesh Integration for Federation
- * 
+ *
  * Integrates GraphQL Mesh capabilities with Apollo Federation, enabling
  * unified access to REST APIs, databases, gRPC services, and other data sources
  * through a federated GraphQL layer.
- * 
+ *
  * @example Basic mesh integration
  * ```typescript
  * import { MeshIntegration } from '@cqrs/federation'
- * 
+ *
  * const mesh = await MeshIntegration.create({
  *   sources: [
  *     { type: 'openapi', name: 'users', spec: './openapi.yaml' },
@@ -21,7 +21,7 @@
  *   }
  * })
  * ```
- * 
+ *
  * @module Mesh
  * @since 2.3.0
  */
@@ -34,7 +34,7 @@ import type { FederationEntity, ServiceDefinition } from '../core/types.js'
 /**
  * Mesh source types
  */
-export type MeshSourceType = 
+export type MeshSourceType =
   | 'openapi'
   | 'graphql'
   | 'grpc'
@@ -57,22 +57,22 @@ export interface MeshSource {
    * Source type
    */
   type: MeshSourceType
-  
+
   /**
    * Source name
    */
   name: string
-  
+
   /**
    * Source-specific configuration
    */
   config: Record<string, unknown>
-  
+
   /**
    * Transform configuration
    */
   transforms?: MeshTransform[]
-  
+
   /**
    * Cache configuration
    */
@@ -81,7 +81,7 @@ export interface MeshSource {
      * TTL in seconds
      */
     ttl?: number
-    
+
     /**
      * Invalidation rules
      */
@@ -90,7 +90,7 @@ export interface MeshSource {
        * Time-based invalidation
        */
       ttl?: Duration.Duration
-      
+
       /**
        * Event-based invalidation
        */
@@ -107,7 +107,7 @@ export interface MeshTransform {
    * Transform type
    */
   type: 'rename' | 'filter' | 'prefix' | 'suffix' | 'encapsulate' | 'federation'
-  
+
   /**
    * Transform configuration
    */
@@ -122,7 +122,7 @@ export interface MeshIntegrationConfig {
    * Data sources
    */
   sources: MeshSource[]
-  
+
   /**
    * Federation configuration
    */
@@ -131,18 +131,18 @@ export interface MeshIntegrationConfig {
      * Federation entities
      */
     entities?: FederationEntity<unknown, unknown, unknown, unknown>[]
-    
+
     /**
      * Federation services
      */
     services?: ServiceDefinition[]
-    
+
     /**
      * Enable auto-federation
      */
     autoFederation?: boolean
   }
-  
+
   /**
    * Mesh configuration
    */
@@ -151,12 +151,12 @@ export interface MeshIntegrationConfig {
      * Enable playground
      */
     playground?: boolean
-    
+
     /**
      * Port
      */
     port?: number
-    
+
     /**
      * CORS configuration
      */
@@ -164,7 +164,7 @@ export interface MeshIntegrationConfig {
       origin?: string | string[]
       credentials?: boolean
     }
-    
+
     /**
      * Rate limiting
      */
@@ -173,12 +173,12 @@ export interface MeshIntegrationConfig {
       window: Duration.Duration
     }
   }
-  
+
   /**
    * Plugins
    */
   plugins?: MeshPlugin[]
-  
+
   /**
    * Error handling
    */
@@ -187,7 +187,7 @@ export interface MeshIntegrationConfig {
      * Mask errors in production
      */
     maskErrors?: boolean
-    
+
     /**
      * Custom error formatter
      */
@@ -203,12 +203,12 @@ export interface MeshPlugin {
    * Plugin name
    */
   name: string
-  
+
   /**
    * Plugin configuration
    */
   config?: Record<string, unknown>
-  
+
   /**
    * Plugin hooks
    */
@@ -217,12 +217,12 @@ export interface MeshPlugin {
      * Before request hook
      */
     beforeRequest?: (context: unknown) => Effect.Effect<void, Error>
-    
+
     /**
      * After request hook
      */
     afterRequest?: (context: unknown, result: unknown) => Effect.Effect<void, Error>
-    
+
     /**
      * On error hook
      */
@@ -238,22 +238,22 @@ export interface MeshInstance {
    * GraphQL schema
    */
   schema: GraphQLSchema
-  
+
   /**
    * Execute query
    */
   execute: (query: string, variables?: Record<string, unknown>) => Effect.Effect<unknown, Error>
-  
+
   /**
    * Get metrics
    */
   getMetrics: () => MeshMetrics
-  
+
   /**
    * Refresh sources
    */
   refresh: (sourceName?: string) => Effect.Effect<void, Error>
-  
+
   /**
    * Stop mesh
    */
@@ -268,30 +268,33 @@ export interface MeshMetrics {
    * Total requests
    */
   requests: number
-  
+
   /**
    * Cache hits
    */
   cacheHits: number
-  
+
   /**
    * Cache misses
    */
   cacheMisses: number
-  
+
   /**
    * Average latency
    */
   avgLatency: number
-  
+
   /**
    * Source metrics
    */
-  sources: Record<string, {
-    requests: number
-    errors: number
-    avgLatency: number
-  }>
+  sources: Record<
+    string,
+    {
+      requests: number
+      errors: number
+      avgLatency: number
+    }
+  >
 }
 
 /**
@@ -302,12 +305,12 @@ interface SourceAdapter {
    * Load schema from source
    */
   loadSchema(): Effect.Effect<GraphQLSchema, Error>
-  
+
   /**
    * Execute query against source
    */
   execute(query: string, variables?: Record<string, unknown>): Effect.Effect<unknown, Error>
-  
+
   /**
    * Get source health
    */
@@ -319,7 +322,7 @@ interface SourceAdapter {
  */
 class OpenAPIAdapter implements SourceAdapter {
   constructor(_config: Record<string, unknown>) {}
-  
+
   loadSchema(): Effect.Effect<GraphQLSchema, Error> {
     return pipe(
       Effect.try(() => {
@@ -336,19 +339,19 @@ class OpenAPIAdapter implements SourceAdapter {
             email: String!
           }
         `
-        
+
         return buildSchema(schemaSDL)
       }),
       Effect.mapError(error => new Error(`Failed to load OpenAPI schema: ${error}`))
     )
   }
-  
+
   execute(_query: string, _variables?: Record<string, unknown>): Effect.Effect<unknown, Error> {
     return Effect.succeed({
-      data: { users: [] }
+      data: { users: [] },
     })
   }
-  
+
   health(): Effect.Effect<boolean, Error> {
     return Effect.succeed(true)
   }
@@ -359,7 +362,7 @@ class OpenAPIAdapter implements SourceAdapter {
  */
 class GRPCAdapter implements SourceAdapter {
   constructor(_config: Record<string, unknown>) {}
-  
+
   loadSchema(): Effect.Effect<GraphQLSchema, Error> {
     return pipe(
       Effect.try(() => {
@@ -376,19 +379,19 @@ class GRPCAdapter implements SourceAdapter {
             price: Float!
           }
         `
-        
+
         return buildSchema(schemaSDL)
       }),
       Effect.mapError(error => new Error(`Failed to load gRPC schema: ${error}`))
     )
   }
-  
+
   execute(_query: string, _variables?: Record<string, unknown>): Effect.Effect<unknown, Error> {
     return Effect.succeed({
-      data: { products: [] }
+      data: { products: [] },
     })
   }
-  
+
   health(): Effect.Effect<boolean, Error> {
     return Effect.succeed(true)
   }
@@ -399,7 +402,7 @@ class GRPCAdapter implements SourceAdapter {
  */
 class DatabaseAdapter implements SourceAdapter {
   constructor(_type: string, _config: Record<string, unknown>) {}
-  
+
   loadSchema(): Effect.Effect<GraphQLSchema, Error> {
     return pipe(
       Effect.try(() => {
@@ -417,19 +420,19 @@ class DatabaseAdapter implements SourceAdapter {
             status: String!
           }
         `
-        
+
         return buildSchema(schemaSDL)
       }),
       Effect.mapError(error => new Error(`Failed to load database schema: ${error}`))
     )
   }
-  
+
   execute(_query: string, _variables?: Record<string, unknown>): Effect.Effect<unknown, Error> {
     return Effect.succeed({
-      data: { orders: [] }
+      data: { orders: [] },
     })
   }
-  
+
   health(): Effect.Effect<boolean, Error> {
     return Effect.succeed(true)
   }
@@ -446,54 +449,55 @@ export class MeshIntegration {
     cacheHits: 0,
     cacheMisses: 0,
     avgLatency: 0,
-    sources: {}
+    sources: {},
   }
-  
+
   constructor(private readonly config: MeshIntegrationConfig) {}
-  
+
   /**
    * Create mesh integration
    */
   static async create(config: MeshIntegrationConfig): Promise<MeshInstance> {
     const integration = new MeshIntegration(config)
     await Effect.runPromise(integration.initialize())
-    
+
     return {
       schema: integration.schema!,
       execute: (query, variables) => integration.execute(query, variables),
       getMetrics: () => integration.metrics,
-      refresh: (sourceName) => integration.refresh(sourceName),
-      stop: () => integration.stop()
+      refresh: sourceName => integration.refresh(sourceName),
+      stop: () => integration.stop(),
     }
   }
-  
+
   /**
    * Initialize mesh
    */
   private initialize(): Effect.Effect<void, Error> {
     const self = this
-    
+
     return pipe(
       // Create adapters for each source
-      Effect.forEach(
-        self.config.sources,
-        (source) => pipe(
+      Effect.forEach(self.config.sources, source =>
+        pipe(
           self.createAdapter(source),
-          Effect.tap(adapter => Effect.sync(() => {
-            self.adapters.set(source.name, adapter)
-            self.metrics.sources[source.name] = {
-              requests: 0,
-              errors: 0,
-              avgLatency: 0
-            }
-          }))
+          Effect.tap(adapter =>
+            Effect.sync(() => {
+              self.adapters.set(source.name, adapter)
+              self.metrics.sources[source.name] = {
+                requests: 0,
+                errors: 0,
+                avgLatency: 0,
+              }
+            })
+          )
         )
       ),
       // Load and merge schemas
       Effect.flatMap(() => self.loadSchemas()),
       // Apply federation transforms if configured
-      Effect.flatMap(() => 
-        self.config.federation?.autoFederation
+      Effect.flatMap(() =>
+        (self.config.federation?.autoFederation ?? false)
           ? self.applyFederationTransforms()
           : Effect.succeed(undefined)
       ),
@@ -502,7 +506,7 @@ export class MeshIntegration {
       Effect.map(() => undefined)
     )
   }
-  
+
   /**
    * Create adapter for source
    */
@@ -512,15 +516,15 @@ export class MeshIntegration {
         switch (source.type) {
           case 'openapi':
             return new OpenAPIAdapter(source.config)
-          
+
           case 'grpc':
             return new GRPCAdapter(source.config)
-          
+
           case 'postgres':
           case 'mysql':
           case 'mongodb':
             return new DatabaseAdapter(source.type, source.config)
-          
+
           default:
             return null
         }
@@ -532,17 +536,16 @@ export class MeshIntegration {
       )
     )
   }
-  
+
   /**
    * Load and merge schemas
    */
   private loadSchemas(): Effect.Effect<void, Error> {
     const self = this
-    
+
     return pipe(
-      Effect.forEach(
-        Array.from(self.adapters.entries()),
-        ([_name, adapter]) => adapter.loadSchema()
+      Effect.forEach(Array.from(self.adapters.entries()), ([_name, adapter]) =>
+        adapter.loadSchema()
       ),
       Effect.map(schemas => {
         // Merge schemas (simplified - would use stitching in practice)
@@ -550,19 +553,17 @@ export class MeshIntegration {
       })
     )
   }
-  
+
   /**
    * Apply federation transforms
    */
   private applyFederationTransforms(): Effect.Effect<void, Error> {
     const self = this
-    
+
     return pipe(
       Effect.sync(() => self.schema),
       Effect.flatMap(schema =>
-        schema
-          ? Effect.succeed(schema)
-          : Effect.fail(new Error('Schema not loaded'))
+        schema ? Effect.succeed(schema) : Effect.fail(new Error('Schema not loaded'))
       ),
       Effect.map(schema => {
         // Add federation directives
@@ -581,19 +582,22 @@ export class MeshIntegration {
             sdl: String!
           }
         `
-        
+
         self.schema = buildSchema(federatedSDL)
       })
     )
   }
-  
+
   /**
    * Execute query
    */
-  private execute(query: string, variables?: Record<string, unknown>): Effect.Effect<unknown, Error> {
+  private execute(
+    query: string,
+    variables?: Record<string, unknown>
+  ): Effect.Effect<unknown, Error> {
     const self = this
     const startTime = Date.now()
-    
+
     return pipe(
       Effect.sync(() => {
         self.metrics.requests++
@@ -605,17 +609,21 @@ export class MeshIntegration {
           ? adapter.execute(query, variables)
           : Effect.fail(new Error(`No adapter for source: ${sourceName}`))
       }),
-      Effect.tap(() => Effect.sync(() => {
-        const latency = Date.now() - startTime
-        self.updateMetrics('default', latency, false)
-      })),
-      Effect.tapError(() => Effect.sync(() => {
-        const latency = Date.now() - startTime
-        self.updateMetrics('default', latency, true)
-      }))
+      Effect.tap(() =>
+        Effect.sync(() => {
+          const latency = Date.now() - startTime
+          self.updateMetrics('default', latency, false)
+        })
+      ),
+      Effect.tapError(() =>
+        Effect.sync(() => {
+          const latency = Date.now() - startTime
+          self.updateMetrics('default', latency, true)
+        })
+      )
     )
   }
-  
+
   /**
    * Determine source from query
    */
@@ -624,9 +632,9 @@ export class MeshIntegration {
     if (query.includes('users')) return 'users'
     if (query.includes('products')) return 'products'
     if (query.includes('orders')) return 'orders'
-    return Array.from(this.adapters.keys())[0] || 'default'
+    return Array.from(this.adapters.keys())[0] ?? 'default'
   }
-  
+
   /**
    * Update metrics
    */
@@ -635,19 +643,21 @@ export class MeshIntegration {
     if (sourceMetrics) {
       sourceMetrics.requests++
       if (isError) sourceMetrics.errors++
-      sourceMetrics.avgLatency = (sourceMetrics.avgLatency * (sourceMetrics.requests - 1) + latency) / sourceMetrics.requests
+      sourceMetrics.avgLatency =
+        (sourceMetrics.avgLatency * (sourceMetrics.requests - 1) + latency) / sourceMetrics.requests
     }
-    
-    this.metrics.avgLatency = (this.metrics.avgLatency * (this.metrics.requests - 1) + latency) / this.metrics.requests
+
+    this.metrics.avgLatency =
+      (this.metrics.avgLatency * (this.metrics.requests - 1) + latency) / this.metrics.requests
   }
-  
+
   /**
    * Refresh sources
    */
   private refresh(sourceName?: string): Effect.Effect<void, Error> {
     const self = this
-    
-    return sourceName
+
+    return sourceName != null
       ? pipe(
           Effect.sync(() => self.adapters.get(sourceName)),
           Effect.flatMap(adapter =>
@@ -659,21 +669,20 @@ export class MeshIntegration {
         )
       : self.loadSchemas()
   }
-  
+
   /**
    * Start health monitoring
    */
   private startHealthMonitoring(): Effect.Effect<void, never> {
     const self = this
-    
+
     return Effect.repeat(
       pipe(
-        Effect.forEach(
-          Array.from(self.adapters.entries()),
-          ([name, adapter]) => pipe(
+        Effect.forEach(Array.from(self.adapters.entries()), ([name, adapter]) =>
+          pipe(
             adapter.health(),
             Effect.orElseSucceed(() => false),
-            Effect.tap(isHealthy => 
+            Effect.tap(isHealthy =>
               !isHealthy
                 ? Effect.sync(() => console.warn(`⚠️  Source ${name} is unhealthy`))
                 : Effect.succeed(undefined)
@@ -685,7 +694,7 @@ export class MeshIntegration {
       Schedule.fixed(Duration.seconds(30))
     )
   }
-  
+
   /**
    * Stop mesh
    */
@@ -703,37 +712,39 @@ export const MeshPresets = {
   /**
    * Microservices preset
    */
-  microservices: (services: Array<{ name: string; url: string; type: 'graphql' | 'rest' }>): MeshIntegrationConfig => ({
+  microservices: (
+    services: Array<{ name: string; url: string; type: 'graphql' | 'rest' }>
+  ): MeshIntegrationConfig => ({
     sources: services.map(service => ({
       type: service.type === 'rest' ? 'openapi' : 'graphql',
       name: service.name,
       config: { endpoint: service.url },
-      cache: { ttl: 60 }
+      cache: { ttl: 60 },
     })),
     federation: { autoFederation: true },
     mesh: {
       playground: true,
       port: 4000,
-      rateLimit: { max: 1000, window: Duration.minutes(1) }
-    }
+      rateLimit: { max: 1000, window: Duration.minutes(1) },
+    },
   }),
-  
+
   /**
    * Database federation preset
    */
-  databases: (databases: Array<{ name: string; type: 'postgres' | 'mysql' | 'mongodb'; connection: string }>): MeshIntegrationConfig => ({
+  databases: (
+    databases: Array<{ name: string; type: 'postgres' | 'mysql' | 'mongodb'; connection: string }>
+  ): MeshIntegrationConfig => ({
     sources: databases.map(db => ({
       type: db.type,
       name: db.name,
       config: { connectionString: db.connection },
-      transforms: [
-        { type: 'federation', config: { version: '2.0' } }
-      ]
+      transforms: [{ type: 'federation', config: { version: '2.0' } }],
     })),
     federation: { autoFederation: true },
-    errorHandling: { maskErrors: true }
+    errorHandling: { maskErrors: true },
   }),
-  
+
   /**
    * API gateway preset
    */
@@ -744,24 +755,24 @@ export const MeshPresets = {
       config: { spec: api.spec },
       transforms: [
         { type: 'prefix', config: { value: api.name } },
-        { type: 'encapsulate', config: { name: api.name } }
-      ]
+        { type: 'encapsulate', config: { name: api.name } },
+      ],
     })),
     mesh: {
       playground: true,
-      cors: { origin: '*', credentials: true }
+      cors: { origin: '*', credentials: true },
     },
     plugins: [
       {
         name: 'auth',
-        config: { type: 'jwt' }
+        config: { type: 'jwt' },
       },
       {
         name: 'monitoring',
-        config: { provider: 'prometheus' }
-      }
-    ]
-  })
+        config: { provider: 'prometheus' },
+      },
+    ],
+  }),
 }
 
 /**
@@ -773,7 +784,7 @@ export const MeshUtils = {
    */
   openAPIToGraphQL: (_spec: string): Effect.Effect<GraphQLSchema, Error> => {
     return pipe(
-      Effect.try(() => 
+      Effect.try(() =>
         buildSchema(`
           type Query {
             api: String
@@ -783,7 +794,7 @@ export const MeshUtils = {
       Effect.mapError(error => new Error(`Failed to convert OpenAPI: ${error}`))
     )
   },
-  
+
   /**
    * Convert proto to GraphQL schema
    */
@@ -799,7 +810,7 @@ export const MeshUtils = {
       Effect.mapError(error => new Error(`Failed to convert proto: ${error}`))
     )
   },
-  
+
   /**
    * Introspect database schema
    */
@@ -814,5 +825,5 @@ export const MeshUtils = {
       ),
       Effect.mapError(error => new Error(`Failed to introspect database: ${error}`))
     )
-  }
+  },
 }

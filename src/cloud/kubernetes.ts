@@ -1,13 +1,13 @@
 /**
  * # Kubernetes Operator for Federation
- * 
+ *
  * Provides Kubernetes-native deployment and management of federated GraphQL services
  * with automatic scaling, service discovery, and health monitoring.
- * 
+ *
  * @example Basic Kubernetes deployment
  * ```typescript
  * import { KubernetesOperator } from '@cqrs/federation/cloud'
- * 
+ *
  * const operator = await KubernetesOperator.create({
  *   namespace: 'federation',
  *   federation: {
@@ -18,10 +18,10 @@
  *     ]
  *   }
  * })
- * 
+ *
  * await operator.deploy()
  * ```
- * 
+ *
  * @module Kubernetes
  * @since 2.4.0
  */
@@ -52,17 +52,17 @@ export interface DeploymentConfig {
    * Deployment name
    */
   name: string
-  
+
   /**
    * Container image
    */
   image: string
-  
+
   /**
    * Number of replicas
    */
   replicas?: number
-  
+
   /**
    * Resource requirements
    */
@@ -74,12 +74,12 @@ export interface DeploymentConfig {
       memory?: string
     }
   }
-  
+
   /**
    * Environment variables
    */
   env?: Record<string, string>
-  
+
   /**
    * Health check configuration
    */
@@ -89,7 +89,7 @@ export interface DeploymentConfig {
     initialDelaySeconds?: number
     periodSeconds?: number
   }
-  
+
   /**
    * Autoscaling configuration
    */
@@ -109,12 +109,12 @@ export interface ServiceConfig {
    * Service name
    */
   name: string
-  
+
   /**
    * Service type
    */
   type?: 'ClusterIP' | 'NodePort' | 'LoadBalancer'
-  
+
   /**
    * Service ports
    */
@@ -124,7 +124,7 @@ export interface ServiceConfig {
     targetPort?: number
     protocol?: 'TCP' | 'UDP'
   }>
-  
+
   /**
    * Selector labels
    */
@@ -139,12 +139,12 @@ export interface IngressConfig {
    * Ingress name
    */
   name: string
-  
+
   /**
    * Ingress class
    */
   className?: string
-  
+
   /**
    * TLS configuration
    */
@@ -153,7 +153,7 @@ export interface IngressConfig {
     secretName?: string
     hosts?: string[]
   }
-  
+
   /**
    * Ingress rules
    */
@@ -178,7 +178,7 @@ export interface K8sOperatorConfig {
    * Kubernetes namespace
    */
   namespace?: string
-  
+
   /**
    * Cluster configuration
    */
@@ -187,18 +187,18 @@ export interface K8sOperatorConfig {
      * Kubernetes API endpoint
      */
     endpoint?: string
-    
+
     /**
      * Authentication token
      */
     token?: string
-    
+
     /**
      * CA certificate
      */
     caCert?: string
   }
-  
+
   /**
    * Federation deployment configuration
    */
@@ -207,12 +207,12 @@ export interface K8sOperatorConfig {
      * Gateway configuration
      */
     gateway?: DeploymentConfig
-    
+
     /**
      * Subgraph configurations
      */
     subgraphs?: DeploymentConfig[]
-    
+
     /**
      * Service mesh configuration
      */
@@ -221,7 +221,7 @@ export interface K8sOperatorConfig {
       provider?: 'istio' | 'linkerd' | 'consul'
     }
   }
-  
+
   /**
    * Monitoring configuration
    */
@@ -230,12 +230,12 @@ export interface K8sOperatorConfig {
      * Enable Prometheus metrics
      */
     prometheus?: boolean
-    
+
     /**
      * Enable Grafana dashboards
      */
     grafana?: boolean
-    
+
     /**
      * Enable distributed tracing
      */
@@ -244,7 +244,7 @@ export interface K8sOperatorConfig {
       provider?: 'jaeger' | 'zipkin' | 'tempo'
     }
   }
-  
+
   /**
    * Security configuration
    */
@@ -253,12 +253,12 @@ export interface K8sOperatorConfig {
      * Network policies
      */
     networkPolicies?: boolean
-    
+
     /**
      * Pod security policies
      */
     podSecurityPolicies?: boolean
-    
+
     /**
      * RBAC configuration
      */
@@ -274,22 +274,22 @@ interface K8sClient {
    * Apply resource
    */
   apply(resource: K8sResource): Effect.Effect<void, Error>
-  
+
   /**
    * Delete resource
    */
   delete(resource: K8sResource): Effect.Effect<void, Error>
-  
+
   /**
    * Get resource
    */
   get(kind: string, name: string, namespace?: string): Effect.Effect<K8sResource, Error>
-  
+
   /**
    * List resources
    */
   list(kind: string, namespace?: string): Effect.Effect<K8sResource[], Error>
-  
+
   /**
    * Watch resources
    */
@@ -301,27 +301,27 @@ interface K8sClient {
  */
 class MockK8sClient implements K8sClient {
   private readonly resources: Map<string, K8sResource> = new Map()
-  
+
   apply(resource: K8sResource): Effect.Effect<void, Error> {
     return pipe(
       Effect.sync(() => {
-        const key = `${resource.kind}/${resource.metadata.namespace || 'default'}/${resource.metadata.name}`
+        const key = `${resource.kind}/${resource.metadata.namespace ?? 'default'}/${resource.metadata.name}`
         this.resources.set(key, resource)
         console.log(`✅ Applied ${resource.kind} ${resource.metadata.name}`)
       })
     )
   }
-  
+
   delete(resource: K8sResource): Effect.Effect<void, Error> {
     return pipe(
       Effect.sync(() => {
-        const key = `${resource.kind}/${resource.metadata.namespace || 'default'}/${resource.metadata.name}`
+        const key = `${resource.kind}/${resource.metadata.namespace ?? 'default'}/${resource.metadata.name}`
         this.resources.delete(key)
         console.log(`🗑️  Deleted ${resource.kind} ${resource.metadata.name}`)
       })
     )
   }
-  
+
   get(kind: string, name: string, namespace = 'default'): Effect.Effect<K8sResource, Error> {
     return pipe(
       Effect.sync(() => {
@@ -336,7 +336,7 @@ class MockK8sClient implements K8sClient {
       )
     )
   }
-  
+
   list(kind: string, namespace = 'default'): Effect.Effect<K8sResource[], Error> {
     return pipe(
       Effect.sync(() => {
@@ -347,7 +347,7 @@ class MockK8sClient implements K8sClient {
       })
     )
   }
-  
+
   watch(kind: string, namespace = 'default'): Effect.Effect<ReadonlyArray<K8sResource>, Error> {
     return this.list(kind, namespace)
   }
@@ -359,11 +359,11 @@ class MockK8sClient implements K8sClient {
 export class KubernetesOperator {
   private readonly client: K8sClient
   private readonly deployedResources: Set<string> = new Set()
-  
+
   constructor(private readonly config: K8sOperatorConfig) {
     this.client = new MockK8sClient() // Would use real K8s client in production
   }
-  
+
   /**
    * Create operator instance
    */
@@ -372,26 +372,26 @@ export class KubernetesOperator {
     await Effect.runPromise(operator.initialize())
     return operator
   }
-  
+
   /**
    * Initialize operator
    */
   private initialize(): Effect.Effect<void, Error> {
     return pipe(
       Effect.sync(() => {
-        console.log(`🚀 Initializing Kubernetes operator in namespace: ${this.config.namespace || 'default'}`)
+        console.log(
+          `🚀 Initializing Kubernetes operator in namespace: ${this.config.namespace ?? 'default'}`
+        )
       }),
       // Create namespace if needed
       Effect.flatMap(() => this.createNamespace()),
       // Setup RBAC if needed
       Effect.flatMap(() =>
-        this.config.security?.rbac
-          ? this.setupRBAC()
-          : Effect.succeed(undefined)
+        this.config.security?.rbac ? this.setupRBAC() : Effect.succeed(undefined)
       )
     )
   }
-  
+
   /**
    * Deploy federation
    */
@@ -406,20 +406,18 @@ export class KubernetesOperator {
         Effect.flatMap(() => this.setupIngress()),
         // Setup monitoring
         Effect.flatMap(() =>
-          this.config.monitoring
-            ? this.setupMonitoring()
-            : Effect.succeed(undefined)
+          this.config.monitoring ? this.setupMonitoring() : Effect.succeed(undefined)
         ),
         // Setup service mesh
         Effect.flatMap(() =>
-          this.config.federation.serviceMesh?.enabled
+          (this.config.federation.serviceMesh?.enabled ?? false)
             ? this.setupServiceMesh()
             : Effect.succeed(undefined)
         )
       )
     )
   }
-  
+
   /**
    * Create namespace
    */
@@ -428,16 +426,16 @@ export class KubernetesOperator {
       apiVersion: 'v1',
       kind: 'Namespace',
       metadata: {
-        name: this.config.namespace || 'default',
+        name: this.config.namespace ?? 'default',
         labels: {
-          'federation.io/managed': 'true'
-        }
-      }
+          'federation.io/managed': 'true',
+        },
+      },
     }
-    
+
     return this.client.apply(namespace)
   }
-  
+
   /**
    * Setup RBAC
    */
@@ -447,92 +445,92 @@ export class KubernetesOperator {
       kind: 'ServiceAccount',
       metadata: {
         name: 'federation-operator',
-        ...(this.config.namespace && { namespace: this.config.namespace })
-      }
+        ...(this.config.namespace != null && { namespace: this.config.namespace }),
+      },
     }
-    
+
     const role: K8sResource = {
       apiVersion: 'rbac.authorization.k8s.io/v1',
       kind: 'Role',
       metadata: {
         name: 'federation-operator',
-        ...(this.config.namespace && { namespace: this.config.namespace })
+        ...(this.config.namespace != null && { namespace: this.config.namespace }),
       },
       spec: {
         rules: [
           {
             apiGroups: ['', 'apps', 'networking.k8s.io'],
             resources: ['deployments', 'services', 'configmaps', 'ingresses'],
-            verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete']
-          }
-        ]
-      }
+            verbs: ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete'],
+          },
+        ],
+      },
     }
-    
+
     const roleBinding: K8sResource = {
       apiVersion: 'rbac.authorization.k8s.io/v1',
       kind: 'RoleBinding',
       metadata: {
         name: 'federation-operator',
-        ...(this.config.namespace && { namespace: this.config.namespace })
+        ...(this.config.namespace != null && { namespace: this.config.namespace }),
       },
       spec: {
         roleRef: {
           apiGroup: 'rbac.authorization.k8s.io',
           kind: 'Role',
-          name: 'federation-operator'
+          name: 'federation-operator',
         },
         subjects: [
           {
             kind: 'ServiceAccount',
             name: 'federation-operator',
-            ...(this.config.namespace && { namespace: this.config.namespace })
-          }
-        ]
-      }
+            ...(this.config.namespace != null && { namespace: this.config.namespace }),
+          },
+        ],
+      },
     }
-    
+
     return pipe(
       Effect.all([
         this.client.apply(serviceAccount),
         this.client.apply(role),
-        this.client.apply(roleBinding)
+        this.client.apply(roleBinding),
       ]),
       Effect.map(() => undefined)
     )
   }
-  
+
   /**
    * Deploy gateway
    */
   private deployGateway(): Effect.Effect<void, Error> {
     const gateway = this.config.federation.gateway
     if (!gateway) return Effect.succeed(undefined)
-    
+
     const deployment: K8sResource = {
       apiVersion: 'apps/v1',
       kind: 'Deployment',
       metadata: {
-        name: gateway.name || 'federation-gateway',
-        ...(this.config.namespace && { namespace: this.config.namespace }),
+        name: gateway.name ?? 'federation-gateway',
+        ...(this.config.namespace != null && { namespace: this.config.namespace }),
         labels: {
           app: 'federation-gateway',
-          component: 'gateway'
-        }
+          component: 'gateway',
+        },
       },
       spec: {
-        replicas: gateway.replicas || 3,
+        replicas: gateway.replicas ?? 3,
         selector: {
           matchLabels: {
-            app: 'federation-gateway'
-          }
+            app: 'federation-gateway',
+          },
         },
         template: {
           metadata: {
             labels: {
               app: 'federation-gateway',
-              component: 'gateway'
-            }
+              component: 'gateway',
+            },
           },
           spec: {
             containers: [
@@ -542,103 +540,108 @@ export class KubernetesOperator {
                 ports: [{ containerPort: 4000 }],
                 resources: {
                   requests: {
-                    cpu: gateway.resources?.cpu || '250m',
-                    memory: gateway.resources?.memory || '256Mi'
+                    cpu: gateway.resources?.cpu ?? '250m',
+                    memory: gateway.resources?.memory ?? '256Mi',
                   },
                   limits: {
-                    cpu: gateway.resources?.limits?.cpu || '1000m',
-                    memory: gateway.resources?.limits?.memory || '1Gi'
-                  }
+                    cpu: gateway.resources?.limits?.cpu ?? '1000m',
+                    memory: gateway.resources?.limits?.memory ?? '1Gi',
+                  },
                 },
-                env: Object.entries(gateway.env || {}).map(([name, value]) => ({ name, value })),
+                env: Object.entries(gateway.env ?? {}).map(([name, value]) => ({ name, value })),
                 livenessProbe: {
                   httpGet: {
-                    path: gateway.healthCheck?.path || '/health',
-                    port: gateway.healthCheck?.port || 4000
+                    path: gateway.healthCheck?.path ?? '/health',
+                    port: gateway.healthCheck?.port ?? 4000,
                   },
-                  initialDelaySeconds: gateway.healthCheck?.initialDelaySeconds || 30,
-                  periodSeconds: gateway.healthCheck?.periodSeconds || 10
-                }
-              }
-            ]
-          }
-        }
-      }
+                  initialDelaySeconds: gateway.healthCheck?.initialDelaySeconds ?? 30,
+                  periodSeconds: gateway.healthCheck?.periodSeconds ?? 10,
+                },
+              },
+            ],
+          },
+        },
+      },
     }
-    
+
     const service: K8sResource = {
       apiVersion: 'v1',
       kind: 'Service',
       metadata: {
         name: 'federation-gateway',
-        ...(this.config.namespace && { namespace: this.config.namespace })
+        ...(this.config.namespace != null && { namespace: this.config.namespace }),
       },
       spec: {
         selector: {
-          app: 'federation-gateway'
+          app: 'federation-gateway',
         },
         ports: [
           {
             port: 4000,
             targetPort: 4000,
-            protocol: 'TCP'
-          }
-        ]
-      }
-    }
-    
-    // Create HPA if autoscaling is enabled
-    const hpa = gateway.autoscaling?.enabled ? {
-      apiVersion: 'autoscaling/v2',
-      kind: 'HorizontalPodAutoscaler',
-      metadata: {
-        name: 'federation-gateway',
-        ...(this.config.namespace && { namespace: this.config.namespace })
+            protocol: 'TCP',
+          },
+        ],
       },
-      spec: {
-        scaleTargetRef: {
-          apiVersion: 'apps/v1',
-          kind: 'Deployment',
-          name: 'federation-gateway'
-        },
-        minReplicas: gateway.autoscaling.minReplicas || 2,
-        maxReplicas: gateway.autoscaling.maxReplicas || 10,
-        metrics: [
-          {
-            type: 'Resource',
-            resource: {
-              name: 'cpu',
-              target: {
-                type: 'Utilization',
-                averageUtilization: gateway.autoscaling.targetCPUUtilization || 70
-              }
-            }
+    }
+
+    // Create HPA if autoscaling is enabled
+    const hpa =
+      (gateway.autoscaling?.enabled ?? false)
+        ? {
+            apiVersion: 'autoscaling/v2',
+            kind: 'HorizontalPodAutoscaler',
+            metadata: {
+              name: 'federation-gateway',
+              ...(this.config.namespace != null && { namespace: this.config.namespace }),
+            },
+            spec: {
+              scaleTargetRef: {
+                apiVersion: 'apps/v1',
+                kind: 'Deployment',
+                name: 'federation-gateway',
+              },
+              minReplicas: gateway.autoscaling?.minReplicas ?? 2,
+              maxReplicas: gateway.autoscaling?.maxReplicas ?? 10,
+              metrics: [
+                {
+                  type: 'Resource',
+                  resource: {
+                    name: 'cpu',
+                    target: {
+                      type: 'Utilization',
+                      averageUtilization: gateway.autoscaling?.targetCPUUtilization ?? 70,
+                    },
+                  },
+                },
+              ],
+            },
           }
-        ]
-      }
-    } : null
-    
+        : null
+
     return pipe(
       Effect.all([
         this.client.apply(deployment),
         this.client.apply(service),
-        ...(hpa ? [this.client.apply(hpa)] : [])
+        ...(hpa ? [this.client.apply(hpa)] : []),
       ]),
-      Effect.tap(() => Effect.sync(() => {
-        this.deployedResources.add('gateway')
-      })),
+      Effect.tap(() =>
+        Effect.sync(() => {
+          this.deployedResources.add('gateway')
+        })
+      ),
       Effect.map(() => undefined)
     )
   }
-  
+
   /**
    * Deploy subgraphs
    */
   private deploySubgraphs(): Effect.Effect<void, Error> {
-    const subgraphs = this.config.federation.subgraphs || []
-    
+    const subgraphs = this.config.federation.subgraphs ?? []
+
     return pipe(
-      Effect.forEach(subgraphs, (subgraph) => {
+      Effect.forEach(subgraphs, subgraph => {
         const deployment: K8sResource = {
           apiVersion: 'apps/v1',
           kind: 'Deployment',
@@ -647,22 +650,22 @@ export class KubernetesOperator {
             ...(this.config.namespace && { namespace: this.config.namespace }),
             labels: {
               app: subgraph.name,
-              component: 'subgraph'
-            }
+              component: 'subgraph',
+            },
           },
           spec: {
-            replicas: subgraph.replicas || 2,
+            replicas: subgraph.replicas ?? 2,
             selector: {
               matchLabels: {
-                app: subgraph.name
-              }
+                app: subgraph.name,
+              },
             },
             template: {
               metadata: {
                 labels: {
                   app: subgraph.name,
-                  component: 'subgraph'
-                }
+                  component: 'subgraph',
+                },
               },
               spec: {
                 containers: [
@@ -672,53 +675,55 @@ export class KubernetesOperator {
                     ports: [{ containerPort: 4001 }],
                     resources: {
                       requests: {
-                        cpu: subgraph.resources?.cpu || '100m',
-                        memory: subgraph.resources?.memory || '128Mi'
-                      }
+                        cpu: subgraph.resources?.cpu ?? '100m',
+                        memory: subgraph.resources?.memory ?? '128Mi',
+                      },
                     },
-                    env: Object.entries(subgraph.env || {}).map(([name, value]) => ({ name, value }))
-                  }
-                ]
-              }
-            }
-          }
+                    env: Object.entries(subgraph.env ?? {}).map(([name, value]) => ({
+                      name,
+                      value,
+                    })),
+                  },
+                ],
+              },
+            },
+          },
         }
-        
+
         const service: K8sResource = {
           apiVersion: 'v1',
           kind: 'Service',
           metadata: {
             name: subgraph.name,
-            ...(this.config.namespace && { namespace: this.config.namespace })
+            ...(this.config.namespace != null && { namespace: this.config.namespace }),
           },
           spec: {
             selector: {
-              app: subgraph.name
+              app: subgraph.name,
             },
             ports: [
               {
                 port: 4001,
                 targetPort: 4001,
-                protocol: 'TCP'
-              }
-            ]
-          }
+                protocol: 'TCP',
+              },
+            ],
+          },
         }
-        
+
         return pipe(
-          Effect.all([
-            this.client.apply(deployment),
-            this.client.apply(service)
-          ]),
-          Effect.tap(() => Effect.sync(() => {
-            this.deployedResources.add(subgraph.name)
-          }))
+          Effect.all([this.client.apply(deployment), this.client.apply(service)]),
+          Effect.tap(() =>
+            Effect.sync(() => {
+              this.deployedResources.add(subgraph.name)
+            })
+          )
         )
       }),
       Effect.map(() => undefined)
     )
   }
-  
+
   /**
    * Setup ingress
    */
@@ -728,10 +733,10 @@ export class KubernetesOperator {
       kind: 'Ingress',
       metadata: {
         name: 'federation-ingress',
-        ...(this.config.namespace && { namespace: this.config.namespace }),
+        ...(this.config.namespace != null && { namespace: this.config.namespace }),
         annotations: {
-          'nginx.ingress.kubernetes.io/rewrite-target': '/'
-        }
+          'nginx.ingress.kubernetes.io/rewrite-target': '/',
+        },
       },
       spec: {
         ingressClassName: 'nginx',
@@ -747,21 +752,21 @@ export class KubernetesOperator {
                     service: {
                       name: 'federation-gateway',
                       port: {
-                        number: 4000
-                      }
-                    }
-                  }
-                }
-              ]
-            }
-          }
-        ]
-      }
+                        number: 4000,
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
     }
-    
+
     return this.client.apply(ingress)
   }
-  
+
   /**
    * Setup monitoring
    */
@@ -771,11 +776,11 @@ export class KubernetesOperator {
       kind: 'ConfigMap',
       metadata: {
         name: 'prometheus-config',
-        ...(this.config.namespace && { namespace: this.config.namespace })
-      }
+        ...(this.config.namespace != null && { namespace: this.config.namespace }),
+      },
     }
     const configData = {
-        'prometheus.yml': `
+      'prometheus.yml': `
           global:
             scrape_interval: 15s
           scrape_configs:
@@ -789,25 +794,25 @@ export class KubernetesOperator {
                 - source_labels: [__meta_kubernetes_pod_label_component]
                   action: keep
                   regex: (gateway|subgraph)
-        `
+        `,
     }
-    
+
     // ConfigMaps need special handling for data field
     return this.client.apply({ ...prometheusConfig, ...{ data: configData } } as K8sResource)
   }
-  
+
   /**
    * Setup service mesh
    */
   private setupServiceMesh(): Effect.Effect<void, Error> {
     // const _provider = this.config.federation.serviceMesh?.provider || 'istio'
-    
+
     const virtualService: K8sResource = {
       apiVersion: 'networking.istio.io/v1beta1',
       kind: 'VirtualService',
       metadata: {
         name: 'federation-vs',
-        ...(this.config.namespace && { namespace: this.config.namespace })
+        ...(this.config.namespace != null && { namespace: this.config.namespace }),
       },
       spec: {
         hosts: ['federation.example.com'],
@@ -819,18 +824,18 @@ export class KubernetesOperator {
               {
                 destination: {
                   host: 'federation-gateway',
-                  port: { number: 4000 }
-                }
-              }
-            ]
-          }
-        ]
-      }
+                  port: { number: 4000 },
+                },
+              },
+            ],
+          },
+        ],
+      },
     }
-    
+
     return this.client.apply(virtualService)
   }
-  
+
   /**
    * Scale deployment
    */
@@ -839,17 +844,17 @@ export class KubernetesOperator {
       pipe(
         this.client.get('Deployment', component, this.config.namespace),
         Effect.flatMap(deployment => {
-          deployment.spec = deployment.spec || {}
+          deployment.spec = deployment.spec ?? {}
           deployment.spec['replicas'] = replicas
           return this.client.apply(deployment)
         }),
-        Effect.tap(() => 
+        Effect.tap(() =>
           Effect.sync(() => console.log(`⚖️  Scaled ${component} to ${replicas} replicas`))
         )
       )
     )
   }
-  
+
   /**
    * Get status
    */
@@ -859,37 +864,40 @@ export class KubernetesOperator {
         Effect.all({
           deployments: this.client.list('Deployment', this.config.namespace),
           services: this.client.list('Service', this.config.namespace),
-          ingresses: this.client.list('Ingress', this.config.namespace)
+          ingresses: this.client.list('Ingress', this.config.namespace),
         }),
         Effect.map(({ deployments, services, ingresses }) => ({
-          ...(this.config.namespace && { namespace: this.config.namespace }),
+          ...(this.config.namespace != null && { namespace: this.config.namespace }),
           deployments: deployments.length,
           services: services.length,
           ingresses: ingresses.length,
-          components: Array.from(this.deployedResources)
+          components: Array.from(this.deployedResources),
         }))
       )
     )
   }
-  
+
   /**
    * Delete all resources
    */
   async teardown(): Promise<void> {
     await Effect.runPromise(
       pipe(
-        Effect.forEach(
-          ['Deployment', 'Service', 'Ingress', 'ConfigMap'],
-          (kind) => this.client.list(kind, this.config.namespace).pipe(
-            Effect.flatMap(resources =>
-              Effect.forEach(resources, resource => this.client.delete(resource))
+        Effect.forEach(['Deployment', 'Service', 'Ingress', 'ConfigMap'], kind =>
+          this.client
+            .list(kind, this.config.namespace)
+            .pipe(
+              Effect.flatMap(resources =>
+                Effect.forEach(resources, resource => this.client.delete(resource))
+              )
             )
-          )
         ),
-        Effect.tap(() => Effect.sync(() => {
-          this.deployedResources.clear()
-          console.log('🗑️  Teardown complete')
-        }))
+        Effect.tap(() =>
+          Effect.sync(() => {
+            this.deployedResources.clear()
+            console.log('🗑️  Teardown complete')
+          })
+        )
       )
     )
   }
@@ -909,37 +917,40 @@ export const K8sPresets = {
         name: 'gateway',
         image: 'federation-gateway:dev',
         replicas: 1,
-        resources: { cpu: '100m', memory: '128Mi' }
+        resources: { cpu: '100m', memory: '128Mi' },
       },
-      subgraphs: []
+      subgraphs: [],
     },
     monitoring: {
       prometheus: true,
-      grafana: true
-    }
+      grafana: true,
+    },
   }),
-  
+
   /**
    * Production preset
    */
-  production: (gatewayImage: string, subgraphImages: Array<{ name: string; image: string }>): K8sOperatorConfig => ({
+  production: (
+    gatewayImage: string,
+    subgraphImages: Array<{ name: string; image: string }>
+  ): K8sOperatorConfig => ({
     namespace: 'federation-prod',
     federation: {
       gateway: {
         name: 'gateway',
         image: gatewayImage,
         replicas: 3,
-        resources: { 
-          cpu: '500m', 
+        resources: {
+          cpu: '500m',
           memory: '512Mi',
-          limits: { cpu: '2000m', memory: '2Gi' }
+          limits: { cpu: '2000m', memory: '2Gi' },
         },
         autoscaling: {
           enabled: true,
           minReplicas: 3,
           maxReplicas: 10,
-          targetCPUUtilization: 70
-        }
+          targetCPUUtilization: 70,
+        },
       },
       subgraphs: subgraphImages.map(sg => ({
         name: sg.name,
@@ -950,29 +961,29 @@ export const K8sPresets = {
           enabled: true,
           minReplicas: 2,
           maxReplicas: 5,
-          targetCPUUtilization: 80
-        }
+          targetCPUUtilization: 80,
+        },
       })),
       serviceMesh: {
         enabled: true,
-        provider: 'istio'
-      }
+        provider: 'istio',
+      },
     },
     monitoring: {
       prometheus: true,
       grafana: true,
       tracing: {
         enabled: true,
-        provider: 'jaeger'
-      }
+        provider: 'jaeger',
+      },
     },
     security: {
       networkPolicies: true,
       podSecurityPolicies: true,
-      rbac: true
-    }
+      rbac: true,
+    },
   }),
-  
+
   /**
    * High availability preset
    */
@@ -986,19 +997,19 @@ export const K8sPresets = {
         resources: {
           cpu: '1000m',
           memory: '1Gi',
-          limits: { cpu: '4000m', memory: '4Gi' }
+          limits: { cpu: '4000m', memory: '4Gi' },
         },
         autoscaling: {
           enabled: true,
           minReplicas: 5,
           maxReplicas: 20,
-          targetCPUUtilization: 60
-        }
+          targetCPUUtilization: 60,
+        },
       },
       serviceMesh: {
         enabled: true,
-        provider: 'istio'
-      }
-    }
-  })
+        provider: 'istio',
+      },
+    },
+  }),
 }

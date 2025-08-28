@@ -2,37 +2,37 @@
 
 /**
  * # Federation CLI
- * 
+ *
  * Command-line interface for the Federation framework, providing scaffolding,
  * validation, composition testing, and development tools.
- * 
+ *
  * @example Basic usage
  * ```bash
  * # Initialize a new federation project
  * npx @cqrs/federation init my-federation
- * 
+ *
  * # Generate a new entity
  * npx @cqrs/federation entity User
- * 
+ *
  * # Validate schemas
  * npx @cqrs/federation validate
- * 
+ *
  * # Test composition
  * npx @cqrs/federation compose
- * 
+ *
  * # Start devtools with GraphQL server
  * npx @cqrs/federation devtools
  * ```
- * 
+ *
  * @module CLI
  * @since 2.1.0
  */
 
-import { createServer } from 'http';
-import { Command } from 'commander';
-import * as path from 'path';
-import * as fs from 'fs/promises';
-import { execSync } from 'child_process';
+import { createServer } from 'http'
+import { Command } from 'commander'
+import * as path from 'path'
+import * as fs from 'fs/promises'
+import { execSync } from 'child_process'
 import {
   GraphQLID,
   GraphQLList,
@@ -41,7 +41,7 @@ import {
   GraphQLSchema,
   GraphQLString,
   GraphQLUnionType,
-  graphql
+  graphql,
 } from 'graphql'
 
 const program = new Command()
@@ -87,7 +87,7 @@ function createMockSchema(): GraphQLSchema {
       sdl: { type: GraphQLString },
     },
   })
-  
+
   // Define _Entity union for federation
   const EntityUnion = new GraphQLUnionType({
     name: '_Entity',
@@ -282,13 +282,16 @@ async function startDevTools(options: Partial<CLIConfig>) {
       })
 
       req.on('end', () => {
-        (async () => {
+        ;(async () => {
           try {
             const { query, variables, operationName } = JSON.parse(body)
 
             // Check if this is an introspection query
-            const isIntrospection = query.includes('__schema') ?? query.includes('__type') ?? query.includes('IntrospectionQuery')
-            
+            const isIntrospection =
+              query.includes('__schema') ??
+              query.includes('__type') ??
+              query.includes('IntrospectionQuery')
+
             if (options.verbose ?? false) {
               if (isIntrospection !== false) {
                 console.log(`🔍 Introspection Request`)
@@ -326,7 +329,7 @@ async function startDevTools(options: Partial<CLIConfig>) {
     }
   })
 
-  server.on('error', (error: any) => {
+  server.on('error', (error: Error & { code?: string }) => {
     if (error.code === 'EADDRINUSE') {
       console.error(`❌ Port ${port} is already in use. Try a different port with --port <number>`)
       process.exit(1)
@@ -335,7 +338,7 @@ async function startDevTools(options: Partial<CLIConfig>) {
       process.exit(1)
     }
   })
-  
+
   server.listen(port, () => {
     console.log(`✅ GraphQL server running on http://localhost:${port}/graphql`)
   })
@@ -377,21 +380,18 @@ async function initProject(name: string, _options: Partial<CLIConfig>) {
       },
       dependencies: {
         '@cqrs/federation': `^${VERSION}`,
-        'effect': '^3.17.0',
-        'graphql': '^16.11.0',
+        effect: '^3.17.0',
+        graphql: '^16.11.0',
       },
       devDependencies: {
         '@types/node': '^20.0.0',
-        'typescript': '^5.0.0',
-        'vitest': '^1.0.0',
+        typescript: '^5.0.0',
+        vitest: '^1.0.0',
         'bun-types': '^1.0.0',
       },
     }
 
-    await fs.writeFile(
-      path.join(projectDir, 'package.json'),
-      JSON.stringify(packageJson, null, 2)
-    )
+    await fs.writeFile(path.join(projectDir, 'package.json'), JSON.stringify(packageJson, null, 2))
 
     // Create tsconfig.json
     const tsConfig = {
@@ -416,10 +416,7 @@ async function initProject(name: string, _options: Partial<CLIConfig>) {
       exclude: ['node_modules', 'dist'],
     }
 
-    await fs.writeFile(
-      path.join(projectDir, 'tsconfig.json'),
-      JSON.stringify(tsConfig, null, 2)
-    )
+    await fs.writeFile(path.join(projectDir, 'tsconfig.json'), JSON.stringify(tsConfig, null, 2))
 
     // Create src directory
     const srcDir = path.join(projectDir, 'src')
@@ -591,7 +588,6 @@ const harness = await TestHarness.create()
     console.log(`  bun install`)
     console.log(`  bun run dev`)
     console.log(`  bun run devtools  # In another terminal`)
-
   } catch (error) {
     console.error(`❌ Failed to initialize project: ${error}`)
     process.exit(1)
@@ -763,16 +759,13 @@ testComposition().catch(error => {
   } catch (error) {
     console.error('❌ Composition test failed', error)
     // Clean up even on error
-    await fs.unlink(tempFile).catch(() => { })
+    await fs.unlink(tempFile).catch(() => {})
     process.exit(1)
   }
 }
 
 // Define CLI commands
-program
-  .name('federation')
-  .description('CLI for @cqrs/federation framework')
-  .version(VERSION)
+program.name('federation').description('CLI for @cqrs/federation framework').version(VERSION)
 
 program
   .command('init <name>')
@@ -806,7 +799,7 @@ program
   .description('Start development server')
   .option('-p, --port <port>', 'Server port', '4000')
   .option('-v, --verbose', 'Verbose output')
-  .action((_options) => {
+  .action(_options => {
     console.log('🚀 Starting development server...')
     execSync('bun run dev', { stdio: 'inherit' })
   })
