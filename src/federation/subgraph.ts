@@ -226,7 +226,7 @@ export namespace SubgraphManagement {
         Effect.sync(() => {
           // Remove old URL mapping if service already exists
           const existingService = services.get(service.id)
-          if (existingService) {
+          if (existingService !== undefined) {
             servicesByUrl.delete(existingService.url)
           }
 
@@ -237,7 +237,7 @@ export namespace SubgraphManagement {
       remove: (serviceId: string) =>
         Effect.sync(() => {
           const service = services.get(serviceId)
-          if (service) {
+          if (service !== undefined) {
             services.delete(serviceId)
             servicesByUrl.delete(service.url)
             healthyServices.delete(serviceId)
@@ -282,15 +282,15 @@ export namespace SubgraphManagement {
     pipe(
       Effect.succeed(definition),
       Effect.filterOrFail(
-        def => !!def.id?.trim(),
+        def => Boolean(def.id?.trim()),
         () => ErrorFactory.CommonErrors.registrationError('Service ID is required', 'unknown')
       ),
       Effect.filterOrFail(
-        def => !!def.url?.trim(),
+        def => Boolean(def.url?.trim()),
         () =>
           ErrorFactory.CommonErrors.registrationError(
             'Service URL is required',
-            definition.id || 'unknown'
+            definition.id ?? 'unknown'
           )
       ),
       Effect.flatMap(def => {
@@ -301,7 +301,7 @@ export namespace SubgraphManagement {
           return Effect.fail(
             ErrorFactory.CommonErrors.registrationError(
               `Invalid service URL: ${def.url}`,
-              def.id || 'unknown'
+              def.id ?? 'unknown'
             )
           )
         }
@@ -326,7 +326,7 @@ export namespace SubgraphManagement {
           )
       ),
       Effect.flatMap(service =>
-        service
+        service !== undefined
           ? pipe(
               store.remove(serviceId),
               Effect.flatMap(() =>
@@ -524,7 +524,7 @@ export namespace SubgraphManagement {
           new HealthCheckError(`Failed to get service ${serviceId}: ${error.message}`, serviceId)
       ),
       Effect.flatMap(service =>
-        service
+        service !== undefined
           ? performHealthCheck(service, config)
           : Effect.fail(new HealthCheckError(`Service ${serviceId} not found`, serviceId))
       )

@@ -420,7 +420,7 @@ export namespace FederationErrorBoundaries {
           const duration = Date.now() - startTime
           recordMetrics(subgraphId, { duration, success: false, error })
 
-          if (config.partialFailureHandling.allowPartialFailure) {
+          if (config.partialFailureHandling.allowPartialFailure === true) {
             // Return null for failed field in partial failure mode
             return Effect.succeed(null)
           } else {
@@ -448,7 +448,7 @@ export namespace FederationErrorBoundaries {
       })
     }
 
-    if (!config.allowPartialFailure) {
+    if (config.allowPartialFailure === false) {
       return Effect.fail(
         ErrorFactory.federation('Subgraph failures not allowed', undefined, 'partial_failure', {
           failedSubgraphs: failed.map(f => f.subgraphId),
@@ -457,8 +457,8 @@ export namespace FederationErrorBoundaries {
     }
 
     // Check for critical subgraph failures
-    const criticalFailures = failed.filter(
-      f => config.criticalSubgraphs?.includes(f.subgraphId) ?? false
+    const criticalFailures = failed.filter(f =>
+      Boolean(config.criticalSubgraphs?.includes(f.subgraphId) ?? false)
     )
 
     if (criticalFailures.length > 0) {
@@ -525,7 +525,7 @@ export namespace FederationErrorBoundaries {
   ): unknown => {
     let data = mergeSuccessfulResults(successful)
 
-    if (config.fallbackValues) {
+    if (config.fallbackValues !== undefined) {
       failed.forEach(failedResult => {
         const fallback = config.fallbackValues?.[failedResult.subgraphId] ?? {}
         data = { ...(typeof data === 'object' && data !== null ? data : {}), ...fallback }
@@ -710,20 +710,20 @@ export namespace FederationErrorBoundaries {
   const transformFederationError = (
     error: FederationError,
     context: ErrorContext,
-    config?: ErrorTransformationConfig
+    config: ErrorTransformationConfig
   ): TransformedError => {
     const errorCode =
-      error._tag ||
+      error._tag ??
       ('code' in error && typeof error.code === 'string' ? error.code : 'FEDERATION_ERROR')
     const baseError: TransformedError = {
-      message: (config?.sanitizeErrors ?? false) ? 'Internal server error' : error.message,
+      message: config.sanitizeErrors === true ? 'Internal server error' : error.message,
       code: errorCode,
       path: context.fieldPath,
       extensions: {
         subgraphId: context.subgraphId,
         operationType: context.operationType,
         timestamp: context.timestamp.toISOString(),
-        ...((config?.includeStackTrace ?? false) && Boolean(error.cause)
+        ...(Boolean(config.includeStackTrace) && Boolean(error.cause)
           ? {
               stack: String(error.cause),
             }
@@ -731,7 +731,7 @@ export namespace FederationErrorBoundaries {
       },
     }
 
-    if (config?.customTransformer) {
+    if (config.customTransformer !== undefined) {
       const transformedError = new Error(baseError.message)
       transformedError.name = 'FederationError'
 

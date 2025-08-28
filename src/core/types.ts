@@ -222,7 +222,7 @@ export interface ErrorBoundaryConfig {
   readonly subgraphTimeouts: Record<string, Duration.Duration>
   readonly circuitBreakerConfig: CircuitBreakerConfig
   readonly partialFailureHandling: PartialFailureConfig
-  readonly errorTransformation?: ErrorTransformationConfig
+  readonly errorTransformation: ErrorTransformationConfig
 }
 
 export interface CircuitBreakerConfig {

@@ -6,7 +6,8 @@ import {
   FederationErrorBoundaries,
   createStrictBoundary,
   createResilientBoundary,
-  createProductionBoundary 
+  createProductionBoundary,
+  ErrorContext
 } from '../../../src/federation/error-boundaries.js'
 import type { 
   ErrorBoundaryConfig, 
@@ -89,6 +90,10 @@ describe('Error Boundaries and Circuit Breakers', () => {
         partialFailureHandling: {
           allowPartialFailure: true,
           criticalSubgraphs: []
+        },
+        errorTransformation: {
+          includeStackTrace: false,
+          sanitizeErrors: false,
         }
       }
 
@@ -114,6 +119,10 @@ describe('Error Boundaries and Circuit Breakers', () => {
         partialFailureHandling: {
           allowPartialFailure: true,
           criticalSubgraphs: ['service-1']
+        },
+        errorTransformation: {
+          includeStackTrace: false,
+          sanitizeErrors: false,
         }
       }
 
@@ -277,6 +286,10 @@ describe('Error Boundaries and Circuit Breakers', () => {
         partialFailureHandling: {
           allowPartialFailure: true,
           criticalSubgraphs: []
+        },
+        errorTransformation: {
+          includeStackTrace: false,
+          sanitizeErrors: false,
         }
       }
 
@@ -308,6 +321,10 @@ describe('Error Boundaries and Circuit Breakers', () => {
         partialFailureHandling: {
           allowPartialFailure: true,
           criticalSubgraphs: []
+        },
+        errorTransformation: {
+          includeStackTrace: false,
+          sanitizeErrors: false,
         }
       }
 
@@ -337,6 +354,10 @@ describe('Error Boundaries and Circuit Breakers', () => {
         partialFailureHandling: {
           allowPartialFailure: false,
           criticalSubgraphs: []
+        },
+        errorTransformation: {
+          sanitizeErrors: false,
+          includeStackTrace: false,
         }
       }
 
@@ -365,6 +386,10 @@ describe('Error Boundaries and Circuit Breakers', () => {
         partialFailureHandling: {
           allowPartialFailure: true,
           criticalSubgraphs: ['service-1']
+        },
+        errorTransformation: {
+          includeStackTrace: false,
+          sanitizeErrors: false,
         }
       }
 
@@ -396,6 +421,10 @@ describe('Error Boundaries and Circuit Breakers', () => {
           fallbackValues: {
             'service-2': { products: [] }
           }
+        },
+        errorTransformation: {
+          includeStackTrace: false,
+          sanitizeErrors: false,
         }
       }
 
@@ -431,6 +460,10 @@ describe('Error Boundaries and Circuit Breakers', () => {
         partialFailureHandling: {
           allowPartialFailure: false,
           criticalSubgraphs: []
+        },
+        errorTransformation: {
+          includeStackTrace: false,
+          sanitizeErrors: false,
         }
       }
 
@@ -461,6 +494,10 @@ describe('Error Boundaries and Circuit Breakers', () => {
         partialFailureHandling: {
           allowPartialFailure: true,
           criticalSubgraphs: []
+        },
+        errorTransformation: {
+          includeStackTrace: false,
+          sanitizeErrors: false,
         }
       }
 
@@ -485,6 +522,10 @@ describe('Error Boundaries and Circuit Breakers', () => {
         partialFailureHandling: {
           allowPartialFailure: false,
           criticalSubgraphs: []
+        },
+        errorTransformation: {
+          includeStackTrace: false,
+          sanitizeErrors: false,
         }
       }
 
@@ -514,6 +555,10 @@ describe('Error Boundaries and Circuit Breakers', () => {
         partialFailureHandling: {
           allowPartialFailure: true,
           criticalSubgraphs: []
+        },
+        errorTransformation: {
+          sanitizeErrors: false,
+          includeStackTrace: false,
         }
       }
 
@@ -554,7 +599,7 @@ describe('Error Boundaries and Circuit Breakers', () => {
 
       const boundary = FederationErrorBoundaries.createBoundary(config)
       const federationError = createMockError('Sensitive error info', 'INTERNAL_ERROR')
-      const context = {
+      const context: ErrorContext = {
         subgraphId: 'test-service',
         fieldPath: ['user'],
         operationType: 'query' as const,
