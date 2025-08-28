@@ -1,4 +1,5 @@
 import type { FederatedSchema, FederationCompositionConfig } from "@core";
+import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import type { GraphQLSchema } from "graphql";
@@ -37,10 +38,41 @@ describe("Federation Composer Coverage Tests", () => {
 				url: "http://products:4002",
 			},
 		],
-		composition: {
-			enableAutoRetry: true,
-			maxRetries: 3,
-			retryDelayMs: 1000,
+		errorBoundaries: {
+			subgraphTimeouts: {
+				"users": Duration.seconds(30),
+				"products": Duration.seconds(30),
+			},
+			circuitBreakerConfig: {
+				failureThreshold: 5,
+				resetTimeout: Duration.seconds(30),
+				halfOpenMaxCalls: 3,
+			},
+			partialFailureHandling: {
+				allowPartialFailure: true,
+				criticalSubgraphs: [],
+				fallbackValues: {},
+			},
+			errorTransformation: {
+				sanitizeErrors: true,
+				includeStackTrace: false,
+			},
+		},
+		performance: {
+			queryPlanCache: {
+				maxSize: 1000,
+				ttl: Duration.minutes(5),
+			},
+			dataLoaderConfig: {
+				maxBatchSize: 100,
+				batchWindowMs: 10,
+			},
+			metricsCollection: {
+				enabled: true,
+				collectExecutionMetrics: true,
+				collectCacheMetrics: true,
+				maxExecutionMetrics: 1000,
+			},
 		},
 	};
 

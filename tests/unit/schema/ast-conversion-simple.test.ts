@@ -2,7 +2,7 @@ import * as Schema from 'effect/Schema'
 import * as Effect from 'effect/Effect'
 import { describe, expect, it } from 'vitest'
 import { ASTConversion, createConversionContext } from '../../../src/schema/ast-conversion.js'
-import { GraphQLString, GraphQLFloat, GraphQLBoolean, GraphQLObjectType, isOutputType } from 'graphql'
+import { GraphQLString, GraphQLFloat, GraphQLBoolean, isOutputType } from 'graphql'
 
 describe('AST Conversion Simple Tests', () => {
   describe('Basic Type Conversions', () => {
@@ -11,7 +11,7 @@ describe('AST Conversion Simple Tests', () => {
       const context = createConversionContext()
       
       const result = await Effect.runPromise(
-        ASTConversion.schemaToGraphQLType(schema, context)
+        ASTConversion.schemaToGraphQLType(schema as Schema.Schema<unknown>, context)
       )
       
       expect(result).toBe(GraphQLString)
@@ -22,7 +22,7 @@ describe('AST Conversion Simple Tests', () => {
       const context = createConversionContext()
       
       const result = await Effect.runPromise(
-        ASTConversion.schemaToGraphQLType(schema, context)
+        ASTConversion.schemaToGraphQLType(schema as Schema.Schema<unknown>, context)
       )
       
       expect(result).toBe(GraphQLFloat)
@@ -33,7 +33,7 @@ describe('AST Conversion Simple Tests', () => {
       const context = createConversionContext()
       
       const result = await Effect.runPromise(
-        ASTConversion.schemaToGraphQLType(schema, context)
+        ASTConversion.schemaToGraphQLType(schema as Schema.Schema<unknown>, context)
       )
       
       expect(result).toBe(GraphQLBoolean)
@@ -44,7 +44,7 @@ describe('AST Conversion Simple Tests', () => {
       const context = createConversionContext()
       
       const result = await Effect.runPromise(
-        Effect.either(ASTConversion.schemaToGraphQLType(schema, context))
+        Effect.either(ASTConversion.schemaToGraphQLType(schema as unknown as Schema.Schema<unknown>, context))
       )
       
       // Optional handling may vary, just check it doesn't fail
@@ -62,7 +62,7 @@ describe('AST Conversion Simple Tests', () => {
       const context = createConversionContext()
       
       const result = await Effect.runPromise(
-        Effect.either(ASTConversion.schemaToGraphQLType(UserSchema, context))
+        Effect.either(ASTConversion.schemaToGraphQLType(UserSchema as Schema.Schema<unknown>, context))
       )
       
       expect(result._tag).toBe('Right')
@@ -77,7 +77,7 @@ describe('AST Conversion Simple Tests', () => {
       const context = createConversionContext()
       
       const result = await Effect.runPromise(
-        Effect.either(ASTConversion.schemaToGraphQLType(schema, context))
+        Effect.either(ASTConversion.schemaToGraphQLType(schema as Schema.Schema<unknown>, context))
       )
       
       expect(result._tag).toBe('Right')
@@ -90,9 +90,9 @@ describe('AST Conversion Simple Tests', () => {
   describe('Parallel Conversions', () => {
     it('should convert multiple schemas in parallel', async () => {
       const schemas = [
-        { name: 'String', schema: Schema.String },
-        { name: 'Number', schema: Schema.Number },
-        { name: 'Boolean', schema: Schema.Boolean }
+        { name: 'String', schema: Schema.String as Schema.Schema<unknown> },
+        { name: 'Number', schema: Schema.Number as Schema.Schema<unknown> },
+        { name: 'Boolean', schema: Schema.Boolean as Schema.Schema<unknown> }
       ]
       
       const context = createConversionContext()
@@ -108,8 +108,8 @@ describe('AST Conversion Simple Tests', () => {
 
     it('should handle errors in parallel conversion', async () => {
       const schemas = [
-        { name: 'Valid', schema: Schema.String },
-        { name: 'Never', schema: Schema.Never } // This should fail
+        { name: 'Valid', schema: Schema.String as Schema.Schema<unknown> },
+        { name: 'Never', schema: Schema.Never as unknown as Schema.Schema<unknown> } // This should fail
       ]
       
       const context = createConversionContext()
@@ -130,14 +130,14 @@ describe('AST Conversion Simple Tests', () => {
           schema: Schema.Struct({
             id: Schema.String,
             name: Schema.String
-          })
+          }) as Schema.Schema<unknown>
         },
         {
           name: 'Product', 
           schema: Schema.Struct({
             id: Schema.String,
             title: Schema.String
-          })
+          }) as Schema.Schema<unknown>
         }
       ]
       
@@ -162,12 +162,12 @@ describe('AST Conversion Simple Tests', () => {
       
       // First conversion
       const result1 = await Effect.runPromise(
-        ASTConversion.schemaToGraphQLType(schema, context)
+        ASTConversion.schemaToGraphQLType(schema as Schema.Schema<unknown>, context)
       )
       
       // Second conversion with same context should use cache
       const result2 = await Effect.runPromise(
-        ASTConversion.schemaToGraphQLType(schema, context)
+        ASTConversion.schemaToGraphQLType(schema as Schema.Schema<unknown>, context)
       )
       
       expect(result1).toBe(result2)
@@ -176,16 +176,17 @@ describe('AST Conversion Simple Tests', () => {
 
     it('should respect max depth limit', async () => {
       // Create a deeply nested schema
-      let schema = Schema.String
+      let schema: Schema.Schema<unknown> = Schema.String as Schema.Schema<unknown>
       for (let i = 0; i < 20; i++) {
-        schema = Schema.Struct({ nested: schema })
+        schema = Schema.Struct({ nested: schema }) as Schema.Schema<unknown>
       }
       
       const context = createConversionContext()
-      context.maxDepth = 10 // Set a lower limit
+      // Create new context with lower depth limit
+      const limitedContext = { ...context, maxDepth: 10 }
       
       const result = await Effect.runPromise(
-        Effect.either(ASTConversion.schemaToGraphQLType(schema, context))
+        Effect.either(ASTConversion.schemaToGraphQLType(schema, limitedContext))
       )
       
       expect(result._tag).toBe('Left')
