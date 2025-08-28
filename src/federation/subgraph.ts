@@ -1,16 +1,6 @@
 import { Effect, pipe, Schedule, Duration } from 'effect'
-import type {
-  SubgraphRegistry,
-  ServiceDefinition,
-  HealthStatus,
-  CompositionError,
-} from '../core/types.js'
-import {
-  ErrorFactory,
-  HealthCheckError,
-  DiscoveryError,
-  RegistrationError,
-} from '../core/errors.js'
+import type { SubgraphRegistry, ServiceDefinition, HealthStatus, CompositionError } from '@core'
+import { ErrorFactory, HealthCheckError, DiscoveryError, RegistrationError } from '@core'
 
 /**
  * Registry configuration for subgraph management and service discovery

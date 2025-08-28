@@ -25,8 +25,8 @@ import {
   type GraphQLType,
   type ThunkObjMap,
 } from 'graphql'
-import { ErrorFactory } from '../core/errors.js'
-import type { TypeConversionError } from '../core/types.js'
+import { ErrorFactory } from '@core'
+import type { TypeConversionError } from '@core'
 
 const MAX_RECURSION_DEPTH = 10 as const
 

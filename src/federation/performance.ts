@@ -10,8 +10,8 @@ import type {
   MetricsConfig,
   CompositionError,
   ValidationError,
-} from '../core/types.js'
-import { ErrorFactory } from '../core/errors.js'
+} from '@core'
+import { ErrorFactory } from '@core'
 
 /**
  * Query plan representation for federation query execution

@@ -16,9 +16,13 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "@core": ["./src/core"],
       "@core/*": ["./src/core/*"],
+      "@federation": ["./src/federation"],
       "@federation/*": ["./src/federation/*"],
+      "@experimental": ["./src/experimental"],
       "@experimental/*": ["./src/experimental/*"],
+      "@schema": ["./src/schema"],
       "@schema/*": ["./src/schema/*"],
       "@tests/*": ["./tests/*"]
     },

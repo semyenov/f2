@@ -260,9 +260,9 @@ import type {
   CircuitBreakerMetrics,
   FederationError,
   CircuitBreakerError,
-} from '../core/types.js'
-import { CompositionError } from '../core/errors.js'
-import { ErrorFactory } from '../core/errors.js'
+} from '@core'
+import { CompositionError } from '@core'
+import { ErrorFactory } from '@core'
 
 /**
  * GraphQL resolver function type

@@ -221,7 +221,7 @@ import { pipe } from 'effect/Function'
 import * as Match from 'effect/Match'
 import { Kind, type DocumentNode, type GraphQLSchema } from 'graphql'
 
-import type { ValidatedEntity } from '../experimental/ultra-strict-entity-builder.js'
+import type { ValidatedEntity } from '@experimental'
 // Ultra-strict imports removed due to type system complexity
 
 // ============================================================================

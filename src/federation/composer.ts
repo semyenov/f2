@@ -194,13 +194,13 @@ import * as LogLevel from 'effect/LogLevel'
 import * as Match from 'effect/Match'
 import type { GraphQLSchema } from 'graphql'
 import { buildSchema as buildGraphQLSchema } from 'graphql'
-import { CompositionError, ErrorFactory, type ValidationError } from '../core/errors.js'
+import { CompositionError, ErrorFactory, type ValidationError } from '@core'
 import type {
   FederatedSchema,
   FederationCompositionConfig,
   SchemaMetadata,
   ServiceDefinition,
-} from '../core/types.js'
+} from '@core'
 
 // Modern Composer Service using Context.Tag
 export class FederationComposer extends Context.Tag('FederationComposer')<
