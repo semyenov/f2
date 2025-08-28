@@ -317,7 +317,7 @@ let ErrorFactory;
 //#region src/core/builders/entity-builder.ts
 /**
 * Modern Federation Entity Builder with full Apollo Federation 2.x directive support
-* 
+*
 * Features:
 * - Fluent builder pattern for entity configuration
 * - Full support for @shareable, @inaccessible, @tag, @override directives
@@ -342,19 +342,19 @@ var FederationEntityBuilder = class FederationEntityBuilder {
 	}
 	/**
 	* Federation 2.x directive support
-	* @shareable - Field can be resolved by multiple subgraphs
+	* Marks field as @shareable - Field can be resolved by multiple subgraphs
 	*/
 	withShareableField(field, resolver) {
 		return this.addDirective(field, { type: "@shareable" }, resolver);
 	}
 	/**
-	* @inaccessible - Field hidden from public schema but available for federation
+	* Marks field as @inaccessible - Field hidden from public schema but available for federation
 	*/
 	withInaccessibleField(field, resolver) {
 		return this.addDirective(field, { type: "@inaccessible" }, resolver);
 	}
 	/**
-	* @tag - Metadata tags for schema organization and tooling
+	* Marks field with @tag - Metadata tags for schema organization and tooling
 	*/
 	withTaggedField(field, tags, resolver) {
 		if (!tags.length) throw new Error("Tags array cannot be empty");
@@ -374,13 +374,13 @@ var FederationEntityBuilder = class FederationEntityBuilder {
 		}, resolver);
 	}
 	/**
-	* @external - Field is defined in another subgraph
+	* Marks field as @external - Field is defined in another subgraph
 	*/
 	withExternalField(field) {
 		return this.addDirective(field, { type: "@external" });
 	}
 	/**
-	* @requires - Field requires specific fields from base type
+	* Marks field with @requires - Field requires specific fields from base type
 	*/
 	withRequiredFields(field, requiredFields, resolver) {
 		if (!requiredFields?.trim()) throw new Error("Required fields specification cannot be empty");
@@ -390,7 +390,7 @@ var FederationEntityBuilder = class FederationEntityBuilder {
 		}, resolver);
 	}
 	/**
-	* @provides - Field provides specific fields to base type
+	* Marks field with @provides - Field provides specific fields to base type
 	*/
 	withProvidedFields(field, providedFields, resolver) {
 		if (!providedFields?.trim()) throw new Error("Provided fields specification cannot be empty");
@@ -523,18 +523,35 @@ const createEntityBuilder = (typename, schema, keyFields) => {
 //#endregion
 //#region src/experimental/ultra-strict-entity-builder.ts
 const EntityValidationResult = effect_Data.taggedEnum();
+/**
+* Schema validation error for ultra-strict entity builder
+* @category Experimental
+*/
 var SchemaValidationError$1 = class extends effect_Data.TaggedError("SchemaValidationError") {};
+/**
+* Key validation error for ultra-strict entity builder
+* @category Experimental
+*/
 var KeyValidationError = class extends effect_Data.TaggedError("KeyValidationError") {};
+/**
+* Directive validation error for ultra-strict entity builder
+* @category Experimental
+*/
 var DirectiveValidationError = class extends effect_Data.TaggedError("DirectiveValidationError") {};
 /**
+* Entity builder error for ultra-strict entity builder
+* @category Experimental
+*/
+var EntityBuilderError = class extends effect_Data.TaggedError("EntityBuilderError") {};
+/**
 * Creates a new UltraStrictEntityBuilder with compile-time state tracking
-* 
+*
 * The builder uses phantom types to enforce correct usage order at compile time.
 * This prevents runtime errors by catching configuration mistakes during development.
-* 
+*
 * @param typename - The GraphQL type name for this entity
 * @returns Builder in Unvalidated state, requiring schema definition next
-* 
+*
 * @example
 * ```typescript
 * const userBuilder = createUltraStrictEntityBuilder('User')
@@ -550,14 +567,14 @@ const createUltraStrictEntityBuilder = (typename) => {
 };
 /**
 * Type-safe schema attachment (only valid in Unvalidated state)
-* 
+*
 * Attaches an Effect Schema to the entity for runtime validation.
 * The phantom type system ensures this can only be called on an unvalidated builder.
-* 
+*
 * @template A - The schema type being attached
 * @param schema - Effect Schema instance for validation
 * @returns Function that takes Unvalidated builder and returns HasSchema builder
-* 
+*
 * @example
 * ```typescript
 * const UserSchema = Schema.Struct({
@@ -565,7 +582,7 @@ const createUltraStrictEntityBuilder = (typename) => {
 *   name: Schema.String,
 *   email: Schema.String
 * })
-* 
+*
 * const builderWithSchema = createUltraStrictEntityBuilder('User')
 *   .pipe(withSchema(UserSchema))
 * ```
@@ -580,20 +597,20 @@ const withSchema = (schema) => (builder) => {
 };
 /**
 * Type-safe key definition (only valid in HasSchema state)
-* 
+*
 * Defines the key fields that uniquely identify this entity across subgraphs.
 * The phantom type system ensures schema is attached before keys can be defined.
-* 
+*
 * @param keys - Array of EntityKey objects defining the unique identifier(s)
 * @returns Function that takes HasSchema builder and returns HasKeys builder
-* 
+*
 * @example
 * ```typescript
 * const keys = [
 *   UltraStrictEntityBuilder.Key.create('id', GraphQLID, false),
 *   UltraStrictEntityBuilder.Key.create('organizationId', GraphQLID, false) // Composite key
 * ]
-* 
+*
 * const builderWithKeys = builderWithSchema
 *   .pipe(withKeys(keys))
 * ```
@@ -612,13 +629,13 @@ const withKeys = (keys) => (builder) => {
 };
 /**
 * Type-safe directive application (only valid in HasKeys state)
-* 
+*
 * Applies Federation directives to the entity. The phantom type system ensures
 * both schema and keys are defined before directives can be applied.
-* 
+*
 * @param directives - Array of Federation directives (@shareable, @inaccessible, etc.)
 * @returns Function that takes HasKeys builder and returns HasDirectives builder
-* 
+*
 * @example
 * ```typescript
 * const directives = [
@@ -626,7 +643,7 @@ const withKeys = (keys) => (builder) => {
 *   UltraStrictEntityBuilder.Directive.tag('public'),
 *   UltraStrictEntityBuilder.Directive.provides('email')
 * ]
-* 
+*
 * const builderWithDirectives = builderWithKeys
 *   .pipe(withDirectives(directives))
 * ```
@@ -651,13 +668,13 @@ const withDirectives = (directives) => (builder) => {
 };
 /**
 * Type-safe resolver attachment (only valid in HasDirectives state)
-* 
+*
 * Attaches field resolvers to the entity. The phantom type system ensures
 * all previous configuration steps are complete before resolvers can be attached.
-* 
+*
 * @param resolvers - Record of field name to resolver function mappings
 * @returns Function that takes HasDirectives builder and returns Complete builder
-* 
+*
 * @example
 * ```typescript
 * const resolvers = {
@@ -665,7 +682,7 @@ const withDirectives = (directives) => (builder) => {
 *   avatar: (user, args, ctx) => ctx.imageService.getAvatar(user.id),
 *   posts: (user, args, ctx) => ctx.postService.findByUserId(user.id)
 * }
-* 
+*
 * const completeBuilder = builderWithDirectives
 *   .pipe(withResolvers(resolvers))
 * ```
@@ -1462,7 +1479,7 @@ let SubgraphManagement;
 			try: () => fetch(endpoint, {
 				method: "GET",
 				headers: {
-					"Accept": "application/json",
+					Accept: "application/json",
 					"Cache-Control": "max-age=30",
 					"User-Agent": "Federation-Framework/2.0"
 				},
@@ -1509,7 +1526,7 @@ let SubgraphManagement;
 				return fetch(`${service.url}/health`, {
 					method: "GET",
 					headers: {
-						"Accept": "application/json",
+						Accept: "application/json",
 						"User-Agent": "Federation-Framework/2.0",
 						"Cache-Control": "no-cache"
 					},
@@ -2471,6 +2488,10 @@ let ASTConversion;
 //#region src/experimental/index.ts
 var experimental_exports = {};
 __export(experimental_exports, {
+	DirectiveValidationError: () => DirectiveValidationError,
+	EntityBuilderError: () => EntityBuilderError,
+	KeyValidationError: () => KeyValidationError,
+	SchemaValidationError: () => SchemaValidationError$1,
 	UltraStrictEntityBuilder: () => UltraStrictEntityBuilder,
 	createUltraStrictEntityBuilder: () => createUltraStrictEntityBuilder,
 	matchEntityValidationResult: () => matchEntityValidationResult,

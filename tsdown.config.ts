@@ -6,13 +6,12 @@ export default defineConfig({
   dts: true,
   clean: true,
   minify: false,
+  treeshake: true,
   target: "es2022",
   external: [
     "effect",
     "@effect/schema",
     "graphql",
-    "@graphql-tools/schema",
-    "@graphql-tools/utils",
     "dataloader"
   ]
 })

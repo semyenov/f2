@@ -3,9 +3,9 @@ import * as Schema from "@effect/schema/Schema";
 import { DocumentNode, ExecutionResult, GraphQLFieldResolver, GraphQLInputType, GraphQLOutputType, GraphQLResolveInfo, GraphQLScalarType, GraphQLSchema, GraphQLType } from "graphql";
 import * as Data from "effect/Data";
 import * as Effect$1 from "effect/Effect";
-import * as effect_Unify0 from "effect/Unify";
-import * as effect_Types0 from "effect/Types";
-import * as effect_Cause0 from "effect/Cause";
+import * as effect_Unify7 from "effect/Unify";
+import * as effect_Types2 from "effect/Types";
+import * as effect_Cause2 from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Layer from "effect/Layer";
 import * as _effect_schema_ParseResult5 from "@effect/schema/ParseResult";
@@ -739,15 +739,15 @@ declare class FederationEntityBuilder<TSource extends Record<string, unknown> = 
   private validateConstructorArgs;
   /**
    * Federation 2.x directive support
-   * @shareable - Field can be resolved by multiple subgraphs
+   * Marks field as @shareable - Field can be resolved by multiple subgraphs
    */
   withShareableField<K extends keyof TSource>(field: K, resolver?: FieldResolver<TSource, TContext, TSource[K]>): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
-   * @inaccessible - Field hidden from public schema but available for federation
+   * Marks field as @inaccessible - Field hidden from public schema but available for federation
    */
   withInaccessibleField<K extends keyof TSource>(field: K, resolver?: FieldResolver<TSource, TContext, TSource[K]>): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
-   * @tag - Metadata tags for schema organization and tooling
+   * Marks field with @tag - Metadata tags for schema organization and tooling
    */
   withTaggedField<K extends keyof TSource>(field: K, tags: ReadonlyArray<string>, resolver?: FieldResolver<TSource, TContext, TSource[K]>): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
@@ -755,15 +755,15 @@ declare class FederationEntityBuilder<TSource extends Record<string, unknown> = 
    */
   withOverrideField<K extends keyof TSource>(field: K, fromSubgraph: string, resolver: FieldResolver<TSource, TContext, TSource[K]>): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
-   * @external - Field is defined in another subgraph
+   * Marks field as @external - Field is defined in another subgraph
    */
   withExternalField<K extends keyof TSource>(field: K): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
-   * @requires - Field requires specific fields from base type
+   * Marks field with @requires - Field requires specific fields from base type
    */
   withRequiredFields<K extends keyof TSource>(field: K, requiredFields: string, resolver?: FieldResolver<TSource, TContext, TSource[K]>): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
-   * @provides - Field provides specific fields to base type
+   * Marks field with @provides - Field provides specific fields to base type
    */
   withProvidedFields<K extends keyof TSource>(field: K, providedFields: string, resolver?: FieldResolver<TSource, TContext, TSource[K]>): FederationEntityBuilder<TSource, TContext, TResult, TReference>;
   /**
@@ -838,23 +838,23 @@ declare const createEntityBuilder: <TSource extends Record<string, unknown> = Re
 declare namespace PhantomStates {
   /** Initial state - no configuration applied yet */
   interface Unvalidated {
-    readonly _tag: "Unvalidated";
+    readonly _tag: 'Unvalidated';
   }
   /** Schema has been defined and validated */
   interface HasSchema {
-    readonly _tag: "HasSchema";
+    readonly _tag: 'HasSchema';
   }
   /** Entity keys have been defined and validated */
   interface HasKeys {
-    readonly _tag: "HasKeys";
+    readonly _tag: 'HasKeys';
   }
   /** Federation directives have been applied */
   interface HasDirectives {
-    readonly _tag: "HasDirectives";
+    readonly _tag: 'HasDirectives';
   }
   /** Builder is complete and ready for validation */
   interface Complete {
-    readonly _tag: "Complete";
+    readonly _tag: 'Complete';
   }
 }
 /**
@@ -1020,7 +1020,7 @@ declare const EntityValidationResult: {
       readonly requiredVersion: string;
       readonly currentVersion: string;
       readonly entity: string;
-    }) => effect_Unify0.Unify<ReturnType<Cases["Valid" | "InvalidSchema" | "InvalidKeys" | "InvalidDirectives" | "CircularDependency" | "IncompatibleVersion"]>>;
+    }) => effect_Unify7.Unify<ReturnType<Cases["Valid" | "InvalidSchema" | "InvalidKeys" | "InvalidDirectives" | "CircularDependency" | "IncompatibleVersion"]>>;
     <const Cases extends {
       readonly Valid: (args: {
         readonly _tag: "Valid";
@@ -1080,60 +1080,92 @@ declare const EntityValidationResult: {
       readonly requiredVersion: string;
       readonly currentVersion: string;
       readonly entity: string;
-    }, cases: Cases & { [K in Exclude<keyof Cases, "Valid" | "InvalidSchema" | "InvalidKeys" | "InvalidDirectives" | "CircularDependency" | "IncompatibleVersion">]: never }): effect_Unify0.Unify<ReturnType<Cases["Valid" | "InvalidSchema" | "InvalidKeys" | "InvalidDirectives" | "CircularDependency" | "IncompatibleVersion"]>>;
+    }, cases: Cases & { [K in Exclude<keyof Cases, "Valid" | "InvalidSchema" | "InvalidKeys" | "InvalidDirectives" | "CircularDependency" | "IncompatibleVersion">]: never }): effect_Unify7.Unify<ReturnType<Cases["Valid" | "InvalidSchema" | "InvalidKeys" | "InvalidDirectives" | "CircularDependency" | "IncompatibleVersion"]>>;
   };
 };
-declare const SchemaValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause0.YieldableError & {
+declare const SchemaValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "SchemaValidationError";
 } & Readonly<A>;
+/**
+ * Schema validation error for ultra-strict entity builder
+ * @category Experimental
+ */
 declare class SchemaValidationError$1 extends SchemaValidationError_base<{
   readonly message: string;
   readonly schemaPath: readonly string[];
   readonly suggestion?: string;
 }> {}
-declare const KeyValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause0.YieldableError & {
+declare const KeyValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "KeyValidationError";
 } & Readonly<A>;
+/**
+ * Key validation error for ultra-strict entity builder
+ * @category Experimental
+ */
 declare class KeyValidationError extends KeyValidationError_base<{
   readonly message: string;
   readonly keyField: string;
   readonly entityType: string;
   readonly suggestion?: string;
 }> {}
-declare const DirectiveValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause0.YieldableError & {
+declare const DirectiveValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "DirectiveValidationError";
 } & Readonly<A>;
+/**
+ * Directive validation error for ultra-strict entity builder
+ * @category Experimental
+ */
 declare class DirectiveValidationError extends DirectiveValidationError_base<{
   readonly message: string;
   readonly directive: string;
   readonly field?: string;
   readonly suggestion?: string;
 }> {}
-declare const EntityBuilderError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause0.YieldableError & {
+declare const EntityBuilderError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "EntityBuilderError";
 } & Readonly<A>;
+/**
+ * Entity builder error for ultra-strict entity builder
+ * @category Experimental
+ */
 declare class EntityBuilderError extends EntityBuilderError_base<{
   readonly message: string;
   readonly builderState: string;
   readonly suggestion?: string;
 }> {}
+/**
+ * Entity key definition for ultra-strict entity builder
+ * @category Experimental
+ */
 interface EntityKey {
   readonly field: string;
   readonly type: GraphQLOutputType;
   readonly isComposite: boolean;
 }
+/**
+ * Entity directive definition for ultra-strict entity builder
+ * @category Experimental
+ */
 interface EntityDirective {
   readonly name: string;
   readonly args: Record<string, unknown>;
   readonly applicableFields?: readonly string[] | undefined;
 }
+/**
+ * Entity metadata for ultra-strict entity builder
+ * @category Experimental
+ */
 interface EntityMetadata {
   readonly typename: string;
   readonly version: string;
   readonly createdAt: Date;
-  readonly validationLevel: "strict" | "ultra-strict";
+  readonly validationLevel: 'strict' | 'ultra-strict';
   readonly dependencies: readonly string[];
 }
+/**
+ * Validated entity for ultra-strict entity builder
+ * @category Experimental
+ */
 interface ValidatedEntity {
   readonly typename: string;
   readonly schema: Schema.Schema<unknown>;
@@ -1465,7 +1497,7 @@ declare const SchemaLifecycleState: {
       readonly schema: DocumentNode;
       readonly replacedBy: string;
       readonly version: string;
-    }) => effect_Unify0.Unify<ReturnType<Cases["Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated"]>>;
+    }) => effect_Unify7.Unify<ReturnType<Cases["Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated"]>>;
     <const Cases extends {
       readonly Draft: (args: {
         readonly _tag: "Draft";
@@ -1520,7 +1552,7 @@ declare const SchemaLifecycleState: {
       readonly schema: DocumentNode;
       readonly replacedBy: string;
       readonly version: string;
-    }, cases: Cases & { [K in Exclude<keyof Cases, "Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated">]: never }): effect_Unify0.Unify<ReturnType<Cases["Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated"]>>;
+    }, cases: Cases & { [K in Exclude<keyof Cases, "Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated">]: never }): effect_Unify7.Unify<ReturnType<Cases["Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated"]>>;
   };
 };
 /**
@@ -1750,7 +1782,7 @@ declare const SchemaEvolution: {
       readonly _tag: "RemoveEntity";
       readonly entityType: string;
       readonly isBreaking: boolean;
-    }) => effect_Unify0.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
+    }) => effect_Unify7.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
     <const Cases extends {
       readonly AddField: (args: {
         readonly _tag: "AddField";
@@ -1835,10 +1867,10 @@ declare const SchemaEvolution: {
       readonly _tag: "RemoveEntity";
       readonly entityType: string;
       readonly isBreaking: boolean;
-    }, cases: Cases & { [K in Exclude<keyof Cases, "AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity">]: never }): effect_Unify0.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
+    }, cases: Cases & { [K in Exclude<keyof Cases, "AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity">]: never }): effect_Unify7.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
   };
 };
-declare const SchemaFirstError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause0.YieldableError & {
+declare const SchemaFirstError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "SchemaFirstError";
 } & Readonly<A>;
 declare class SchemaFirstError extends SchemaFirstError_base<{
@@ -1846,7 +1878,7 @@ declare class SchemaFirstError extends SchemaFirstError_base<{
   readonly schemaPath?: readonly string[];
   readonly suggestion?: string;
 }> {}
-declare const SchemaEvolutionError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause0.YieldableError & {
+declare const SchemaEvolutionError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "SchemaEvolutionError";
 } & Readonly<A>;
 declare class SchemaEvolutionError extends SchemaEvolutionError_base<{
@@ -1854,7 +1886,7 @@ declare class SchemaEvolutionError extends SchemaEvolutionError_base<{
   readonly evolution: SchemaEvolution;
   readonly conflictingChanges?: readonly SchemaEvolution[];
 }> {}
-declare const CodeGenerationError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause0.YieldableError & {
+declare const CodeGenerationError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "CodeGenerationError";
 } & Readonly<A>;
 declare class CodeGenerationError extends CodeGenerationError_base<{
@@ -1868,14 +1900,14 @@ interface SchemaFirstService {
   readonly generateEntityBuilders: (schema: DocumentNode) => Effect$1.Effect<readonly ValidatedEntity[], SchemaFirstError>;
   readonly validateSchemaEvolution: (currentSchema: DocumentNode, proposedSchema: DocumentNode) => Effect$1.Effect<readonly SchemaEvolution[], SchemaEvolutionError>;
   readonly generateResolverStubs: (entities: readonly ValidatedEntity[]) => Effect$1.Effect<string, CodeGenerationError>;
-  readonly generateTypeDefinitions: (entities: readonly ValidatedEntity[], language: "typescript" | "go" | "java" | "python") => Effect$1.Effect<string, CodeGenerationError>;
+  readonly generateTypeDefinitions: (entities: readonly ValidatedEntity[], language: 'typescript' | 'go' | 'java' | 'python') => Effect$1.Effect<string, CodeGenerationError>;
 }
 declare const SchemaFirstService: Context.Tag<SchemaFirstService, SchemaFirstService>;
 declare const createSchemaFirstService: () => SchemaFirstService;
 interface SchemaFirstWorkflow {
   readonly developSchema: (schemaSource: string) => Effect$1.Effect<SchemaLifecycleState, SchemaFirstError>;
   readonly evolveSchema: (currentState: SchemaLifecycleState, proposedSchema: string) => Effect$1.Effect<SchemaLifecycleState, SchemaEvolutionError>;
-  readonly generateCode: (state: SchemaLifecycleState, targets: readonly ("resolvers" | "types")[]) => Effect$1.Effect<Record<string, string>, CodeGenerationError>;
+  readonly generateCode: (state: SchemaLifecycleState, targets: readonly ('resolvers' | 'types')[]) => Effect$1.Effect<Record<string, string>, CodeGenerationError>;
 }
 declare const createSchemaFirstWorkflow: (schemaFirstService: SchemaFirstService) => SchemaFirstWorkflow;
 declare namespace SchemaFirst {
@@ -2006,7 +2038,7 @@ declare namespace SchemaFirst {
         readonly schema: DocumentNode;
         readonly replacedBy: string;
         readonly version: string;
-      }) => effect_Unify0.Unify<ReturnType<Cases["Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated"]>>;
+      }) => effect_Unify7.Unify<ReturnType<Cases["Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated"]>>;
       <const Cases extends {
         readonly Draft: (args: {
           readonly _tag: "Draft";
@@ -2061,7 +2093,7 @@ declare namespace SchemaFirst {
         readonly schema: DocumentNode;
         readonly replacedBy: string;
         readonly version: string;
-      }, cases: Cases & { [K in Exclude<keyof Cases, "Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated">]: never }): effect_Unify0.Unify<ReturnType<Cases["Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated"]>>;
+      }, cases: Cases & { [K in Exclude<keyof Cases, "Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated">]: never }): effect_Unify7.Unify<ReturnType<Cases["Draft" | "Validated" | "Composed" | "Deployed" | "Deprecated"]>>;
     };
   };
   const Evolution: {
@@ -2248,7 +2280,7 @@ declare namespace SchemaFirst {
         readonly _tag: "RemoveEntity";
         readonly entityType: string;
         readonly isBreaking: boolean;
-      }) => effect_Unify0.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
+      }) => effect_Unify7.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
       <const Cases extends {
         readonly AddField: (args: {
           readonly _tag: "AddField";
@@ -2333,7 +2365,7 @@ declare namespace SchemaFirst {
         readonly _tag: "RemoveEntity";
         readonly entityType: string;
         readonly isBreaking: boolean;
-      }, cases: Cases & { [K in Exclude<keyof Cases, "AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity">]: never }): effect_Unify0.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
+      }, cases: Cases & { [K in Exclude<keyof Cases, "AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity">]: never }): effect_Unify7.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
     };
   };
 }
@@ -2538,9 +2570,10 @@ declare const createFederatedSchema: (config: FederationCompositionConfig) => Ef
 //#region src/federation/subgraph.d.ts
 /**
  * Registry configuration for subgraph management
+ * @category Federation
  */
 interface RegistryConfig {
-  readonly discoveryMode: "static" | "dynamic";
+  readonly discoveryMode: 'static' | 'dynamic';
   readonly staticServices: ReadonlyArray<ServiceDefinition>;
   readonly discoveryEndpoints: ReadonlyArray<string>;
   readonly healthCheckInterval: Duration.Duration;
@@ -2595,6 +2628,7 @@ declare const createMonitoredRegistry: (services: ReadonlyArray<ServiceDefinitio
 //#region src/federation/error-boundaries.d.ts
 /**
  * GraphQL resolver function type
+ * @category Error Handling
  */
 type GraphQLResolver = (parent: unknown, args: unknown, context: unknown, info: GraphQLResolveInfo) => Promise<unknown>;
 /**
@@ -2611,10 +2645,15 @@ interface ErrorBoundary {
 }
 /**
  * Subgraph execution results
+ * @category Error Handling
  */
 interface SubgraphResults {
   readonly [subgraphId: string]: SubgraphResult;
 }
+/**
+ * Single subgraph execution result
+ * @category Error Handling
+ */
 interface SubgraphResult {
   readonly subgraphId: string;
   readonly success: boolean;
@@ -2623,6 +2662,7 @@ interface SubgraphResult {
 }
 /**
  * Processed results after partial failure handling
+ * @category Error Handling
  */
 interface ProcessedResults {
   readonly data: unknown;
@@ -2630,15 +2670,17 @@ interface ProcessedResults {
 }
 /**
  * Error context for transformation
+ * @category Error Handling
  */
 interface ErrorContext {
   readonly subgraphId: string;
   readonly fieldPath: ReadonlyArray<string>;
-  readonly operationType: "query" | "mutation" | "subscription";
+  readonly operationType: 'query' | 'mutation' | 'subscription';
   readonly timestamp: Date;
 }
 /**
  * Transformed error for client consumption
+ * @category Error Handling
  */
 interface TransformedError {
   readonly message: string;
@@ -2692,6 +2734,7 @@ declare const createProductionBoundary: (subgraphTimeouts: Record<string, Durati
 //#region src/federation/performance.d.ts
 /**
  * Query plan representation
+ * @category Performance Optimizations
  */
 interface QueryPlan {
   readonly id: string;
@@ -2699,6 +2742,10 @@ interface QueryPlan {
   readonly complexity: number;
   readonly estimatedCost: number;
 }
+/**
+ * Query step representation
+ * @category Performance Optimizations
+ */
 interface QueryStep {
   readonly subgraphId: string;
   readonly operation: string;
@@ -2706,6 +2753,7 @@ interface QueryStep {
 }
 /**
  * Cached query plan with metadata
+ * @category Performance Optimizations
  */
 interface CachedQueryPlan {
   readonly plan: QueryPlan;
@@ -2715,6 +2763,7 @@ interface CachedQueryPlan {
 }
 /**
  * Query plan cache interface
+ * @category Performance Optimizations
  */
 interface QueryPlanCache {
   readonly get: (queryHash: string) => Effect.Effect<CachedQueryPlan | undefined, never>;
@@ -2724,6 +2773,7 @@ interface QueryPlanCache {
 }
 /**
  * Cache statistics
+ * @category Performance Optimizations
  */
 interface CacheStats {
   readonly size: number;
@@ -2733,6 +2783,7 @@ interface CacheStats {
 }
 /**
  * Federated DataLoader interface
+ * @category Performance Optimizations
  */
 interface FederatedDataLoader {
   readonly getLoader: <K, V>(subgraphId: string, batchLoadFn: (keys: readonly K[]) => Promise<readonly V[]>) => Effect.Effect<DataLoader<K, V>, never>;
@@ -2741,6 +2792,7 @@ interface FederatedDataLoader {
 }
 /**
  * DataLoader statistics
+ * @category Performance Optimizations
  */
 interface DataLoaderStats {
   readonly [subgraphId: string]: {
@@ -2752,6 +2804,7 @@ interface DataLoaderStats {
 }
 /**
  * Metrics collector interface
+ * @category Performance Optimizations
  */
 interface MetricsCollector {
   readonly recordExecution: (metrics: ExecutionMetrics) => Effect.Effect<void, never>;
@@ -2760,6 +2813,7 @@ interface MetricsCollector {
 }
 /**
  * Execution metrics
+ * @category Performance Optimizations
  */
 interface ExecutionMetrics {
   readonly queryHash: string;
@@ -2768,6 +2822,10 @@ interface ExecutionMetrics {
   readonly subgraphCalls: ReadonlyArray<SubgraphCall>;
   readonly cacheHit?: boolean;
 }
+/**
+ * Subgraph call metrics
+ * @category Performance Optimizations
+ */
 interface SubgraphCall {
   readonly subgraphId: string;
   readonly duration: number;
@@ -2776,14 +2834,16 @@ interface SubgraphCall {
 }
 /**
  * Cache operation metrics
+ * @category Performance Optimizations
  */
 interface CacheOperation {
-  readonly type: "hit" | "miss" | "set" | "evict";
+  readonly type: 'hit' | 'miss' | 'set' | 'evict';
   readonly key: string;
   readonly duration?: number;
 }
 /**
  * Performance metrics summary
+ * @category Performance Optimizations
  */
 interface PerformanceMetrics {
   readonly executionMetrics: {
@@ -2802,6 +2862,7 @@ interface OptimizedExecutor {
 }
 /**
  * Execution context
+ * @category Performance Optimizations
  */
 interface ExecutionContext {
   readonly [key: string]: unknown;
@@ -2809,10 +2870,11 @@ interface ExecutionContext {
 }
 /**
  * Execution error
+ * @category Error Handling
  */
 interface ExecutionError extends Error {
-  readonly _tag: "ExecutionError";
-  readonly name: "ExecutionError";
+  readonly _tag: 'ExecutionError';
+  readonly name: 'ExecutionError';
   readonly message: string;
   readonly cause?: unknown;
 }
@@ -2866,6 +2928,7 @@ declare const createDevelopmentOptimizedExecutor: (schema: FederatedSchema) => E
 //#region src/schema/ast-conversion.d.ts
 /**
  * Type conversion context with caching and configuration
+ * @category Schema Processing
  */
 interface TypeConversionContext {
   readonly cache: Map<string, GraphQLType>;
@@ -2917,7 +2980,7 @@ declare namespace ASTConversion {
   }, TypeConversionError>;
 }
 declare namespace index_d_exports {
-  export { EntityDirective, EntityKey, EntityMetadata, EntityValidationResult, PhantomStates, UltraStrictEntityBuilder, ValidatedEntity, createUltraStrictEntityBuilder, matchEntityValidationResult, validateEntityBuilder, withDirectives, withKeys, withResolvers, withSchema };
+  export { DirectiveValidationError, EntityBuilderError, EntityDirective, EntityKey, EntityMetadata, EntityValidationResult, KeyValidationError, PhantomStates, SchemaValidationError$1 as SchemaValidationError, UltraStrictEntityBuilder, ValidatedEntity, createUltraStrictEntityBuilder, matchEntityValidationResult, validateEntityBuilder, withDirectives, withKeys, withResolvers, withSchema };
 }
 //#endregion
 //#region src/index.d.ts
@@ -2935,5 +2998,5 @@ declare const FRAMEWORK_INFO: {
   readonly features: readonly ["Effect-First Architecture", "Apollo Federation 2.x Support", "Ultra-Strict TypeScript", "Algebraic Error System", "Performance Optimizations", "Schema-First Development", "Circuit Breakers", "Hot Reload", "Layer-based Dependency Injection", "Effect.gen Patterns", "Structured Logging", "Type-safe Configuration", "Pattern Matching Error Handling", "Modern Test Infrastructure"];
 };
 //#endregion
-export { ASTConversion, BaseDomainError, CircuitBreaker, CircuitBreakerConfig, type CircuitBreakerError, CircuitBreakerMetrics, CircuitBreakerState, CodeGenerationError, type CompositionError, CoreServicesLive, DataLoaderConfig, DeepReadonly, DevelopmentLayerLive, type DiscoveryError, DomainError, EntityReferenceResolver, type EntityResolutionError, EntityTypename, ErrorBoundary, ErrorBoundaryConfig, ErrorFactory, ErrorMatching, ErrorTransformationConfig, index_d_exports as Experimental, ExtractResolver, FRAMEWORK_INFO, FederatedSchema, FederationCompositionConfig, FederationConfigLive, FederationConfigSchema, FederationConfigService, FederationDirective, FederationDirectiveMap, FederationDomainError, FederationEntity, FederationEntityBuilder, type FederationError, FederationErrorBoundaries, FederationLogger, FederationLoggerLive, FederationServiceConfig, FieldName, type FieldResolutionError, FieldResolver, FieldResolverMap, type HealthCheckError, HealthStatus, HotReloadableSchema, MakeRequired, MetricsConfig, MinimalLayerLive, ModernFederationComposer, ModernFederationComposerLive, NonEmptyArray, OptimizedExecutor, OptionalKeys, PartialFailureConfig, PerformanceConfig, PerformanceOptimizations, Prettify, ProductionLayerLive, QueryHash, QueryPlanCacheConfig, type RegistrationError, RequireAtLeastOne, RequiredKeys, SafeResolverMap, SchemaChange, SchemaConflict, SchemaEvolution, SchemaEvolutionError, SchemaFirst, SchemaFirstError, SchemaFirstService, SchemaFirstWorkflow, SchemaImportResult, SchemaLifecycleState, SchemaMetadata, type SchemaValidationError, SchemaWatcher, ServiceDefinition, ServiceId, SubgraphManagement, SubgraphRegistry, SyncResult, TestLayerLive, type TimeoutError, type TypeConversionError, VERSION, type ValidationError, asUntypedEntity, compose, createBasicOptimizedExecutor, createConversionContext, createDevelopmentOptimizedExecutor, createDynamicRegistry, createEntityBuilder, createEnvironmentLayer, createFederatedSchema, createMonitoredRegistry, createProductionBoundary, createProductionOptimizedExecutor, createResilientBoundary, createSchemaFirstService, createSchemaFirstWorkflow, createStaticRegistry, createStrictBoundary, debug, developmentLogger, error, getCacheConfig, getDatabaseConfig, getFederationConfig, getObservabilityConfig, getResilienceConfig, getServerConfig, handleCompositionError, info, productionLogger, testLogger, trace, validateConfig, warn, withSpan };
+export { ASTConversion, BaseDomainError, CacheOperation, CacheStats, CachedQueryPlan, CircuitBreaker, CircuitBreakerConfig, type CircuitBreakerError, CircuitBreakerMetrics, CircuitBreakerState, CodeGenerationError, type CompositionError, CoreServicesLive, DataLoaderConfig, DataLoaderStats, DeepReadonly, DevelopmentLayerLive, type DiscoveryError, DomainError, EntityReferenceResolver, type EntityResolutionError, EntityTypename, ErrorBoundary, ErrorBoundaryConfig, ErrorContext, ErrorFactory, ErrorMatching, ErrorTransformationConfig, ExecutionContext, ExecutionError, ExecutionMetrics, index_d_exports as Experimental, ExtractResolver, FRAMEWORK_INFO, FederatedDataLoader, FederatedSchema, FederationCompositionConfig, FederationConfigLive, FederationConfigSchema, FederationConfigService, FederationDirective, FederationDirectiveMap, FederationDomainError, FederationEntity, FederationEntityBuilder, type FederationError, FederationErrorBoundaries, FederationLogger, FederationLoggerLive, FederationServiceConfig, FieldName, type FieldResolutionError, FieldResolver, FieldResolverMap, GraphQLResolver, type HealthCheckError, HealthStatus, HotReloadableSchema, MakeRequired, MetricsCollector, MetricsConfig, MinimalLayerLive, ModernFederationComposer, ModernFederationComposerLive, NonEmptyArray, OptimizedExecutor, OptionalKeys, PartialFailureConfig, PerformanceConfig, PerformanceMetrics, PerformanceOptimizations, Prettify, ProcessedResults, ProductionLayerLive, QueryHash, QueryPlan, QueryPlanCache, QueryPlanCacheConfig, QueryStep, type RegistrationError, RegistryConfig, RequireAtLeastOne, RequiredKeys, SafeResolverMap, SchemaChange, SchemaConflict, SchemaEvolution, SchemaEvolutionError, SchemaFirst, SchemaFirstError, SchemaFirstService, SchemaFirstWorkflow, SchemaImportResult, SchemaLifecycleState, SchemaMetadata, type SchemaValidationError, SchemaWatcher, ServiceDefinition, ServiceId, SubgraphCall, SubgraphManagement, SubgraphRegistry, SubgraphResult, SubgraphResults, SyncResult, TestLayerLive, type TimeoutError, TransformedError, TypeConversionContext, type TypeConversionError, VERSION, type ValidationError, asUntypedEntity, compose, createBasicOptimizedExecutor, createConversionContext, createDevelopmentOptimizedExecutor, createDynamicRegistry, createEntityBuilder, createEnvironmentLayer, createFederatedSchema, createMonitoredRegistry, createProductionBoundary, createProductionOptimizedExecutor, createResilientBoundary, createSchemaFirstService, createSchemaFirstWorkflow, createStaticRegistry, createStrictBoundary, debug, developmentLogger, error, getCacheConfig, getDatabaseConfig, getFederationConfig, getObservabilityConfig, getResilienceConfig, getServerConfig, handleCompositionError, info, productionLogger, testLogger, trace, validateConfig, warn, withSpan };
 //# sourceMappingURL=index.d.cts.map

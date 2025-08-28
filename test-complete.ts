@@ -16,7 +16,7 @@ import { Duration } from "effect"
 // Note: Demo code is bundled within the main package for comprehensive testing
 
 console.log("🧪 Testing Complete Federation v2 Package")
-console.log("=" * 50)
+console.log("=".repeat(50))
 console.log(`📦 Package: ${FRAMEWORK_INFO.name} v${VERSION}`)
 console.log(`🚀 Features: ${FRAMEWORK_INFO.features.length} total`)
 FRAMEWORK_INFO.features.forEach((feature, i) => {
@@ -78,9 +78,9 @@ console.log("   ✓ Schema-first service factory available")
 console.log("   ✓ Workflow orchestration patterns ready")
 console.log("   ✓ Evolution safety mechanisms enabled")
 
-console.log("\n" + "=" * 50)
+console.log("\n" + "=".repeat(50))
 console.log("🎉 All Federation v2 Components Working!")
-console.log("=" * 50)
+console.log("=".repeat(50))
 console.log("✅ Core Entity Builder - Federation 2.x directives")
 console.log("✅ Subgraph Management - Service discovery & health")
 console.log("✅ Error Boundaries - Circuit breakers & resilience")
