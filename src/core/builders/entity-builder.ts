@@ -1,23 +1,23 @@
+import type * as Schema from 'effect/Schema'
 import { Effect, pipe } from 'effect'
-import * as Schema from '@effect/schema/Schema'
 import type { GraphQLOutputType, GraphQLResolveInfo } from 'graphql'
 import type {
-  FederationDirective,
-  FederationDirectiveMap,
-  EntityReferenceResolver,
-  FieldResolver,
-  FieldResolverMap,
-  EntityResolutionError,
-  ValidationError,
-  FieldResolutionError,
-} from '../types.js'
-import type {
-  ValidatedEntity,
-  EntityMetadata,
-  EntityKey,
   EntityDirective,
+  EntityKey,
+  EntityMetadata,
+  ValidatedEntity,
 } from '../../experimental/ultra-strict-entity-builder.js'
 import { ErrorFactory } from '../errors.js'
+import type {
+  EntityReferenceResolver,
+  EntityResolutionError,
+  FederationDirective,
+  FederationDirectiveMap,
+  FieldResolutionError,
+  FieldResolver,
+  FieldResolverMap,
+  ValidationError,
+} from '../types.js'
 
 /**
  * Federation Entity Builder with full Apollo Federation 2.x directive support
@@ -38,7 +38,7 @@ import { ErrorFactory } from '../errors.js'
  * ```typescript
  * import { createEntityBuilder } from '@cqrs/federation'
  * import { Effect } from 'effect'
- * import * as Schema from '@effect/schema/Schema'
+ * import * as Schema from 'effect/Schema'
  *
  * // Define entity schema
  * const UserSchema = Schema.Struct({
@@ -83,11 +83,13 @@ export class FederationEntityBuilder<
   TSource extends Record<string, unknown> = Record<string, unknown>,
   TContext = Record<string, unknown>,
   TResult = TSource,
-  TReference extends Record<string, any> = Record<string, any>,
+  // Using a type assertion for TReference to maintain GraphQL compatibility
+  TReference extends Record<string, unknown> = Record<string, unknown>,
 > {
   constructor(
     private readonly typename: string,
-    private readonly schema: Schema.Schema<TSource, any, any>,
+    // Schema types require flexibility for proper type inference
+    private readonly schema: Schema.Schema<TSource, TSource, never>,
     private readonly keyFields: ReadonlyArray<keyof TSource>,
     private readonly directiveMap: FederationDirectiveMap = {},
     private readonly fieldResolvers: FieldResolverMap<TResult, TContext> = {},
@@ -682,10 +684,12 @@ export const createEntityBuilder = <
   TSource extends Record<string, unknown> = Record<string, unknown>,
   TContext extends Record<string, unknown> = Record<string, unknown>,
   TResult = TSource,
-  TReference extends Record<string, any> = Record<string, any>,
+  // Using a type assertion for TReference to maintain GraphQL compatibility
+  TReference extends Record<string, unknown> = Record<string, unknown>,
 >(
   typename: string,
-  schema: Schema.Schema<TSource, any, any>,
+  // Schema types require flexibility for proper type inference
+  schema: Schema.Schema<TSource, TSource, never>,
   keyFields: ReadonlyArray<keyof TSource>
 ): FederationEntityBuilder<TSource, TContext, TResult, TReference> => {
   return new FederationEntityBuilder<TSource, TContext, TResult, TReference>(

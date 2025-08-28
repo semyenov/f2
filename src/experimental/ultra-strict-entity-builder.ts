@@ -8,11 +8,11 @@
  * - Zero-cost abstractions through phantom types
  */
 
-import * as Schema from '@effect/schema/Schema'
 import * as Data from 'effect/Data'
 import * as Effect from 'effect/Effect'
 import { pipe } from 'effect/Function'
 import * as Match from 'effect/Match'
+import * as Schema from 'effect/Schema'
 import type { GraphQLFieldResolver, GraphQLOutputType } from 'graphql'
 
 // ============================================================================
@@ -96,7 +96,38 @@ export type EntityValidationResult<A, I, R> = Data.TaggedEnum<{
   }
 }>
 
-export const EntityValidationResult = Data.taggedEnum<EntityValidationResult<any, any, any>>()
+// Create a base result type for unknown generics to avoid using any
+type BaseEntityValidationResult = EntityValidationResult<unknown, unknown, unknown>
+
+// Create the tagged enum constructor with proper typing
+export const EntityValidationResult = Data.taggedEnum<BaseEntityValidationResult>() as {
+  readonly Valid: <A, I, R>(args: {
+    readonly entity: ValidatedEntity<A, I, R>
+    readonly metadata: EntityMetadata
+  }) => EntityValidationResult<A, I, R>
+  readonly InvalidSchema: <A, I, R>(args: {
+    readonly errors: readonly SchemaValidationError[]
+    readonly partialEntity?: Partial<ValidatedEntity<A, I, R>>
+  }) => EntityValidationResult<A, I, R>
+  readonly InvalidKeys: <A, I, R>(args: {
+    readonly errors: readonly KeyValidationError[]
+    readonly schema: Schema.Schema<A, I, R>
+  }) => EntityValidationResult<A, I, R>
+  readonly InvalidDirectives: <A, I, R>(args: {
+    readonly errors: readonly DirectiveValidationError[]
+    readonly schema: Schema.Schema<A, I, R>
+    readonly keys: readonly EntityKey[]
+  }) => EntityValidationResult<A, I, R>
+  readonly CircularDependency: <A, I, R>(args: {
+    readonly cycle: readonly string[]
+    readonly involvedEntities: readonly string[]
+  }) => EntityValidationResult<A, I, R>
+  readonly IncompatibleVersion: <A, I, R>(args: {
+    readonly requiredVersion: string
+    readonly currentVersion: string
+    readonly entity: string
+  }) => EntityValidationResult<A, I, R>
+}
 
 // ============================================================================
 // Error Types
@@ -205,12 +236,12 @@ export interface UltraStrictEntityBuilder<
     | PhantomStates.HasDirectives
     | PhantomStates.Complete,
   A = unknown,
-  I = unknown,
+  I = A,
   R = never,
 > {
   readonly _phantomState: TState
   readonly typename: string
-  readonly schema?: Schema.Schema<A, I, R>
+  readonly schema: Schema.Schema<A, I, R>
   readonly keys?: readonly EntityKey[]
   readonly directives?: readonly EntityDirective[]
   readonly resolvers?: Record<string, GraphQLFieldResolver<A, I, R>>
@@ -231,16 +262,18 @@ export interface UltraStrictEntityBuilder<
  * // Next step must be withSchema - compiler enforces this
  * ```
  */
-export const createUltraStrictEntityBuilder = (
-  typename: string
-): UltraStrictEntityBuilder<PhantomStates.Unvalidated> => {
+export const createUltraStrictEntityBuilder = <A = unknown, I = A, R = never>(
+  typename: string,
+  schema: Schema.Schema<A, I, R>
+): UltraStrictEntityBuilder<PhantomStates.HasSchema, A, I, R> => {
   if (!typename?.trim()) {
     throw new Error('Entity typename cannot be empty')
   }
 
   return {
-    _phantomState: Data.struct({ _tag: 'Unvalidated' as const }),
+    _phantomState: Data.struct({ _tag: 'HasSchema' as const }),
     typename,
+    schema,
   }
 }
 
@@ -267,7 +300,7 @@ export const createUltraStrictEntityBuilder = (
  * ```
  */
 export const withSchema =
-  <A, I, R>(schema?: Schema.Schema<A, I, R>) =>
+  <A = unknown, I = A, R = never>(schema?: Schema.Schema<A, I, R>) =>
   (
     builder: UltraStrictEntityBuilder<PhantomStates.Unvalidated, A, I, R>
   ): UltraStrictEntityBuilder<PhantomStates.HasSchema, A, I, R> => {
@@ -303,7 +336,7 @@ export const withSchema =
  * ```
  */
 export const withKeys =
-  <A, I, R>(keys?: readonly EntityKey[]) =>
+  <A = unknown, I = A, R = never>(keys?: readonly EntityKey[]) =>
   (
     builder: UltraStrictEntityBuilder<PhantomStates.HasSchema, A, I, R>
   ): UltraStrictEntityBuilder<PhantomStates.HasKeys, A, I, R> => {
@@ -350,7 +383,7 @@ export const withKeys =
  * ```
  */
 export const withDirectives =
-  <A, I, R>(directives?: readonly EntityDirective[]) =>
+  <A = unknown, I = A, R = never>(directives?: readonly EntityDirective[]) =>
   (
     builder: UltraStrictEntityBuilder<PhantomStates.HasKeys, A, I, R>
   ): UltraStrictEntityBuilder<PhantomStates.HasDirectives, A, I, R> => {
@@ -404,7 +437,7 @@ export const withDirectives =
  * ```
  */
 export const withResolvers =
-  <A, I, R>(resolvers?: Record<string, GraphQLFieldResolver<A, I, R>>) =>
+  <A, I = A, R = never>(resolvers?: Record<string, GraphQLFieldResolver<A, I, R>>) =>
   (
     builder: UltraStrictEntityBuilder<PhantomStates.HasDirectives, A, I, R>
   ): UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R> => {
@@ -456,7 +489,7 @@ const validateSchema = <A, I, R>(
   readonly SchemaValidationError[]
 > =>
   pipe(
-    Effect.succeed(builder.schema!),
+    Effect.succeed(builder.schema),
     Effect.flatMap(schema => {
       // Just verify the schema exists and is well-formed
       // We don't try to decode actual data, just validate the schema structure
@@ -496,7 +529,7 @@ const validateKeys = <A, I, R>(
       }
 
       // Validate key fields exist in schema
-      const schemaFields = getSchemaFields(builder.schema!)
+      const schemaFields = builder.schema ? getSchemaFields(builder.schema) : []
       const missingKeyErrors = keys
         .filter(key => !schemaFields.includes(key.field))
         .map(

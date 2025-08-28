@@ -31,10 +31,22 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "isolatedModules": true,
-    "types": ["bun-types", "node"],
+    "types": ["bun-types", "node", "vitest/globals"],
     "verbatimModuleSyntax": true,
-    "downlevelIteration": true
+    "downlevelIteration": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/examples/**/*"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/examples/**/*",
+    "tests/**/*",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "path-mapping-example.ts"
+  ]
 }

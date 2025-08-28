@@ -1,8 +1,10 @@
-import { describe, it, expect } from 'bun:test'
+import { describe, it, expect } from 'vitest'
 import * as Effect from 'effect/Effect'
 import * as Either from 'effect/Either'
 import * as Match from 'effect/Match'
-import { Kind } from 'graphql'
+import * as Schema from 'effect/Schema'
+import { Kind, type DocumentNode, GraphQLID, GraphQLSchema, GraphQLObjectType, GraphQLString } from 'graphql'
+import type { ValidatedEntity } from '../../../src/experimental/ultra-strict-entity-builder.js'
 import {
   SchemaFirst,
   SchemaLifecycleState,
@@ -290,7 +292,7 @@ describe('Schema-First Development Patterns', () => {
 
     describe('extractEntitiesFromSchema', () => {
       it('should extract entity types from schema', async () => {
-        const schema = { kind: Kind.DOCUMENT, definitions: [] }
+        const schema: DocumentNode = { kind: Kind.DOCUMENT, definitions: [] }
         const entities = await expectEffectSuccess(
           service.extractEntitiesFromSchema(schema)
         )
@@ -301,7 +303,7 @@ describe('Schema-First Development Patterns', () => {
 
     describe('generateEntityBuilders', () => {
       it('should generate validated entity builders', async () => {
-        const schema = { kind: Kind.DOCUMENT, definitions: [] }
+        const schema: DocumentNode = { kind: Kind.DOCUMENT, definitions: [] }
         const entities = await expectEffectSuccess(
           service.generateEntityBuilders(schema)
         )
@@ -314,7 +316,7 @@ describe('Schema-First Development Patterns', () => {
 
       it('should handle entity generation errors', async () => {
         // This would fail in real implementation with invalid schema
-        const schema = { kind: Kind.DOCUMENT, definitions: [] }
+        const schema: DocumentNode = { kind: Kind.DOCUMENT, definitions: [] }
         const entities = await expectEffectSuccess(
           service.generateEntityBuilders(schema)
         )
@@ -326,8 +328,8 @@ describe('Schema-First Development Patterns', () => {
 
     describe('validateSchemaEvolution', () => {
       it('should validate non-breaking schema changes', async () => {
-        const currentSchema = { kind: Kind.DOCUMENT, definitions: [] }
-        const proposedSchema = { kind: Kind.DOCUMENT, definitions: [] }
+        const currentSchema: DocumentNode = { kind: Kind.DOCUMENT, definitions: [] }
+        const proposedSchema: DocumentNode = { kind: Kind.DOCUMENT, definitions: [] }
 
         const evolutions = await expectEffectSuccess(
           service.validateSchemaEvolution(currentSchema, proposedSchema)
@@ -358,13 +360,20 @@ describe('Schema-First Development Patterns', () => {
     describe('generateResolverStubs', () => {
       it('should generate TypeScript resolver stubs', async () => {
         // Create a mock validated entity
-        const mockEntities = [{
+        const userSchema = Schema.Struct({ id: Schema.String, name: Schema.String })
+        const mockEntities: ValidatedEntity<unknown, unknown, unknown>[] = [{
           typename: 'User',
-          keys: [{ field: 'id', type: 'ID', nullable: false }],
-          schema: {} as any,
+          keys: [{ field: 'id', type: GraphQLID, isComposite: false }],
+          schema: userSchema as Schema.Schema<unknown, unknown, unknown>,
           directives: [],
           resolvers: {},
-          isValidated: true as const
+          metadata: {
+            typename: 'User',
+            version: '1.0.0',
+            createdAt: new Date(),
+            validationLevel: 'ultra-strict' as const,
+            dependencies: []
+          }
         }]
 
         const resolvers = await expectEffectSuccess(
@@ -390,13 +399,20 @@ describe('Schema-First Development Patterns', () => {
     })
 
     describe('generateTypeDefinitions', () => {
-      const mockEntities = [{
+      const userSchema = Schema.Struct({ id: Schema.String, name: Schema.String })
+      const mockEntities: ValidatedEntity<unknown, unknown, unknown>[] = [{
         typename: 'User',
-        keys: [{ field: 'id', type: 'ID', nullable: false }],
-        schema: {} as any,
+        keys: [{ field: 'id', type: GraphQLID, isComposite: false }],
+        schema: userSchema as Schema.Schema<unknown, unknown, unknown>,
         directives: [],
         resolvers: {},
-        isValidated: true as const
+        metadata: {
+          typename: 'User',
+          version: '1.0.0',
+          createdAt: new Date(),
+          validationLevel: 'ultra-strict' as const,
+          dependencies: []
+        }
       }]
 
       it('should generate TypeScript type definitions', async () => {
@@ -551,9 +567,9 @@ describe('Schema-First Development Patterns', () => {
         )
 
         expect(codeMap).toBeDefined()
-        expect(codeMap.resolvers).toBeDefined()
-        expect(typeof codeMap.resolvers).toBe('string')
-        expect(codeMap.resolvers).toContain('import * as Effect')
+        expect(codeMap['resolvers']).toBeDefined()
+        expect(typeof codeMap['resolvers']).toBe('string')
+        expect(codeMap['resolvers']).toContain('import * as Effect')
       })
 
       it('should generate type definitions', async () => {
@@ -566,9 +582,9 @@ describe('Schema-First Development Patterns', () => {
         )
 
         expect(codeMap).toBeDefined()
-        expect(codeMap.types).toBeDefined()
-        expect(typeof codeMap.types).toBe('string')
-        expect(codeMap.types).toContain('export interface')
+        expect(codeMap['types']).toBeDefined()
+        expect(typeof codeMap['types']).toBe('string')
+        expect(codeMap['types']).toContain('export interface')
       })
 
       it('should generate both resolvers and types', async () => {
@@ -581,8 +597,8 @@ describe('Schema-First Development Patterns', () => {
         )
 
         expect(codeMap).toBeDefined()
-        expect(codeMap.resolvers).toBeDefined()
-        expect(codeMap.types).toBeDefined()
+        expect(codeMap['resolvers']).toBeDefined()
+        expect(codeMap['types']).toBeDefined()
         expect(Object.keys(codeMap)).toHaveLength(2)
       })
 
@@ -615,14 +631,19 @@ describe('Schema-First Development Patterns', () => {
           version: '1.0.0'
         }),
         SchemaLifecycleState.Composed({
-          federatedSchema: {} as any,
+          federatedSchema: new GraphQLSchema({ 
+            query: new GraphQLObjectType({ 
+              name: 'Query', 
+              fields: { hello: { type: GraphQLString, resolve: () => 'world' } } 
+            }) 
+          }),
           subgraphs: ['users'],
           version: '1.0.0'
         })
       ]
 
       const results = states.map(state => 
-        Match.value(state).pipe(
+        Match.value(state as SchemaLifecycleState).pipe(
           Match.tag('Draft', () => 'draft'),
           Match.tag('Validated', () => 'validated'),
           Match.tag('Composed', () => 'composed'),
@@ -658,7 +679,7 @@ describe('Schema-First Development Patterns', () => {
       ]
 
       const breakingChanges = evolutions.filter(evo => 
-        Match.value(evo).pipe(
+        Match.value(evo as SchemaEvolution).pipe(
           Match.tag('AddField', ({ isBreaking }) => isBreaking),
           Match.tag('RemoveField', ({ isBreaking }) => isBreaking),
           Match.tag('ChangeFieldType', ({ isBreaking }) => isBreaking),
@@ -679,9 +700,9 @@ describe('Schema-First Development Patterns', () => {
     it('should provide service creation', () => {
       const service = SchemaFirst.Service.create()
       expect(service).toBeDefined()
-      expect(service.parseSchemaDefinition).toBeFunction()
-      expect(service.extractEntitiesFromSchema).toBeFunction()
-      expect(service.generateEntityBuilders).toBeFunction()
+      expect(typeof service.parseSchemaDefinition).toBe('function')
+      expect(typeof service.extractEntitiesFromSchema).toBe('function')
+      expect(typeof service.generateEntityBuilders).toBe('function')
     })
 
     it('should provide workflow creation', () => {
@@ -689,9 +710,9 @@ describe('Schema-First Development Patterns', () => {
       const workflow = SchemaFirst.Workflow.create(service)
       
       expect(workflow).toBeDefined()
-      expect(workflow.developSchema).toBeFunction()
-      expect(workflow.evolveSchema).toBeFunction()
-      expect(workflow.generateCode).toBeFunction()
+      expect(typeof workflow.developSchema).toBe('function')
+      expect(typeof workflow.evolveSchema).toBe('function')
+      expect(typeof workflow.generateCode).toBe('function')
     })
 
     it('should export state and evolution constructors', () => {
@@ -717,8 +738,8 @@ describe('Schema-First Development Patterns', () => {
         workflow.generateCode(initialState, ['resolvers', 'types'])
       )
 
-      expect(initialCode.resolvers).toBeDefined()
-      expect(initialCode.types).toBeDefined()
+      expect(initialCode['resolvers']).toBeDefined()
+      expect(initialCode['types']).toBeDefined()
     })
 
     it('should demonstrate evolution workflow', async () => {
@@ -759,7 +780,7 @@ describe('Schema-First Development Patterns', () => {
         workflow.generateCode(evolvedState, ['types'])
       )
 
-      expect(updatedCode.types).toBeDefined()
+      expect(updatedCode['types']).toBeDefined()
     })
   })
 })

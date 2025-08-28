@@ -1,17 +1,32 @@
-import { describe, test, expect } from 'bun:test'
-import * as Schema from '@effect/schema/Schema'
+import { describe, test, expect } from 'vitest'
+import * as Schema from 'effect/Schema'
 import * as Effect from 'effect/Effect'
 import { GraphQLID, GraphQLString } from 'graphql'
 import { UltraStrictEntityBuilder } from '../../../src/experimental/ultra-strict-entity-builder.js'
 import {
   createUltraStrictEntityBuilder,
-  withSchema,
   withKeys,
   withDirectives,
   withResolvers,
   validateEntityBuilder,
   matchEntityValidationResult,
+  type EntityValidationResult,
 } from '../../../src/experimental/ultra-strict-entity-builder.js'
+
+type ValidationResult = {
+  success: boolean
+  typename?: string
+  keyCount?: number
+  directiveCount?: number
+  error?: string
+  details?: unknown
+  errorType?: string
+  errorCount?: number
+  cycle?: unknown
+  entity?: unknown
+  requiredVersion?: unknown
+  currentVersion?: unknown
+}
 
 describe('UltraStrictEntityBuilder', () => {
   describe('Entity Creation Pipeline', () => {
@@ -25,9 +40,9 @@ describe('UltraStrictEntityBuilder', () => {
       const result = await Effect.runPromise(
         Effect.gen(function* () {
           const builder = yield* Effect.succeed(
-            createUltraStrictEntityBuilder('User')
+            createUltraStrictEntityBuilder('User', UserSchema as Schema.Schema<unknown, unknown, never>)
           )
-          const withSchemaStep = withSchema(UserSchema)(builder)
+          const withSchemaStep = builder
           const withKeysStep = withKeys([
             UltraStrictEntityBuilder.Key.create('id', GraphQLID, false),
           ])(withSchemaStep)
@@ -36,14 +51,14 @@ describe('UltraStrictEntityBuilder', () => {
             UltraStrictEntityBuilder.Directive.tag('user-management'),
           ])(withKeysStep)
           const withResolversStep = withResolvers({
-            fullName: (parent: any) => `${parent.name || 'Anonymous'}`,
+            fullName: (parent: unknown) => `${(parent as { name?: string }).name || 'Anonymous'}`,
           })(withDirectivesStep)
 
           return yield* validateEntityBuilder(withResolversStep)
         })
       )
 
-      const validationResult = matchEntityValidationResult({
+      const validationResult = matchEntityValidationResult<unknown, unknown, unknown>({
         Valid: ({ entity }) => ({
           success: true,
           typename: entity.typename,
@@ -92,7 +107,7 @@ describe('UltraStrictEntityBuilder', () => {
           requiredVersion,
           currentVersion,
         }),
-      })(result)
+      })(result as EntityValidationResult<unknown, unknown, unknown>) as ValidationResult
 
       expect(validationResult.success).toBe(true)
       if ('typename' in validationResult && validationResult.success) {
@@ -111,9 +126,9 @@ describe('UltraStrictEntityBuilder', () => {
       const result = await Effect.runPromise(
         Effect.gen(function* () {
           const builder = yield* Effect.succeed(
-            createUltraStrictEntityBuilder('User')
+            createUltraStrictEntityBuilder('User', UserSchema as Schema.Schema<unknown, unknown, never>)
           )
-          const withSchemaStep = withSchema(UserSchema)(builder)
+          const withSchemaStep = builder
           const withKeysStep = withKeys([])(withSchemaStep) // Empty keys array
           const withDirectivesStep = withDirectives([
             UltraStrictEntityBuilder.Directive.shareable(),
@@ -124,7 +139,7 @@ describe('UltraStrictEntityBuilder', () => {
         })
       )
 
-      const validationResult = matchEntityValidationResult({
+      const validationResult = matchEntityValidationResult<unknown, unknown, unknown>({
         Valid: () => ({ success: true }),
         InvalidKeys: ({ errors }) => ({
           success: false,
@@ -135,7 +150,7 @@ describe('UltraStrictEntityBuilder', () => {
         InvalidDirectives: () => ({ success: false, errorType: 'InvalidDirectives' }),
         CircularDependency: () => ({ success: false, errorType: 'CircularDependency' }),
         IncompatibleVersion: () => ({ success: false, errorType: 'IncompatibleVersion' }),
-      })(result)
+      })(result as EntityValidationResult<unknown, unknown, unknown>) as ValidationResult
 
       expect(validationResult.success).toBe(false)
       expect('errorType' in validationResult ? (validationResult as { errorType: string }).errorType : null).toBe('InvalidKeys')

@@ -1,20 +1,14 @@
-import { describe, it, expect, beforeEach } from 'bun:test'
-import * as Effect from 'effect/Effect'
-import * as Layer from 'effect/Layer'
-import * as Either from 'effect/Either'
 import { Duration } from 'effect'
-import type { GraphQLResolveInfo } from 'graphql'
-import { SubgraphManagement } from '../../src/federation/subgraph.js'
+import * as Effect from 'effect/Effect'
+import * as Either from 'effect/Either'
+import type { GraphQLResolveInfo, GraphQLSchema } from 'graphql'
+import { describe, expect, it } from 'vitest'
+import { SchemaFirst } from '../../src/core/schema-first-patterns.js'
+import type { ErrorBoundaryConfig, FederatedSchema, PerformanceConfig, SchemaMetadata, ServiceDefinition } from '../../src/core/types.js'
 import { FederationErrorBoundaries } from '../../src/federation/error-boundaries.js'
 import { PerformanceOptimizations } from '../../src/federation/performance.js'
-import { SchemaFirst } from '../../src/core/schema-first-patterns.js'
-import type {
-  ErrorBoundaryConfig,
-  PerformanceConfig,
-  ServiceDefinition,
-  FederatedSchema
-} from '../../src/core/types.js'
-import { TestLayers, MockSubgraphRegistry } from '../utils/test-layers.js'
+import { SubgraphManagement } from '../../src/federation/subgraph.js'
+import { MockSubgraphRegistry, TestLayers } from '../utils/test-layers.js'
 
 // Test helper functions
 const expectEffectSuccess = async <A, E>(effect: Effect.Effect<A, E>): Promise<A> => {
@@ -44,7 +38,7 @@ const createTestServices = (): ServiceDefinition[] => [
   {
     id: 'products-service',
     url: 'http://localhost:4002',
-    name: 'Products Service', 
+    name: 'Products Service',
     version: '1.0.0',
     metadata: { team: 'catalog', criticality: 'medium' as const }
   },
@@ -58,17 +52,17 @@ const createTestServices = (): ServiceDefinition[] => [
 ]
 
 const mockFederatedSchema: FederatedSchema = {
-  schema: {} as any,
-  subgraphs: createTestServices(),
+  schema: {} as GraphQLSchema,
+  entities: [],
+  services: createTestServices(),
+  version: '2.0',
   metadata: {
+    createdAt: new Date(),
+    composedAt: new Date(),
+    federationVersion: '2.0',
     subgraphCount: 3,
-    entityTypes: ['User', 'Product', 'Order'],
-    directiveUsage: {
-      '@key': 3,
-      '@shareable': 2,
-      '@requires': 1
-    }
-  }
+    entityCount: 3
+  } as SchemaMetadata
 }
 
 const sampleGraphQLSchema = `
@@ -183,7 +177,7 @@ describe('End-to-End Federation Integration Tests', () => {
         Effect.gen(function* () {
           // Use mock registry from test layers
           const registry = yield* MockSubgraphRegistry
-          
+
           // Register services in the mock registry
           for (const service of services) {
             yield* registry.register(service)
@@ -215,13 +209,13 @@ describe('End-to-End Federation Integration Tests', () => {
       expect(result.discoveredServices).toHaveLength(3)
       expect(result.discoveredServices.map(s => s.id).sort()).toEqual([
         'orders-service',
-        'products-service', 
+        'products-service',
         'users-service'
       ])
     })
 
     it('should demonstrate error boundaries with service failures', async () => {
-      const services = createTestServices()
+      // const services = createTestServices() // Unused variable
 
       const result = await TestLayers.runWithCleanup(
         Effect.gen(function* () {
@@ -251,7 +245,7 @@ describe('End-to-End Federation Integration Tests', () => {
               error: new Error('Service timeout')
             },
             'products-service': {
-              subgraphId: 'products-service', 
+              subgraphId: 'products-service',
               success: true,
               data: { products: [{ id: '1', name: 'Widget' }] }
             },
@@ -407,7 +401,7 @@ describe('End-to-End Federation Integration Tests', () => {
       )
 
       const query = 'query { user(id: "test") { id name } }'
-      
+
       // Execute many queries concurrently
       const startTime = Date.now()
       const concurrentQueries = Array.from({ length: 100 }, (_, i) =>
@@ -440,10 +434,10 @@ describe('End-to-End Federation Integration Tests', () => {
         workflow.generateCode(initialState, ['resolvers', 'types'])
       )
 
-      expect(initialCode.resolvers).toBeDefined()
-      expect(initialCode.types).toBeDefined()
-      expect(initialCode.resolvers).toContain('import * as Effect')
-      expect(initialCode.types).toContain('export interface')
+      expect(initialCode['resolvers']).toBeDefined()
+      expect(initialCode['types']).toBeDefined()
+      expect(initialCode['resolvers']).toContain('import * as Effect')
+      expect(initialCode['types']).toContain('export interface')
 
       // 3. Attempt schema evolution (this will have breaking changes in mock)
       const updatedSchema = sampleGraphQLSchema + `
@@ -464,7 +458,7 @@ describe('End-to-End Federation Integration Tests', () => {
 
     it('should handle non-breaking schema evolution', async () => {
       const schemaFirstService = SchemaFirst.Service.create()
-      
+
       // Create a service that only reports non-breaking changes
       const safeService = {
         ...schemaFirstService,
@@ -512,8 +506,8 @@ describe('End-to-End Federation Integration Tests', () => {
         workflow.generateCode(evolvedState, ['types'])
       )
 
-      expect(evolvedCode.types).toBeDefined()
-      expect(typeof evolvedCode.types).toBe('string')
+      expect(evolvedCode['types']).toBeDefined()
+      expect(typeof evolvedCode['types']).toBe('string')
     })
   })
 
@@ -555,7 +549,7 @@ describe('End-to-End Federation Integration Tests', () => {
             }
           }
 
-          const errorBoundary = FederationErrorBoundaries.createBoundary(errorBoundaryConfig)
+          const _errorBoundary = FederationErrorBoundaries.createBoundary(errorBoundaryConfig)
 
           const performanceConfig: PerformanceConfig = {
             queryPlanCache: {
@@ -620,7 +614,7 @@ describe('End-to-End Federation Integration Tests', () => {
         Effect.gen(function* () {
           // Use mock registry from test layers
           const registry = yield* MockSubgraphRegistry
-          
+
           // Register services in the mock registry
           for (const service of services) {
             yield* registry.register(service)
@@ -638,7 +632,7 @@ describe('End-to-End Federation Integration Tests', () => {
 
           // Check health after failure
           const failedHealth = yield* Effect.either(registry.health('products-service'))
-          
+
           // Recover service
           yield* registry.simulateFailure('products-service', false)
 
@@ -675,7 +669,7 @@ describe('End-to-End Federation Integration Tests', () => {
             }
           }
 
-          const registry = yield* SubgraphManagement.createRegistry(registryConfig)
+          const _registry = yield* SubgraphManagement.createRegistry(registryConfig)
 
           const performanceConfig: PerformanceConfig = {
             queryPlanCache: {
@@ -701,16 +695,16 @@ describe('End-to-End Federation Integration Tests', () => {
           // Execute multiple queries to gather metrics
           const queries = [
             'query { user(id: "1") { id name } }',
-            'query { product(id: "1") { id name price } }', 
+            'query { product(id: "1") { id name price } }',
             'query { order(id: "1") { id total } }',
             'query { user(id: "1") { id name } }', // Cache hit
           ]
 
           const startTime = Date.now()
-          
+
           const results = []
           for (const query of queries) {
-            const result = yield* optimizedExecutor.execute(
+            const result: unknown = yield* optimizedExecutor.execute(
               query,
               {},
               { requestId: `perf-test-${results.length}` }
@@ -722,7 +716,10 @@ describe('End-to-End Federation Integration Tests', () => {
 
           return {
             totalQueries: results.length,
-            allSuccessful: results.every(r => r.data !== null),
+            allSuccessful: results.every(r => {
+              const result = r as { data: unknown } | null
+              return result?.data !== null
+            }),
             totalDuration,
             averageDuration: totalDuration / results.length
           }
@@ -773,10 +770,10 @@ describe('End-to-End Federation Integration Tests', () => {
 
       // Should have some failures initially (returns null due to partial failure handling)
       expect(results.filter(r => r === 'failure').length).toBeGreaterThan(0)
-      
+
       // Wait for potential circuit breaker reset
       await new Promise(resolve => setTimeout(resolve, 300))
-      
+
       // Try one more time - circuit breaker might allow retry
       try {
         await wrappedResolver(null, {}, {}, {} as any)
@@ -793,7 +790,7 @@ describe('End-to-End Federation Integration Tests', () => {
         ...createTestServices(),
         {
           id: 'unstable-service',
-          url: 'http://localhost:4004', 
+          url: 'http://localhost:4004',
           name: 'Unstable Service',
           version: '1.0.0',
           metadata: { team: 'experimental', criticality: 'low' as const }
@@ -804,7 +801,7 @@ describe('End-to-End Federation Integration Tests', () => {
         Effect.gen(function* () {
           // Use mock registry from test layers
           const registry = yield* MockSubgraphRegistry
-          
+
           // Register all services in the mock registry
           for (const service of services) {
             yield* registry.register(service)
@@ -853,7 +850,7 @@ describe('End-to-End Federation Integration Tests', () => {
               data: { products: [{ id: '1', name: 'Widget' }] }
             },
             'orders-service': {
-              subgraphId: 'orders-service', 
+              subgraphId: 'orders-service',
               success: true,
               data: { orders: [{ id: '1', total: 100 }] }
             },

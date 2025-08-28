@@ -9,18 +9,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `bun test` - Run all tests
 - `bun test tests/unit/federation/subgraph.test.ts` - Run a specific test file
 - `bun test --watch` - Run tests in watch mode
-- `bun test:unit` - Run unit tests only
-- `bun test:integration` - Run integration tests only
-- `bun test:coverage` - Generate coverage reports
+- `bun test:unit` - Run unit tests only (tests/unit)
+- `bun test:integration` - Run integration tests only (tests/integration)
+- `bun test:coverage` - Generate coverage reports with v8 provider
+- `bun test:complete` - Run comprehensive integration test (test-complete.ts)
+- `vitest --ui` - Run tests with interactive UI
 
 ### Development
 
 - `bun run dev` - Development mode with hot reload
-- `bun run demo` - Run basic entity example
-- `bun run demo:ultra-strict` - Demo ultra-strict entity patterns
-- `bun run demo:schema-first` - Demo schema-first workflow
-- `bun run demo:complete` - Complete feature demonstration
-- `bun run demo:advanced` - Advanced federation features
+- `bun run demo` - Run complete framework test
+- `bun run demo:functional` - Demo functional programming patterns
+- `bun run demo:comprehensive` - Comprehensive functional demo
 
 ### Building
 
@@ -30,12 +30,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Code Quality
 
-- `bun run typecheck` - Type checking without emitting files
+- `bun run typecheck` - Type checking for source files only
+- `bun run typecheck:tests` - Type checking for tests with relaxed rules
 - `bun run lint` - ESLint checking
 - `bun run lint:fix` - ESLint with automatic fixing
 - `bun run format` - Prettier code formatting
 - `bun run format:check` - Check formatting without changes
-- `bun run validate` - Full validation: typecheck + lint + test:complete
+- `bun run validate` - Full validation: typecheck + typecheck:tests + lint + test:complete
 
 ### Documentation
 
@@ -95,7 +96,7 @@ Match.value(error).pipe(
 - Never use `any` - use proper type assertions or unknown
 - All imports use `.js` extension (ESM requirement)
 - Entity builders use phantom types for compile-time validation
-- HealthStatus has `timestamp` and `responseTime` fields (not `lastCheck`/`metrics`)
+- HealthStatus has `lastCheck` and `metrics` fields (with `responseTime` accessed via bracket notation)
 - ValidatedEntity structure uses `keys` array not single `key` property
 - When using `any` is unavoidable (e.g., generic entity mocks), document the reason
 
@@ -123,6 +124,39 @@ health: (serviceId: string) =>
   })
 ```
 
+**Testing Infrastructure**:
+
+- **Test Runner**: Vitest with Bun (configured in `vitest.config.ts`)
+- **Environment**: happy-dom for lightweight browser simulation
+- **Coverage**: v8 provider with thresholds (75% lines, 60% functions, 70% branches)
+- **Property-Based Testing**: fast-check for automated test generation
+- **Setup**: Global test APIs (describe, it, expect) via `tests/setup.ts`
+
+**Common Test Patterns**:
+
+```typescript
+// UltraStrictEntityBuilder testing
+const builder = createUltraStrictEntityBuilder('User', schema as Schema.Schema<unknown, unknown, never>)
+const result = await Effect.runPromise(validateEntityBuilder(builder))
+const matched = matchEntityValidationResult<unknown, unknown, unknown>({...})(result as EntityValidationResult<unknown, unknown, unknown>)
+
+// ValidatedEntity mocking
+const mockEntity: ValidatedEntity<unknown, unknown, unknown> = {
+  typename: 'User',
+  keys: [{ field: 'id', type: GraphQLID, isComposite: false }],
+  schema: userSchema as Schema.Schema<unknown, unknown, unknown>,
+  directives: [],
+  resolvers: {},
+  metadata: {
+    typename: 'User',
+    version: '1.0.0',
+    createdAt: new Date(),
+    validationLevel: 'ultra-strict' as const,
+    dependencies: []
+  }
+}
+```
+
 ### Performance Optimizations
 
 - **Query Plan Cache**: LRU with batch eviction (10% at a time)
@@ -138,22 +172,59 @@ health: (serviceId: string) =>
 
 ## Package Information
 
-- **Package Name**: `@cqrs/federation` (was `@cqrs/federation-v2`)
+- **Package Name**: `@cqrs/federation` (version 2.0.0)
 - **Build System**: tsdown for production builds
-- **Test Runner**: Bun test
-- **TypeScript**: Strict mode with all safety flags enabled
+- **Test Runner**: Vitest with Bun runtime
+- **TypeScript**: Strict mode with all safety flags enabled (5.9+)
 - **Module System**: ESM with `.js` extensions required
+- **Runtime Requirements**: Node.js 20+ or Bun 1.0+
+- **Dependencies**: Effect-TS 3.17+, GraphQL 16.11+, DataLoader 2.2+
+- **Package Manager**: Configured for Yarn 1.22.22
+
+### TypeScript Configuration Structure
+
+- **`tsconfig.json`** - Main configuration for source files only (strict rules, includes `@/*` path mapping)
+- **`tsconfig.build.json`** - Production build configuration (extends main)
+- **`tsconfig.test.json`** - Test-specific configuration (relaxed unused variable rules, test type definitions)
+
+### Path Mappings
+
+All configurations support clean import paths:
+
+- `@/*` → `./src/*` (main source directory)
+- `@core/*` → `./src/core/*` (core functionality)
+- `@federation/*` → `./src/federation/*` (federation features)
+- `@experimental/*` → `./src/experimental/*` (experimental patterns)
+- `@schema/*` → `./src/schema/*` (schema processing)
+- `@tests/*` → `./tests/*` (test utilities - tests only)
+
+**Usage Examples**:
+
+```typescript
+// Instead of relative imports like '../../../src/core/types.js'
+import { DomainError } from '@/core/types.js'
+import { createUltraStrictEntityBuilder } from '@/experimental/ultra-strict-entity-builder.js'
+import { FederationComposer } from '@/federation/composer.js'
+
+// Or more specific paths
+import type { ValidationError } from '@core/errors.js'
+import { SubgraphManagement } from '@federation/subgraph.js'
+```
 
 ## Critical Reminders
 
 - Always use Effect.fail for errors in mocks, never throw
-- HealthStatus uses `timestamp` not `lastCheck`
+- HealthStatus uses `lastCheck` and `metrics` fields (with `responseTime` accessed via `metrics?.['responseTime']`)
 - Test failures should use expectEffectFailure helper
 - DataLoader stats require proper key generation
-- Never use `any` type - use `unknown` or proper type parameters
-- ValidatedEntity structure differs from FederationEntity (uses `keys` array not `key`)
-- Schema-first patterns may use `any` for generic entity types due to interface constraints
+- **NEVER use `any` type** - this is strictly enforced. Use `unknown`, proper type parameters, or specific type assertions
+- ValidatedEntity structure uses `keys` array not single `key` property
 - Entity builder's `build()` method returns `Effect.Effect<ValidatedEntity<>, ValidationError>`
 - For compatibility, entity builder adds a `key` property alongside `keys`
 - FederationComposer is the main composer class
 - Use `downlevelIteration: true` in tsconfig for generator functions
+- **UltraStrictEntityBuilder Pattern**: `createUltraStrictEntityBuilder()` now returns HasSchema state (no need for `withSchema` calls)
+- **Index Signature Access**: Use bracket notation for dynamic properties (e.g., `obj['property']` instead of `obj.property`)
+- **Schema Type Casting**: Cast schemas to `Schema.Schema<unknown, unknown, never>` when using with generic builders
+- **EntityValidationResult Casting**: Use `result as EntityValidationResult<unknown, unknown, unknown>` for validation result matching
+- **Match.exhaustive**: Ensure all error types in DomainError union are handled (includes HealthCheckError)

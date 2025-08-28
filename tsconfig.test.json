@@ -1,0 +1,44 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Test-specific compiler options
+    "noEmit": true,
+    "skipLibCheck": true,
+
+    // More lenient for tests while maintaining safety
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+
+    // Enhanced types for testing
+    "types": ["bun-types", "node", "vitest/globals", "@vitest/ui"],
+
+    // Path mapping for cleaner test imports
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@core/*": ["./src/core/*"],
+      "@federation/*": ["./src/federation/*"],
+      "@experimental/*": ["./src/experimental/*"],
+      "@schema/*": ["./src/schema/*"],
+      "@tests/*": ["./tests/*"]
+    },
+
+    // Test environment compatibility
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true
+  },
+
+  // Test-specific includes - only include test files and related config
+  "include": [
+    "tests/**/*",
+    "src/**/*",
+    "vitest.config.ts",
+    "test-complete.ts",
+    "functional-patterns-standalone.ts",
+    "comprehensive-functional-demo.ts"
+  ],
+
+  // Exclude production build artifacts and node_modules
+  "exclude": ["node_modules", "dist", "coverage"]
+}

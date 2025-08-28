@@ -1,5 +1,5 @@
-import * as Schema from "@effect/schema/Schema";
-import { describe, expect, test } from "bun:test";
+import * as Schema from "effect/Schema";
+import { describe, expect, test } from "vitest";
 import * as Effect from "effect/Effect";
 import {
   GraphQLBoolean,
@@ -144,18 +144,18 @@ describe("AST Conversion", () => {
 
   describe("Parallel Conversion", () => {
     test("should convert multiple schemas in parallel", async () => {
-      const schemas = [
+      const schemas: ReadonlyArray<{ readonly name: string; readonly schema: Schema.Schema<unknown> }> = [
         {
           name: "User",
-          schema: Schema.Struct({ id: Schema.String, name: Schema.String }),
+          schema: Schema.Struct({ id: Schema.String, name: Schema.String }) as Schema.Schema<unknown>,
         },
         {
           name: "Product",
-          schema: Schema.Struct({ id: Schema.String, price: Schema.Number }),
+          schema: Schema.Struct({ id: Schema.String, price: Schema.Number }) as Schema.Schema<unknown>,
         },
         {
           name: "Order",
-          schema: Schema.Struct({ id: Schema.String, total: Schema.Number }),
+          schema: Schema.Struct({ id: Schema.String, total: Schema.Number }) as Schema.Schema<unknown>,
         },
       ];
 

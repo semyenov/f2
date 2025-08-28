@@ -86,7 +86,7 @@
  * @example Custom configuration validation
  * ```typescript
  * import { pipe } from 'effect/Function'
- * import * as Schema from '@effect/schema/Schema'
+ * import * as Schema from 'effect/Schema'
  *
  * // Extend configuration schema
  * const CustomConfigSchema = FederationConfigSchema.pipe(
@@ -137,11 +137,11 @@
  * @see {@link https://effect.website/docs/guides/configuration | Effect Configuration Guide}
  */
 
-import * as Effect from 'effect/Effect'
-import * as Context from 'effect/Context'
-import * as Layer from 'effect/Layer'
 import * as Config from 'effect/Config'
-import * as Schema from '@effect/schema/Schema'
+import * as Context from 'effect/Context'
+import * as Effect from 'effect/Effect'
+import * as Layer from 'effect/Layer'
+import * as Schema from 'effect/Schema'
 
 /**
  * Federation Framework configuration schema with comprehensive validation

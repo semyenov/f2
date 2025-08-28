@@ -20,7 +20,7 @@
  * ```typescript
  * import { createEntityBuilder, FederationEntityBuilder } from '@cqrs/federation'
  * import { Effect } from 'effect'
- * import * as Schema from '@effect/schema/Schema'
+ * import * as Schema from 'effect/Schema'
  *
  * // Define your entity schema
  * const UserSchema = Schema.Struct({

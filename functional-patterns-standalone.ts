@@ -22,8 +22,8 @@
  */
 
 import { Effect, pipe, Duration, Option, Match, Data, Either } from 'effect'
-import * as Schema from '@effect/schema/Schema'
-import { Mutable } from 'effect/Types'
+import * as Schema from 'effect/Schema'
+import type { Mutable } from 'effect/Types'
 
 // ============================================================================
 // 🏗️ DOMAIN MODELING WITH EFFECT SCHEMA

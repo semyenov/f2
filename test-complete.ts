@@ -1,17 +1,14 @@
 // Comprehensive test of the built Federation package
-import * as Effect from "effect/Effect"
+import { Duration } from "effect"
+import * as Schema from "effect/Schema"
 import {
   FederationEntityBuilder,
-  SubgraphManagement,
   FederationErrorBoundaries,
+  FRAMEWORK_INFO,
   PerformanceOptimizations,
-  Experimental,
-  SchemaFirst,
-  VERSION,
-  FRAMEWORK_INFO
+  SubgraphManagement,
+  VERSION
 } from "./dist/index.js"
-import * as Schema from "@effect/schema/Schema"
-import { Duration } from "effect"
 
 // Note: Demo code is bundled within the main package for comprehensive testing
 

@@ -1,18 +1,8 @@
-import { describe, it, expect } from 'bun:test'
+import { describe, it, expect } from 'vitest'
 import * as Effect from 'effect/Effect'
 import * as Either from 'effect/Either'
 import * as Match from 'effect/Match'
 
-// Helper to extract actual error from FiberFailure
-const extractError = (fiberFailure: unknown): unknown => {
-  if (fiberFailure && typeof fiberFailure === 'object') {
-    const cause = (fiberFailure as Record<string, unknown>)[Symbol.for('effect/Runtime/FiberFailure/Cause')]
-    if (cause && typeof cause === 'object' && (cause as Record<string, unknown>)._tag === 'Fail') {
-      return (cause as Record<string, unknown>).error
-    }
-  }
-  return fiberFailure
-}
 import {
   BaseDomainError,
   ValidationError,
@@ -333,7 +323,7 @@ describe('Core Error System', () => {
       )
 
       expect(validationErrors).toHaveLength(1)
-      expect(validationErrors[0]._tag).toBe('ValidationError')
+      expect(validationErrors[0]?._tag).toBe('ValidationError')
     })
 
     it('should match federation-related errors', () => {
@@ -372,8 +362,9 @@ describe('Core Error System', () => {
       const error: DomainError = new ValidationError('Test error')
       
       const handleError = (err: DomainError): string =>
-        Match.value(err).pipe(
+        Match.value(err as DomainError).pipe(
           Match.tag('ValidationError', e => `Validation: ${e.message}`),
+          Match.tag('SchemaValidationError', e => `Schema: ${e.message}`),
           Match.tag('EntityResolutionError', e => `Entity: ${e.message}`),
           Match.tag('FieldResolutionError', e => `Field: ${e.message}`),
           Match.tag('FederationError', e => `Federation: ${e.message}`),
@@ -381,6 +372,9 @@ describe('Core Error System', () => {
           Match.tag('TimeoutError', e => `Timeout: ${e.message}`),
           Match.tag('CompositionError', e => `Composition: ${e.message}`),
           Match.tag('TypeConversionError', e => `Conversion: ${e.message}`),
+          Match.tag('DiscoveryError', e => `Discovery: ${e.message}`),
+          Match.tag('RegistrationError', e => `Registration: ${e.message}`),
+          Match.tag('HealthCheckError', e => `Health: ${e.message}`),
           Match.exhaustive
         )
 

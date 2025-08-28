@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'bun:test'
+import { describe, it, expect, beforeEach } from 'vitest'
 import * as Effect from 'effect/Effect'
 import DataLoader from 'dataloader'
 import { PerformanceOptimizations } from '../../../src/federation/performance.js'

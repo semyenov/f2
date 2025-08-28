@@ -20,7 +20,7 @@
  *   createEntityBuilder,
  *   ValidationError
  * } from '@cqrs/federation/core'
- * import * as Schema from '@effect/schema/Schema'
+ * import * as Schema from 'effect/Schema'
  * import { Effect } from 'effect'
  *
  * const UserSchema = Schema.Struct({
@@ -49,25 +49,25 @@
  * @since 2.0.0
  * @category Core API
  */
-export * from './types.js'
+export { createEntityBuilder, FederationEntityBuilder } from './builders/entity-builder.js'
 export {
   BaseDomainError,
-  ValidationError,
-  SchemaValidationError,
-  EntityResolutionError,
-  FieldResolutionError,
-  FederationError,
   CircuitBreakerError,
-  TimeoutError,
   CompositionError,
-  TypeConversionError,
+  DiscoveryError,
+  EntityResolutionError,
+  ErrorFactory,
+  ErrorMatching,
+  type FederationDomainError,
+  FederationError,
+  FieldResolutionError,
   HealthCheckError,
   RegistrationError,
-  DiscoveryError,
-  ErrorMatching,
-  ErrorFactory,
-  type FederationDomainError,
+  SchemaValidationError,
+  TimeoutError,
+  TypeConversionError,
+  ValidationError,
 } from './errors.js'
-export { FederationEntityBuilder, createEntityBuilder } from './builders/entity-builder.js'
 export * from './schema-first-patterns.js'
 export * from './services/index.js'
+export * from './types.js'

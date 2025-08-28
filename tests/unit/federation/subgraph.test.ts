@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'bun:test'
+import { describe, it, expect } from 'vitest'
 import * as Effect from 'effect/Effect'
 import { Duration, Either } from 'effect'
 import { SubgraphManagement } from '../../../src/federation/subgraph.js'
+import type { HealthStatus } from '../../../src/core/types.js'
 
 // Simple test data factories inline
 const createTestServices = (count: number) =>
@@ -22,19 +23,14 @@ const createServiceDefinition = (overrides: any = {}) => ({
   ...overrides
 })
 
-const createHealthStatus = (overrides: any = {}): HealthStatus => {
-  const { responseTime, ...rest } = overrides
-  const base: HealthStatus = {
+const createHealthStatus = (overrides: Partial<HealthStatus> = {}): HealthStatus => {
+  return {
     status: "healthy" as const,
     serviceId: "test-service",
-    ...rest
+    lastCheck: new Date(),
+    metrics: { responseTime: 50 },
+    ...overrides
   }
-  
-  if (responseTime !== undefined) {
-    base.metrics = { responseTime, ...rest.metrics }
-  }
-  
-  return base
 }
 
 const expectEffectSuccess = async <A, E>(effect: Effect.Effect<A, E>): Promise<A> => {
@@ -50,12 +46,7 @@ const expectEffectFailure = <A, E>(effect: Effect.Effect<A, E>): Effect.Effect<E
     )
   )
 
-const timeEffect = async <A, E>(effect: Effect.Effect<A, E>): Promise<{ result: A; duration: number }> => {
-  const start = Date.now()
-  const result = await Effect.runPromise(effect)
-  const duration = Date.now() - start
-  return { result, duration }
-}
+// Removed unused timeEffect function
 import { TestLayers, MockSubgraphRegistry, TestServicesLive } from '../../utils/test-layers.js'
 
 describe('Subgraph Registry and Service Discovery', () => {
@@ -79,10 +70,10 @@ describe('Subgraph Registry and Service Discovery', () => {
       const registry = await expectEffectSuccess(registryEffect)
 
       expect(registry).toBeDefined()
-      expect(registry.register).toBeFunction()
-      expect(registry.unregister).toBeFunction()
-      expect(registry.discover).toBeFunction()
-      expect(registry.health).toBeFunction()
+      expect(typeof registry.register).toBe('function')
+      expect(typeof registry.unregister).toBe('function')
+      expect(typeof registry.discover).toBe('function')
+      expect(typeof registry.health).toBe('function')
     })
 
     it('should fail with invalid configuration', async () => {
@@ -246,7 +237,7 @@ describe('Subgraph Registry and Service Discovery', () => {
       expect(result.status).toBe('healthy')
       expect(result.serviceId).toBe('healthy-service')
       expect(result.lastCheck).toBeInstanceOf(Date)
-      expect(result.metrics?.responseTime).toBeNumber()
+      expect(result.metrics?.['responseTime']).toBe(50)
     })
 
     it('should fail health check for unregistered service', async () => {
@@ -295,7 +286,7 @@ describe('Subgraph Registry and Service Discovery', () => {
       const healthStatus = createHealthStatus({
         status: 'degraded',
         serviceId: 'dynamic-service',
-        responseTime: 1500
+        metrics: { responseTime: 1500 }
       })
 
       const result = await TestLayers.runWithCleanup(
@@ -314,8 +305,7 @@ describe('Subgraph Registry and Service Discovery', () => {
       )
 
       expect(result.status).toBe('degraded')
-      expect(result.metrics).toBeDefined()
-      expect(result.metrics?.responseTime).toBe(1500)
+      expect(result.metrics?.['responseTime']).toBe(1500)
     })
   })
 
@@ -342,7 +332,7 @@ describe('Subgraph Registry and Service Discovery', () => {
       )
 
       expect(autoRegistry).toBeDefined()
-      expect(autoRegistry.discover).toBeFunction()
+      expect(typeof autoRegistry.discover).toBe('function')
     })
   })
 
@@ -430,7 +420,7 @@ describe('Subgraph Registry and Service Discovery', () => {
     it('should track service registration metrics', async () => {
       const services = createTestServices(3)
 
-      const { result, logs } = await Effect.runPromise(
+      const { result, logs: _logs } = await Effect.runPromise(
         TestLayers.captureLogs(
           Effect.gen(function* () {
             const registry = yield* MockSubgraphRegistry

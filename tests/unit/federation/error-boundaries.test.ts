@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'bun:test'
+import { describe, it, expect, beforeEach } from 'vitest'
 import * as Effect from 'effect/Effect'
 import * as Either from 'effect/Either'
 import { Duration } from 'effect'
@@ -13,17 +13,17 @@ import type {
   CircuitBreakerConfig,
   PartialFailureConfig
 } from '../../../src/core/types.js'
-import type { GraphQLResolveInfo, GraphQLFieldResolver } from 'graphql'
+import { type GraphQLResolveInfo, GraphQLObjectType, GraphQLSchema } from 'graphql'
 import { TestServicesLive } from '../../utils/test-layers.js'
 // Simple test data factories inline (removed unused createTestService)
 
 const createMockResolveInfo = (): GraphQLResolveInfo => ({
   fieldName: "testField",
   fieldNodes: [],
-  returnType: {} as ReturnType<typeof import('graphql').GraphQLObjectType>,
-  parentType: {} as ReturnType<typeof import('graphql').GraphQLObjectType>,
+  returnType: new GraphQLObjectType({ name: 'Test', fields: {} }),
+  parentType: new GraphQLObjectType({ name: 'Parent', fields: {} }),
   path: { key: "test", typename: "Test", prev: undefined },
-  schema: {} as ReturnType<typeof import('graphql').GraphQLSchema>,
+  schema: new GraphQLSchema({ query: new GraphQLObjectType({ name: 'Query', fields: {} }) }),
   fragments: {},
   rootValue: undefined,
   operation: {
@@ -34,7 +34,6 @@ const createMockResolveInfo = (): GraphQLResolveInfo => ({
     selectionSet: { kind: 'SelectionSet', selections: [] }
   } as import('graphql').OperationDefinitionNode,
   variableValues: {},
-  cacheControl: { setCacheHint: () => {} } as unknown,
 })
 
 const expectEffectSuccess = async <A, E>(effect: Effect.Effect<A, E>): Promise<A> => {
@@ -69,6 +68,7 @@ const timeEffect = async <A, E>(effect: Effect.Effect<A, E>): Promise<{ result: 
   return { result, duration }
 }
 import { TestLayers, MockCircuitBreaker } from '../../utils/test-layers.js'
+import { ErrorFactory, RegistrationError } from '../../../src/index.js'
 
 describe('Error Boundaries and Circuit Breakers', () => {
   let mockInfo: any
@@ -95,9 +95,9 @@ describe('Error Boundaries and Circuit Breakers', () => {
       const boundary = FederationErrorBoundaries.createBoundary(config)
 
       expect(boundary).toBeDefined()
-      expect(boundary.wrapResolver).toBeFunction()
-      expect(boundary.handlePartialFailure).toBeFunction()
-      expect(boundary.transformError).toBeFunction()
+      expect(typeof boundary.wrapResolver).toBe('function')
+      expect(typeof boundary.handlePartialFailure).toBe('function')
+      expect(typeof boundary.transformError).toBe('function')
     })
 
     it('should create boundary with custom timeout configuration', async () => {
@@ -136,11 +136,11 @@ describe('Error Boundaries and Circuit Breakers', () => {
         errorTransformation: {
           sanitizeErrors: true,
           includeStackTrace: false,
-          customTransformer: (error: Error) => ({
-            message: 'Custom error message',
-            code: 'CUSTOM_ERROR',
-            extensions: { customField: true }
-          })
+          customTransformer: (_error: Error) => new RegistrationError(
+            'Custom error message',
+            'CUSTOM_ERROR', 
+            { customField: true }
+          )
         }
       }
 
@@ -161,9 +161,9 @@ describe('Error Boundaries and Circuit Breakers', () => {
       const circuitBreaker = await expectEffectSuccess(circuitBreakerEffect)
 
       expect(circuitBreaker).toBeDefined()
-      expect(circuitBreaker.protect).toBeFunction()
-      expect(circuitBreaker.getState).toBeFunction()
-      expect(circuitBreaker.getMetrics).toBeFunction()
+      expect(typeof circuitBreaker.protect).toBe('function')
+      expect(typeof circuitBreaker.getState).toBe('function')
+      expect(typeof circuitBreaker.getMetrics).toBe('function')
     })
 
     it('should fail validation with invalid threshold', async () => {
@@ -240,7 +240,7 @@ describe('Error Boundaries and Circuit Breakers', () => {
         }).pipe(Effect.provide(TestServicesLive))
       )
 
-      expect(error.message).toBe('Circuit breaker is open')
+      expect((error as Error).message).toBe('Circuit breaker is open')
     })
 
     it('should transition to half-open after reset timeout', async () => {
@@ -323,7 +323,7 @@ describe('Error Boundaries and Circuit Breakers', () => {
 
       expect(processed.data).toEqual({ users: [{ id: '1' }] })
       expect(processed.errors).toHaveLength(1)
-      expect(processed.errors[0].message).toBe('Service unavailable')
+      expect((processed.errors[0] as Error).message).toBe('Service unavailable')
     })
 
     it('should reject partial failures when not allowed', async () => {
@@ -446,7 +446,7 @@ describe('Error Boundaries and Circuit Breakers', () => {
         await wrappedResolver(null, {}, {}, mockInfo)
         expect.unreachable('Should have thrown timeout error')
       } catch (error) {
-        expect(error.message).toContain('timed out')
+        expect((error as Error).message).toContain('timed out')
       }
     })
 
@@ -497,7 +497,7 @@ describe('Error Boundaries and Circuit Breakers', () => {
         await wrappedResolver(null, {}, {}, mockInfo)
         expect.unreachable('Should have thrown error')
       } catch (error) {
-        expect(error.message).toBe('Resolver execution failed')
+        expect((error as Error).message).toBe('Resolver execution failed')
       }
     })
   })
@@ -531,7 +531,7 @@ describe('Error Boundaries and Circuit Breakers', () => {
       expect(transformedError.message).toBe('Test error')
       expect(transformedError.code).toBe('TEST_ERROR')
       expect(transformedError.path).toEqual(['user', 'profile'])
-      expect(transformedError.extensions?.subgraphId).toBe('test-service')
+      expect(transformedError.extensions?.['subgraphId']).toBe('test-service')
     })
 
     it('should sanitize errors when configured', async () => {
@@ -568,12 +568,6 @@ describe('Error Boundaries and Circuit Breakers', () => {
     })
 
     it('should use custom error transformer when provided', async () => {
-      const customTransformer = () => ({
-        message: 'Custom transformed message',
-        code: 'CUSTOM_CODE',
-        extensions: { custom: true }
-      })
-
       const config: ErrorBoundaryConfig = {
         subgraphTimeouts: {},
         circuitBreakerConfig: {
@@ -588,7 +582,9 @@ describe('Error Boundaries and Circuit Breakers', () => {
         errorTransformation: {
           sanitizeErrors: false,
           includeStackTrace: false,
-          customTransformer
+          customTransformer: () => {
+            return ErrorFactory.typeConversion('Custom transformed message')
+          }
         }
       }
 
@@ -605,7 +601,7 @@ describe('Error Boundaries and Circuit Breakers', () => {
 
       // Custom transformer was used (verified by the custom message)
       expect(transformedError.message).toBe('Custom transformed message')
-      expect(transformedError.code).toBe('CUSTOM_CODE')
+      expect(transformedError.code).toBe('TYPE_CONVERSION_ERROR')
     })
   })
 
@@ -615,8 +611,8 @@ describe('Error Boundaries and Circuit Breakers', () => {
       const boundary = createStrictBoundary(subgraphIds)
 
       expect(boundary).toBeDefined()
-      expect(boundary.wrapResolver).toBeFunction()
-      expect(boundary.handlePartialFailure).toBeFunction()
+      expect(typeof boundary.wrapResolver).toBe('function')
+      expect(typeof boundary.handlePartialFailure).toBe('function')
     })
 
     it('should create resilient boundary', async () => {
@@ -625,8 +621,8 @@ describe('Error Boundaries and Circuit Breakers', () => {
       const boundary = createResilientBoundary(subgraphIds, criticalSubgraphs)
 
       expect(boundary).toBeDefined()
-      expect(boundary.wrapResolver).toBeFunction()
-      expect(boundary.handlePartialFailure).toBeFunction()
+      expect(typeof boundary.wrapResolver).toBe('function')
+      expect(typeof boundary.handlePartialFailure).toBe('function')
     })
 
     it('should create production boundary', async () => {
@@ -639,8 +635,8 @@ describe('Error Boundaries and Circuit Breakers', () => {
       const boundary = createProductionBoundary(timeouts, criticalSubgraphs)
 
       expect(boundary).toBeDefined()
-      expect(boundary.wrapResolver).toBeFunction()
-      expect(boundary.handlePartialFailure).toBeFunction()
+      expect(typeof boundary.wrapResolver).toBe('function')
+      expect(typeof boundary.handlePartialFailure).toBe('function')
     })
   })
 
@@ -664,15 +660,16 @@ describe('Error Boundaries and Circuit Breakers', () => {
       const config = FederationErrorBoundaries.defaultConfig
       const boundary = FederationErrorBoundaries.createBoundary(config)
       
-      const resolver = async (parent: unknown, args: {id?: string}) => {
+      const resolver = async (_parent: unknown, args: unknown) => {
+        const typedArgs = args as {id?: string}
         await delay(10) // Small delay
-        return `result-${args.id}`
+        return `result-${typedArgs.id}`
       }
       
       const wrappedResolver = boundary.wrapResolver('test-service', resolver)
 
       const promises = Array.from({ length: 5 }, (_, i) =>
-        wrappedResolver(null, { id: i }, {}, mockInfo)
+        wrappedResolver(null, { id: String(i) }, {}, mockInfo)
       )
 
       const results = await Promise.all(promises)

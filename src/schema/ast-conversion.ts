@@ -1,32 +1,32 @@
 import * as Effect from 'effect/Effect'
-import * as Schema from '@effect/schema/Schema'
-import * as AST from '@effect/schema/AST'
+import { pipe } from 'effect/Function'
 import * as Match from 'effect/Match'
 import * as Option from 'effect/Option'
-import { pipe } from 'effect/Function'
+import * as Schema from 'effect/Schema'
+import * as AST from 'effect/SchemaAST'
 import {
-  GraphQLString,
-  GraphQLFloat,
   GraphQLBoolean,
+  GraphQLEnumType,
+  GraphQLFloat,
   GraphQLID,
+  GraphQLInputObjectType,
   GraphQLInt,
   GraphQLList,
   GraphQLNonNull,
   GraphQLObjectType,
-  GraphQLInputObjectType,
-  GraphQLEnumType,
-  GraphQLUnionType,
   GraphQLScalarType,
-  type GraphQLOutputType,
-  type GraphQLInputType,
-  type GraphQLType,
+  GraphQLString,
+  GraphQLUnionType,
   isOutputType as isGraphQLOutputType,
-  type ThunkObjMap,
-  type GraphQLInputFieldConfig,
   type GraphQLFieldConfig,
+  type GraphQLInputFieldConfig,
+  type GraphQLInputType,
+  type GraphQLOutputType,
+  type GraphQLType,
+  type ThunkObjMap,
 } from 'graphql'
-import type { TypeConversionError } from '../core/types.js'
 import { ErrorFactory } from '../core/errors.js'
+import type { TypeConversionError } from '../core/types.js'
 
 const MAX_RECURSION_DEPTH = 10 as const
 
@@ -348,10 +348,11 @@ export namespace ASTConversion {
     ast: AST.Refinement,
     context: TypeConversionContext
   ): Effect.Effect<GraphQLOutputType | GraphQLInputType, TypeConversionError> => {
+    const identifierAnnotation = AST.getAnnotation(AST.IdentifierAnnotationId)(ast)
     const titleAnnotation = AST.getAnnotation(AST.TitleAnnotationId)(ast)
 
     return pipe(
-      Effect.fromNullable(titleAnnotation),
+      Effect.fromNullable(identifierAnnotation ?? titleAnnotation),
       Effect.flatMap((annotation: unknown) => {
         // The annotation might be wrapped in an Option type
         let title: string
@@ -365,7 +366,7 @@ export namespace ASTConversion {
         return Match.value(title).pipe(
           // Integer type -> GraphQL Int
           Match.when(
-            t => t === 'Int',
+            t => t === 'Int' || t === 'int',
             () => Effect.succeed(GraphQLInt)
           ),
 

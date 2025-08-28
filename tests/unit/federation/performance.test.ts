@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'bun:test'
+import { describe, it, expect, beforeEach } from 'vitest'
 import * as Effect from 'effect/Effect'
 import { Duration } from 'effect'
 import DataLoader from 'dataloader'
+import { GraphQLSchema, GraphQLObjectType, GraphQLString } from 'graphql'
 import {
   PerformanceOptimizations,
   createBasicOptimizedExecutor,
@@ -52,12 +53,23 @@ describe('Performance Optimizations and Caching', () => {
 
   beforeEach(() => {
     mockSchema = {
-      schema: {} as any, // Mock GraphQL schema
-      subgraphs: createServices(3),
+      schema: new GraphQLSchema({ 
+        query: new GraphQLObjectType({ 
+          name: 'Query', 
+          fields: { 
+            hello: { type: GraphQLString, resolve: () => 'world' } 
+          } 
+        }) 
+      }),
+      entities: [],
+      services: createServices(3),
+      version: '1.0.0',
       metadata: {
+        createdAt: new Date(),
+        composedAt: new Date(),
+        federationVersion: '2.0.0',
         subgraphCount: 3,
-        entityTypes: ['User', 'Product'],
-        directiveUsage: {}
+        entityCount: 2
       }
     }
   })
@@ -73,10 +85,10 @@ describe('Performance Optimizations and Caching', () => {
       const cache = await expectEffectSuccess(cacheEffect)
 
       expect(cache).toBeDefined()
-      expect(cache.get).toBeFunction()
-      expect(cache.set).toBeFunction()
-      expect(cache.invalidate).toBeFunction()
-      expect(cache.getStats).toBeFunction()
+      expect(typeof cache.get).toBe('function')
+      expect(typeof cache.set).toBe('function')
+      expect(typeof cache.invalidate).toBe('function')
+      expect(typeof cache.getStats).toBe('function')
     })
 
     it('should cache and retrieve query plans', async () => {
@@ -145,7 +157,7 @@ describe('Performance Optimizations and Caching', () => {
 
       // Fill cache beyond capacity
       for (let i = 0; i < plans.length; i++) {
-        await expectEffectSuccess(cache.set(`query-${i}`, plans[i]))
+        await expectEffectSuccess(cache.set(`query-${i}`, plans[i]!))
         // Add small delay to ensure different timestamps
         await delay(1)
       }
@@ -232,9 +244,9 @@ describe('Performance Optimizations and Caching', () => {
       const dataLoader = await expectEffectSuccess(dataLoaderEffect)
 
       expect(dataLoader).toBeDefined()
-      expect(dataLoader.getLoader).toBeFunction()
-      expect(dataLoader.clearAll).toBeFunction()
-      expect(dataLoader.getStats).toBeFunction()
+      expect(typeof dataLoader.getLoader).toBe('function')
+      expect(typeof dataLoader.clearAll).toBe('function')
+      expect(typeof dataLoader.getStats).toBe('function')
     })
 
     it('should create separate loaders for different subgraphs', async () => {
@@ -327,9 +339,9 @@ describe('Performance Optimizations and Caching', () => {
       const stats = await expectEffectSuccess(dataLoader.getStats())
 
       expect(stats['test-service']).toBeDefined()
-      expect(stats['test-service'].batchCount).toBeGreaterThanOrEqual(0) // May be 0 if batching is disabled
-      if (stats['test-service'].batchCount > 0) {
-        expect(stats['test-service'].averageBatchSize).toBeGreaterThan(0)
+      expect(stats['test-service']!.batchCount).toBeGreaterThanOrEqual(0) // May be 0 if batching is disabled
+      if (stats['test-service']!.batchCount > 0) {
+        expect(stats['test-service']!.averageBatchSize).toBeGreaterThan(0)
       }
     })
 
@@ -413,9 +425,9 @@ describe('Performance Optimizations and Caching', () => {
       const metrics = await expectEffectSuccess(metricsEffect)
 
       expect(metrics).toBeDefined()
-      expect(metrics.recordExecution).toBeFunction()
-      expect(metrics.recordCacheOperation).toBeFunction()
-      expect(metrics.getMetrics).toBeFunction()
+      expect(typeof metrics.recordExecution).toBe('function')
+      expect(typeof metrics.recordCacheOperation).toBe('function')
+      expect(typeof metrics.getMetrics).toBe('function')
     })
 
     it('should record execution metrics', async () => {
@@ -567,7 +579,7 @@ describe('Performance Optimizations and Caching', () => {
       const executor = await expectEffectSuccess(executorEffect)
 
       expect(executor).toBeDefined()
-      expect(executor.execute).toBeFunction()
+      expect(typeof executor.execute).toBe('function')
     })
 
     it('should fail with invalid cache configuration', async () => {
@@ -666,7 +678,7 @@ describe('Performance Optimizations and Caching', () => {
 
       // Note: In a real implementation, we would have access to the metrics collector
       // to verify metrics were recorded. This is a structural test.
-      expect(executor.execute).toBeFunction()
+      expect(typeof executor.execute).toBe('function')
     })
   })
 
@@ -677,7 +689,7 @@ describe('Performance Optimizations and Caching', () => {
       )
 
       expect(executor).toBeDefined()
-      expect(executor.execute).toBeFunction()
+      expect(typeof executor.execute).toBe('function')
     })
 
     it('should create production optimized executor', async () => {
@@ -686,7 +698,7 @@ describe('Performance Optimizations and Caching', () => {
       )
 
       expect(executor).toBeDefined()
-      expect(executor.execute).toBeFunction()
+      expect(typeof executor.execute).toBe('function')
     })
 
     it('should create development optimized executor', async () => {
@@ -695,7 +707,7 @@ describe('Performance Optimizations and Caching', () => {
       )
 
       expect(executor).toBeDefined()
-      expect(executor.execute).toBeFunction()
+      expect(typeof executor.execute).toBe('function')
     })
   })
 
@@ -790,7 +802,7 @@ describe('Performance Optimizations and Caching', () => {
 
       const stats = await expectEffectSuccess(dataLoader.getStats())
       expect(stats['high-volume-service']).toBeDefined()
-      expect(stats['high-volume-service'].batchCount).toBeGreaterThan(1) // Should batch the operations
+      expect(stats['high-volume-service']!.batchCount).toBeGreaterThan(1) // Should batch the operations
     })
 
     it('should measure query execution performance', async () => {

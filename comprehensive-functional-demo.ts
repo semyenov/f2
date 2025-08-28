@@ -1,50 +1,44 @@
 /**
  * # Comprehensive Functional Programming Patterns Demo
- * 
+ *
  * This comprehensive example demonstrates all major functional programming patterns
  * used in the Federation Framework, showcasing how Effect-TS enables elegant,
  * type-safe, and composable GraphQL federation systems.
- * 
+ *
  * ## 🎯 Featured Patterns
- * 
+ *
  * - **Effect.gen**: Composable async operations with generators
- * - **Algebraic Data Types**: Discriminated unions for errors and results  
+ * - **Algebraic Data Types**: Discriminated unions for errors and results
  * - **Pattern Matching**: Exhaustive handling with Match.value
  * - **Layer Composition**: Dependency injection with Effect Layers
  * - **Phantom Types**: Compile-time validation states
  * - **Tagged Enums**: Type-safe result handling
  * - **Pipe Compositions**: Functional data transformations
  * - **Error Boundaries**: Circuit breaker patterns with Effect
- * 
+ *
  * @example Running the demo
  * ```bash
  * bun run comprehensive-functional-demo.ts
  * ```
  */
 
-import { Effect, pipe, Duration, Option, Match, Data } from 'effect'
-import * as Schema from '@effect/schema/Schema'
-import * as Layer from 'effect/Layer'
-import type { GraphQLResolveInfo } from 'graphql'
-import {
-  createEntityBuilder,
-  PerformanceOptimizations,
-  FederationErrorBoundaries,
-  SubgraphManagement,
-  Experimental,
-  ErrorFactory,
-  DevelopmentLayerLive
-} from './src/index.js'
+import { Data, Duration, Effect, Match, Option, pipe } from 'effect'
+import * as Schema from 'effect/Schema'
 import type {
-  FederationEntity,
-  ValidationError,
-  FederationError,
-  CompositionError,
-  EntityResolutionError
+  EntityResolutionError,
+  ValidationError
 } from './src/core/types.js'
 import type {
   ValidatedEntity
 } from './src/experimental/ultra-strict-entity-builder.js'
+import {
+  createEntityBuilder,
+  DevelopmentLayerLive,
+  ErrorFactory,
+  FederationErrorBoundaries,
+  PerformanceOptimizations,
+  SubgraphManagement
+} from './src/index.js'
 
 // ============================================================================
 // 🏗️ DOMAIN MODELING WITH EFFECT SCHEMA
@@ -59,7 +53,7 @@ const UserSchema = Schema.Struct({
   email: Schema.String.pipe(Schema.minLength(1)),
   name: Schema.String.pipe(Schema.minLength(1)),
   avatar: Schema.optional(Schema.String),
-  createdAt: Schema.Date,
+  createdAt: Schema.String.pipe(Schema.minLength(1)),
   status: Schema.Literal('active', 'inactive', 'pending'),
   preferences: Schema.optional(Schema.Struct({
     theme: Schema.Literal('light', 'dark', 'auto'),
@@ -98,7 +92,7 @@ const OrderSchema = Schema.Struct({
   })),
   total: Schema.Number.pipe(Schema.positive()),
   status: Schema.Literal('pending', 'processing', 'shipped', 'delivered', 'cancelled'),
-  createdAt: Schema.Date,
+  createdAt: Schema.String.pipe(Schema.minLength(1)),
   shippingAddress: Schema.Struct({
     street: Schema.String.pipe(Schema.minLength(1)),
     city: Schema.String.pipe(Schema.minLength(1)),
@@ -278,7 +272,7 @@ const createOrderEntity = (): Effect.Effect<
 > =>
   Effect.gen(function* () {
     const resolveOrderReference = (
-        ref: Partial<Order>,
+      ref: Partial<Order>,
       context: AppContext
     ): Effect.Effect<Order, EntityResolutionError, never> =>
       Effect.gen(function* () {
@@ -344,7 +338,7 @@ const createOptimizedExecutor = () =>
   })
 
 // ============================================================================
-// 🛡️ CIRCUIT BREAKERS AND ERROR BOUNDARIES  
+// 🛡️ CIRCUIT BREAKERS AND ERROR BOUNDARIES
 // ============================================================================
 
 /**
@@ -476,7 +470,7 @@ const createMockServices = (): AppContext => ({
         email: 'user@example.com',
         name: 'Demo User',
         avatar: 'https://example.com/avatar.jpg',
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
         status: 'active' as const,
         preferences: {
           theme: 'light' as const,
@@ -489,7 +483,7 @@ const createMockServices = (): AppContext => ({
       Effect.succeed({
         ...userData,
         id: `user-${Math.random().toString(36).substring(7)}`,
-        createdAt: new Date()
+        createdAt: new Date().toISOString(),
       } satisfies User)
   },
 
@@ -544,7 +538,7 @@ const createMockServices = (): AppContext => ({
         ],
         total: 39.98,
         status: 'processing' as const,
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
         shippingAddress: {
           street: '123 Demo St',
           city: 'Example City',
@@ -567,7 +561,7 @@ const createMockServices = (): AppContext => ({
         return {
           ...orderData,
           id: `order-${Math.random().toString(36).substring(7)}`,
-          createdAt: new Date()
+          createdAt: new Date().toISOString(),
         } satisfies Order
       })
   },
@@ -610,7 +604,11 @@ const createFederatedSchema = () =>
 
     // Compose entities into federated schema
     return {
-      entities: [userEntity, productEntity, orderEntity],
+      entities: [
+        userEntity,
+        productEntity,
+        orderEntity
+      ],
       metadata: {
         version: '1.0.0',
         subgraphCount: 3,
@@ -697,7 +695,7 @@ const mainDemo = Effect.gen(function* () {
     collectExecutionMetrics: true,
     maxExecutionMetrics: 100
   })
-
+  
   const performanceData = {
     executionMetrics: { totalExecutions: 1, averageDuration: 45 },
     cacheMetrics: { hitRate: 0.8 },
@@ -787,4 +785,4 @@ if (import.meta.main) {
     })
 }
 
-export { runDemo, mainDemo }
+export { mainDemo, runDemo }

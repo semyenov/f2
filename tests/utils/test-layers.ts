@@ -1,10 +1,7 @@
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Context from "effect/Context"
-import type {
-  ServiceDefinition,
-  HealthStatus
-} from "../../src/core/types.js"
+import * as Types from "../../src/core/types.js"
 
 /**
  * Test layer compositions and service mocks for testing
@@ -89,33 +86,31 @@ export const MockConfigLive = Layer.effect(MockConfig, makeMockConfig)
 export class MockSubgraphRegistry extends Context.Tag("MockSubgraphRegistry")<
   MockSubgraphRegistry,
   {
-    readonly services: ReadonlyArray<ServiceDefinition>
-    readonly register: (definition: ServiceDefinition) => Effect.Effect<void>
+    readonly services: ReadonlyArray<Types.ServiceDefinition>
+    readonly register: (definition: Types.ServiceDefinition) => Effect.Effect<void>
     readonly unregister: (serviceId: string) => Effect.Effect<void>
-    readonly discover: () => Effect.Effect<ReadonlyArray<ServiceDefinition>>
-    readonly health: (serviceId: string) => Effect.Effect<HealthStatus>
-    readonly setHealthStatus: (serviceId: string, status: HealthStatus) => Effect.Effect<void>
+    readonly discover: () => Effect.Effect<ReadonlyArray<Types.ServiceDefinition>>
+    readonly health: (serviceId: string) => Effect.Effect<Types.HealthStatus, Error, never>
+    readonly setHealthStatus: (serviceId: string, status: Types.HealthStatus) => Effect.Effect<void>
     readonly simulateFailure: (serviceId: string, shouldFail: boolean) => Effect.Effect<void>
   }
 >() {}
 
 const makeMockSubgraphRegistry = Effect.gen(function* () {
-  let services: ServiceDefinition[] = []
-  let healthStatuses = new Map<string, HealthStatus>()
+  let services: Types.ServiceDefinition[] = []
+  let healthStatuses = new Map<string, Types.HealthStatus>()
   let failureSimulations = new Map<string, boolean>()
 
   return {
-    get services() { return services as ReadonlyArray<ServiceDefinition> },
-    register: (definition: ServiceDefinition) =>
+    get services() { return services as ReadonlyArray<Types.ServiceDefinition> },
+    register: (definition: Types.ServiceDefinition) =>
       Effect.sync(() => {
         services = [...services.filter(s => s.id !== definition.id), definition]
         healthStatuses.set(definition.id, {
           status: "healthy",
           serviceId: definition.id,
           lastCheck: new Date(),
-          metrics: {
-            responseTime: 50
-          }
+          metrics: { responseTime: 50 }
         })
       }),
     unregister: (serviceId: string) =>
@@ -124,22 +119,24 @@ const makeMockSubgraphRegistry = Effect.gen(function* () {
         healthStatuses.delete(serviceId)
         failureSimulations.delete(serviceId)
       }),
-    discover: () => Effect.succeed(services as ReadonlyArray<ServiceDefinition>),
+    discover: () => Effect.succeed(services as ReadonlyArray<Types.ServiceDefinition>),
     health: (serviceId: string) =>
       Effect.gen(function* () {
         const shouldFail = failureSimulations.get(serviceId)
         if (shouldFail) {
-          return yield* Effect.fail(new Error(`Health check failed for ${serviceId}`))
+          // Simulate failure for testing
+          return yield* Effect.fail(new Error(`Health check failed for service ${serviceId}`))
         }
         
         const status = healthStatuses.get(serviceId)
         if (!status) {
+          // Fail for unregistered services
           return yield* Effect.fail(new Error(`Service ${serviceId} not found`))
         }
         
         return status
       }),
-    setHealthStatus: (serviceId: string, status: HealthStatus) =>
+    setHealthStatus: (serviceId: string, status: Types.HealthStatus) =>
       Effect.sync(() => {
         healthStatuses.set(serviceId, status)
       }),
@@ -176,25 +173,27 @@ const makeMockCircuitBreaker = Effect.gen(function* () {
     execute: <A, E, R>(operation: Effect.Effect<A, E, R>) =>
       Effect.gen(function* () {
         if (state === "open") {
-          return yield* Effect.fail(new Error("Circuit breaker is open"))
+          return yield* Effect.fail(new Error("Circuit breaker is open") as E)
         }
 
-        try {
-          const result = yield* operation
+        const result = yield* Effect.either(operation)
+        
+        if (result._tag === "Right") {
           successCount++
           if (state === "half-open") {
             state = "closed"
             failureCount = 0
           }
-          return result
-        } catch (error) {
+          return result.right
+        } else {
+          const error = result.left
           failureCount++
           if (failureCount >= 3) {
             state = "open"
           }
           return yield* Effect.fail(error)
         }
-      }),
+      }) as Effect.Effect<A, E, R>,
     setState: (newState: "open" | "closed" | "half-open") =>
       Effect.sync(() => {
         state = newState

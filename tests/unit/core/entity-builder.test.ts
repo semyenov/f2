@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'bun:test'
 import * as Effect from 'effect/Effect'
-import * as Schema from '@effect/schema/Schema'
+import * as Schema from 'effect/Schema'
+import { describe, expect, it } from 'vitest'
 import { createEntityBuilder } from '../../../src/core/builders/entity-builder.js'
 
 describe('FederationEntityBuilder', () => {
@@ -15,9 +15,9 @@ describe('FederationEntityBuilder', () => {
     const entityEffect = builder.build()
     const entity = await Effect.runPromise(entityEffect)
 
-    expect((entity as any).typename).toBe('User')
-    expect((entity as any).key).toEqual(['id'])
-    expect((entity as any).schema).toBe(UserSchema)
+    expect((entity).typename).toBe('User')
+    expect((entity).key).toEqual(['id'])
+    expect((entity).schema).toBe(UserSchema)
   })
 
   it('should add shareable field directive', async () => {
@@ -26,7 +26,7 @@ describe('FederationEntityBuilder', () => {
     const entityEffect = builder.build()
     const entity = await Effect.runPromise(entityEffect)
 
-    expect(Array.isArray((entity as any).directives) && (entity as any).directives.find((d: { name: string }) => d.name === 'shareable')).toBeDefined()
+    expect(Array.isArray((entity).directives) && (entity).directives.find((d: { name: string }) => d.name === 'shareable')).toBeDefined()
   })
 
   it('should add tagged field directive', async () => {
@@ -35,7 +35,7 @@ describe('FederationEntityBuilder', () => {
     const entityEffect = builder.build()
     const entity = await Effect.runPromise(entityEffect)
 
-    expect(Array.isArray((entity as any).directives) && (entity as any).directives.find((d: { name: string }) => d.name === 'tag')).toBeDefined()
+    expect(Array.isArray((entity).directives) && (entity).directives.find((d: { name: string }) => d.name === 'tag')).toBeDefined()
   })
 
   it('should add inaccessible field directive', async () => {
@@ -44,7 +44,7 @@ describe('FederationEntityBuilder', () => {
     const entityEffect = builder.build()
     const entity = await Effect.runPromise(entityEffect)
 
-    expect(Array.isArray((entity as any).directives) && (entity as any).directives.find((d: { name: string }) => d.name === 'inaccessible')).toBeDefined()
+    expect(Array.isArray((entity).directives) && (entity).directives.find((d: { name: string }) => d.name === 'inaccessible')).toBeDefined()
   })
 
   it('should handle reference resolution with Effect', async () => {
@@ -59,10 +59,10 @@ describe('FederationEntityBuilder', () => {
 
     const entityEffect = builder.build()
     const entity = await Effect.runPromise(entityEffect)
-    
-    if ((entity as any).resolveReference) {
+
+    if ((entity).resolveReference) {
       const result = await Effect.runPromise(
-        (entity as any).resolveReference({ id: '123' }, {}, {} as never)
+        (entity).resolveReference({ id: '123' }, {}, {} as never)
       )
       expect(result).toEqual(mockUser)
     }
@@ -76,9 +76,9 @@ describe('FederationEntityBuilder', () => {
 
     const entityEffect = builder.build()
     const entity = await Effect.runPromise(entityEffect)
-    
+
     // Test simplified - just ensure entity creation works
-    expect((entity as any).typename).toBe('User')
+    expect((entity).typename).toBe('User')
   })
 
   it('should validate constructor arguments', () => {

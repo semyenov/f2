@@ -1,10 +1,9 @@
-import { describe, test, expect } from 'bun:test'
+import { describe, test, expect } from 'vitest'
 import * as Effect from 'effect/Effect'
-import * as Schema from '@effect/schema/Schema'
+import * as Schema from 'effect/Schema'
 import { GraphQLID } from 'graphql'
 import {
   createUltraStrictEntityBuilder,
-  withSchema,
   withKeys,
   withDirectives,
   withResolvers,
@@ -24,7 +23,7 @@ describe('Federation Composition Integration', () => {
 
       const userEntity = await Effect.runPromise(
         Effect.gen(function* () {
-          const builder = createUltraStrictEntityBuilder('User')
+          const builder = createUltraStrictEntityBuilder('User', UserSchema as Schema.Schema<unknown, unknown, never>)
           const composed = yield* Effect.succeed(
             withResolvers({
               fullName: (parent) => `${(parent as {name?: string}).name || 'Anonymous'}`,
@@ -35,7 +34,7 @@ describe('Federation Composition Integration', () => {
               ])(
                 withKeys([
                   UltraStrictEntityBuilder.Key.create('id', GraphQLID, false),
-                ])(withSchema(UserSchema)(builder))
+                ])(builder)
               )
             )
           )
@@ -53,7 +52,7 @@ describe('Federation Composition Integration', () => {
 
       const productEntity = await Effect.runPromise(
         Effect.gen(function* () {
-          const builder = createUltraStrictEntityBuilder('Product')
+          const builder = createUltraStrictEntityBuilder('Product', ProductSchema as Schema.Schema<unknown, unknown, never>)
           const composed = yield* Effect.succeed(
             withResolvers({
               formattedPrice: (parent: unknown) => `$${(parent as {price: number}).price.toFixed(2)}`,
@@ -64,7 +63,7 @@ describe('Federation Composition Integration', () => {
               ])(
                 withKeys([
                   UltraStrictEntityBuilder.Key.create('id', GraphQLID, false),
-                ])(withSchema(ProductSchema)(builder))
+                ])(builder)
               )
             )
           )
@@ -108,17 +107,16 @@ describe('Federation Composition Integration', () => {
         Effect.all([
           // User entity (base)
           Effect.gen(function* () {
-            const builder = createUltraStrictEntityBuilder('User')
+            const schema = Schema.Struct({
+              id: Schema.String,
+              username: Schema.String,
+            })
+            const builder = createUltraStrictEntityBuilder('User', schema as Schema.Schema<unknown, unknown, never>)
             return yield* validateEntityBuilder(
               withResolvers({})(
                 withDirectives([UltraStrictEntityBuilder.Directive.shareable()])(
                   withKeys([UltraStrictEntityBuilder.Key.create('id', GraphQLID, false)])(
-                    withSchema(
-                      Schema.Struct({
-                        id: Schema.String,
-                        username: Schema.String,
-                      })
-                    )(builder)
+                    builder
                   )
                 )
               )
@@ -127,7 +125,12 @@ describe('Federation Composition Integration', () => {
           
           // Order entity (depends on User)
           Effect.gen(function* () {
-            const builder = createUltraStrictEntityBuilder('Order')
+            const schema = Schema.Struct({
+              id: Schema.String,
+              userId: Schema.String,
+              total: Schema.Number,
+            })
+            const builder = createUltraStrictEntityBuilder('Order', schema as Schema.Schema<unknown, unknown, never>)
             return yield* validateEntityBuilder(
               withResolvers({
                 totalFormatted: (parent: unknown) => `$${(parent as {total: number}).total}`,
@@ -137,13 +140,7 @@ describe('Federation Composition Integration', () => {
                   UltraStrictEntityBuilder.Directive.tag('orders'),
                 ])(
                   withKeys([UltraStrictEntityBuilder.Key.create('id', GraphQLID, false)])(
-                    withSchema(
-                      Schema.Struct({
-                        id: Schema.String,
-                        userId: Schema.String,
-                        total: Schema.Number,
-                      })
-                    )(builder)
+                    builder
                   )
                 )
               )
@@ -166,19 +163,18 @@ describe('Federation Composition Integration', () => {
     test('should validate @override directive with from parameter', async () => {
       const entityWithOverride = await Effect.runPromise(
         Effect.gen(function* () {
-          const builder = createUltraStrictEntityBuilder('User')
+          const schema = Schema.Struct({
+            id: Schema.String,
+            email: Schema.String,
+          })
+          const builder = createUltraStrictEntityBuilder('User', schema as Schema.Schema<unknown, unknown, never>)
           return yield* validateEntityBuilder(
             withResolvers({})(
               withDirectives([
                 UltraStrictEntityBuilder.Directive.override('LegacyUserService'),
               ])(
                 withKeys([UltraStrictEntityBuilder.Key.create('id', GraphQLID, false)])(
-                  withSchema(
-                    Schema.Struct({
-                      id: Schema.String,
-                      email: Schema.String,
-                    })
-                  )(builder)
+                  builder
                 )
               )
             )
@@ -200,7 +196,12 @@ describe('Federation Composition Integration', () => {
     test('should validate @provides and @requires directives', async () => {
       const entityWithFieldDirectives = await Effect.runPromise(
         Effect.gen(function* () {
-          const builder = createUltraStrictEntityBuilder('Product')
+          const schema = Schema.Struct({
+            id: Schema.String,
+            name: Schema.String,
+            categoryId: Schema.String,
+          })
+          const builder = createUltraStrictEntityBuilder('Product', schema as Schema.Schema<unknown, unknown, never>)
           return yield* validateEntityBuilder(
             withResolvers({
               category: (parent: unknown) => (parent as {categoryName: string}).categoryName,
@@ -210,13 +211,7 @@ describe('Federation Composition Integration', () => {
                 UltraStrictEntityBuilder.Directive.requires('categoryId'),
               ])(
                 withKeys([UltraStrictEntityBuilder.Key.create('id', GraphQLID, false)])(
-                  withSchema(
-                    Schema.Struct({
-                      id: Schema.String,
-                      name: Schema.String,
-                      categoryId: Schema.String,
-                    })
-                  )(builder)
+                  builder
                 )
               )
             )

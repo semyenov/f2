@@ -1,35 +1,35 @@
-import type { Effect } from 'effect'
-import type * as Schema from '@effect/schema/Schema'
+import type * as Schema from 'effect/Schema'
+import type { Duration, Effect } from 'effect'
 import type { GraphQLResolveInfo, GraphQLSchema } from 'graphql'
-import type { Duration } from 'effect'
 import type {
-  EntityResolutionError,
-  FieldResolutionError,
-  ValidationError,
-  SchemaValidationError,
-  CompositionError,
+  BaseDomainError,
   CircuitBreakerError,
-  TimeoutError,
-  FederationError,
-  TypeConversionError,
-  RegistrationError,
+  CompositionError,
   DiscoveryError,
+  EntityResolutionError,
+  FederationError,
+  FieldResolutionError,
   HealthCheckError,
+  RegistrationError,
+  SchemaValidationError,
+  TimeoutError,
+  TypeConversionError,
+  ValidationError,
 } from './errors.js'
 
 export type {
-  EntityResolutionError,
-  FieldResolutionError,
-  ValidationError,
-  SchemaValidationError,
-  CompositionError,
   CircuitBreakerError,
-  TimeoutError,
-  FederationError,
-  TypeConversionError,
-  RegistrationError,
+  CompositionError,
   DiscoveryError,
+  EntityResolutionError,
+  FederationError,
+  FieldResolutionError,
   HealthCheckError,
+  RegistrationError,
+  SchemaValidationError,
+  TimeoutError,
+  TypeConversionError,
+  ValidationError,
 }
 
 /**
@@ -136,13 +136,11 @@ export interface FederationDirective {
  *   )
  * ```
  */
-export interface EntityReferenceResolver<TResult, TContext, TReference> {
-  (
-    reference: TReference,
-    context: TContext,
-    info: GraphQLResolveInfo
-  ): Effect.Effect<TResult, EntityResolutionError>
-}
+export type EntityReferenceResolver<TResult, TContext, TReference> = (
+  reference: TReference,
+  context: TContext,
+  info: GraphQLResolveInfo
+) => Effect.Effect<TResult, EntityResolutionError>
 
 /**
  * Field resolver map for federation entities
@@ -183,14 +181,12 @@ export type FieldResolverMap<TResult, TContext> = {
  *   )
  * ```
  */
-export interface FieldResolver<TSource, TContext, TReturn, TArgs = Record<string, unknown>> {
-  (
-    parent: TSource,
-    args: TArgs,
-    context: TContext,
-    info: GraphQLResolveInfo
-  ): Effect.Effect<TReturn, FieldResolutionError>
-}
+export type FieldResolver<TSource, TContext, TReturn, TArgs = Record<string, unknown>> = (
+  parent: TSource,
+  args: TArgs,
+  context: TContext,
+  info: GraphQLResolveInfo
+) => Effect.Effect<TReturn, FieldResolutionError>
 
 /**
  * Service definition for federation composition
@@ -244,7 +240,7 @@ export interface PartialFailureConfig {
 export interface ErrorTransformationConfig {
   readonly sanitizeErrors?: boolean
   readonly includeStackTrace?: boolean
-  readonly customTransformer?: (error: Error) => Error
+  readonly customTransformer?: <E extends Error>(error: E) => BaseDomainError
 }
 
 /**
@@ -520,7 +516,9 @@ export type NonEmptyArray<T> = readonly [T, ...(readonly T[])]
  * ```
  */
 export type RequireAtLeastOne<T, Keys extends keyof T = keyof T> = Pick<T, Exclude<keyof T, Keys>> &
-  { readonly [K in Keys]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<Keys, K>>> }[Keys]
+  {
+    readonly [K in Keys]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<Keys, K>>>
+  }[Keys]
 
 /**
  * Extract resolver function type from a field

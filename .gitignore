@@ -1,3 +1,13 @@
 dist/
 docs/
 node_modules/
+
+# Vitest
+.vitest/
+coverage/
+*.coverage
+html/
+
+# Test artifacts
+test-results/
+*.log

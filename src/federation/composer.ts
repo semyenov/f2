@@ -186,21 +186,21 @@
  * @see {@link https://effect.website/docs/guides/context-management | Effect Context Management}
  */
 
-import * as Effect from 'effect/Effect'
-import * as Context from 'effect/Context'
-import * as Layer from 'effect/Layer'
-import * as Match from 'effect/Match'
-import * as LogLevel from 'effect/LogLevel'
 import { Duration } from 'effect'
+import * as Context from 'effect/Context'
+import * as Effect from 'effect/Effect'
+import * as Layer from 'effect/Layer'
+import * as LogLevel from 'effect/LogLevel'
+import * as Match from 'effect/Match'
 import type { GraphQLSchema } from 'graphql'
 import { buildSchema as buildGraphQLSchema } from 'graphql'
+import { CompositionError, ErrorFactory, type ValidationError } from '../core/errors.js'
 import type {
-  FederationCompositionConfig,
   FederatedSchema,
-  ServiceDefinition,
+  FederationCompositionConfig,
   SchemaMetadata,
+  ServiceDefinition,
 } from '../core/types.js'
-import { ValidationError, CompositionError, ErrorFactory } from '../core/errors.js'
 
 // Modern Composer Service using Context.Tag
 export class FederationComposer extends Context.Tag('FederationComposer')<
@@ -347,7 +347,7 @@ const makeComposer = Effect.gen(function* () {
         type Query {
           _service: _Service!
         }
-        
+
         type _Service {
           sdl: String!
         }
@@ -500,7 +500,10 @@ export const createFederatedSchema = (config: FederationCompositionConfig) =>
       Effect.catchTag('CompositionError', error =>
         Effect.gen(function* () {
           const userMessage = handleCompositionError(error)
-          yield* Effect.logWithLevel(LogLevel.Error, 'Composition failed', { error, userMessage })
+          yield* Effect.logWithLevel(LogLevel.Error, 'Composition failed', {
+            error,
+            userMessage,
+          })
           return yield* Effect.fail(error)
         })
       ),

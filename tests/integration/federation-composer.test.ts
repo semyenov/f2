@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'bun:test'
+import { describe, it, expect } from 'vitest'
 import * as Effect from 'effect/Effect'
-import * as Schema from '@effect/schema/Schema'
+import * as Schema from 'effect/Schema'
 import { Duration, Layer } from 'effect'
 import { createEntityBuilder } from '../../src/core/builders/entity-builder.js'
 import { createFederatedSchema, FederationComposerLive } from '../../src/federation/composer.js'
