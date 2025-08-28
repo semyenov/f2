@@ -404,7 +404,7 @@ export const withDirectives =
         ([dir1, dir2]) => directiveNames.includes(dir1) && directiveNames.includes(dir2)
       )
       throw new Error(
-        `Conflicting directives: @${conflict![0]} and @${conflict![1]} cannot be used together`
+        `Conflicting directives: @${conflict?.[0]} and @${conflict?.[1]} cannot be used together`
       )
     }
 
@@ -468,7 +468,7 @@ export const withResolvers =
 /**
  * Validates a complete entity builder using exhaustive pattern matching
  */
-export const validateEntityBuilder = <A, I, R>(
+export const validateEntityBuilder = <A = unknown, I = A, R = never>(
   builder: UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>
 ): Effect.Effect<EntityValidationResult<A, I, R>, EntityBuilderError> =>
   pipe(
@@ -482,7 +482,7 @@ export const validateEntityBuilder = <A, I, R>(
     Effect.catchAll(handleValidationErrors)
   ) as Effect.Effect<EntityValidationResult<A, I, R>, EntityBuilderError>
 
-const validateSchema = <A, I, R>(
+const validateSchema = <A = unknown, I = A, R = never>(
   builder: UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>
 ): Effect.Effect<
   UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>,
@@ -506,7 +506,7 @@ const validateSchema = <A, I, R>(
     })
   )
 
-const validateKeys = <A, I, R>(
+const validateKeys = <A = unknown, I = A, R = never>(
   builder: UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>
 ): Effect.Effect<
   UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>,
@@ -529,7 +529,7 @@ const validateKeys = <A, I, R>(
       }
 
       // Validate key fields exist in schema
-      const schemaFields = builder.schema ? getSchemaFields(builder.schema) : []
+      const schemaFields = getSchemaFields(builder.schema)
       const missingKeyErrors = keys
         .filter(key => !schemaFields.includes(key.field))
         .map(
@@ -550,14 +550,14 @@ const validateKeys = <A, I, R>(
     })
   )
 
-const validateDirectives = <A, I, R>(
+const validateDirectives = <A = unknown, I = A, R = never>(
   builder: UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>
 ): Effect.Effect<
   UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>,
   readonly DirectiveValidationError[]
 > =>
   pipe(
-    Effect.succeed(builder.directives!),
+    Effect.succeed(builder.directives),
     Effect.flatMap(directives => {
       const validDirectives = [
         'shareable',
@@ -569,7 +569,7 @@ const validateDirectives = <A, I, R>(
         'requires',
       ]
 
-      const directiveErrors = directives.flatMap(directive => {
+      const directiveErrors = (directives ?? []).flatMap(directive => {
         const errors: DirectiveValidationError[] = []
 
         if (!validDirectives.includes(directive.name)) {
@@ -604,26 +604,26 @@ const validateDirectives = <A, I, R>(
     })
   )
 
-const validateCircularDependencies = <A, I, R>(
+const validateCircularDependencies = <A = unknown, I = A, R = never>(
   builder: UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>
 ): Effect.Effect<UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>, never> =>
   Effect.succeed(builder) // Simplified for now - would implement cycle detection
 
-const validateCompatibility = <A, I, R>(
+const validateCompatibility = <A = unknown, I = A, R = never>(
   builder: UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>
 ): Effect.Effect<UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>, never> =>
   Effect.succeed(builder) // Simplified for now - would validate Federation version compatibility
 
-const createValidResult = <A, I, R>(
+const createValidResult = <A = unknown, I = A, R = never>(
   builder: UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>
 ): EntityValidationResult<A, I, R> => {
   const result = EntityValidationResult.Valid({
     entity: {
       typename: builder.typename,
-      schema: builder.schema!,
-      keys: builder.keys!,
-      directives: builder.directives!,
-      resolvers: builder.resolvers!,
+      schema: builder.schema,
+      keys: builder.keys ?? [],
+      directives: builder.directives ?? [],
+      resolvers: builder.resolvers ?? {},
       metadata: {
         typename: builder.typename,
         version: '2.0.0',
@@ -643,7 +643,7 @@ const createValidResult = <A, I, R>(
   return result as EntityValidationResult<A, I, R>
 }
 
-const handleValidationErrors = <A, I, R>(
+const handleValidationErrors = <A = unknown, I = A, R = never>(
   errors:
     | readonly SchemaValidationError[]
     | readonly KeyValidationError[]
@@ -742,7 +742,9 @@ export const matchEntityValidationResult =
 // Utility Functions
 // ============================================================================
 
-const getSchemaFields = <A, I, R>(schema: Schema.Schema<A, I, R>): readonly string[] => {
+const getSchemaFields = <A = unknown, I = A, R = never>(
+  schema: Schema.Schema<A, I, R>
+): readonly string[] => {
   const ast = schema.ast
 
   // Handle struct schemas which are the most common for entities

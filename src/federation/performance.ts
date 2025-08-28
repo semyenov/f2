@@ -1,17 +1,17 @@
-import { Effect, pipe, Duration } from 'effect'
-import DataLoader from 'dataloader'
-import type { ExecutionResult } from 'graphql'
-import { GraphQLError } from 'graphql'
 import type {
+  CompositionError,
+  DataLoaderConfig,
   FederatedSchema,
+  MetricsConfig,
   PerformanceConfig,
   QueryPlanCacheConfig,
-  DataLoaderConfig,
-  MetricsConfig,
-  CompositionError,
   ValidationError,
 } from '@core'
 import { ErrorFactory } from '@core'
+import DataLoader from 'dataloader'
+import { Duration, Effect, pipe } from 'effect'
+import type { ExecutionResult } from 'graphql'
+import { GraphQLError } from 'graphql'
 
 /**
  * Query plan representation for federation query execution
@@ -651,7 +651,9 @@ export namespace PerformanceOptimizations {
 
       clearAll: () =>
         Effect.sync(() => {
-          loaders.forEach(loader => loader.clearAll())
+          for (const [, loader] of loaders) {
+            loader.clearAll()
+          }
           loaders.clear()
           stats.clear()
         }),
@@ -769,12 +771,18 @@ export namespace PerformanceOptimizations {
       Effect.flatMap(cachedPlan => {
         if (cachedPlan) {
           return pipe(
-            optimizations.metricsCollector.recordCacheOperation({ type: 'hit', key: queryHash }),
+            optimizations.metricsCollector.recordCacheOperation({
+              type: 'hit',
+              key: queryHash,
+            }),
             Effect.as(cachedPlan.plan)
           )
         } else {
           return pipe(
-            optimizations.metricsCollector.recordCacheOperation({ type: 'miss', key: queryHash }),
+            optimizations.metricsCollector.recordCacheOperation({
+              type: 'miss',
+              key: queryHash,
+            }),
             Effect.flatMap(() => createQueryPlan(schema, query)),
             Effect.tap(plan => optimizations.queryPlanCache.set(queryHash, plan))
           )

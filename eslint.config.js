@@ -63,13 +63,6 @@ export default [
       'no-unused-vars': 'off',
     },
   },
-  {
-    files: ['tests/**/*.ts', 'src/examples/**/*.ts'],
-    rules: {
-      'no-console': 'off',
-      '@typescript-eslint/no-explicit-any': 'off',
-      'functional/no-let': 'off',
-    },
-  },
+
   prettier,
 ]

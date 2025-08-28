@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * Import Conversion Script
- * 
+ *
  * Converts relative imports to barrel export paths using the @/* path mapping system.
  * This script maintains ESM .js extensions and handles both named and wildcard imports.
  */
@@ -118,13 +118,13 @@ const IMPORT_REPLACEMENTS: ImportReplacement[] = [
 
 async function getAllTypeScriptFiles(dir: string): Promise<string[]> {
   const files: string[] = []
-  
+
   try {
     const entries = await readdir(dir, { withFileTypes: true })
-    
+
     for (const entry of entries) {
       const fullPath = join(dir, entry.name)
-      
+
       if (entry.isDirectory() && entry.name !== 'node_modules' && entry.name !== 'dist') {
         files.push(...await getAllTypeScriptFiles(fullPath))
       } else if (entry.isFile() && entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) {
@@ -134,7 +134,7 @@ async function getAllTypeScriptFiles(dir: string): Promise<string[]> {
   } catch (error) {
     console.warn(`Warning: Could not read directory ${dir}:`, error)
   }
-  
+
   return files
 }
 
@@ -143,21 +143,21 @@ async function convertImportsInFile(filePath: string): Promise<{ modified: boole
     const content = await readFile(filePath, 'utf-8')
     let modifiedContent = content
     const changes: string[] = []
-    
+
     for (const replacement of IMPORT_REPLACEMENTS) {
       const matches = [...content.matchAll(replacement.pattern)]
-      
+
       if (matches.length > 0) {
         modifiedContent = modifiedContent.replace(replacement.pattern, replacement.replacement)
         changes.push(`${replacement.description} (${matches.length} occurrence${matches.length > 1 ? 's' : ''})`)
       }
     }
-    
+
     if (changes.length > 0) {
       await writeFile(filePath, modifiedContent, 'utf-8')
       return { modified: true, changes }
     }
-    
+
     return { modified: false, changes: [] }
   } catch (error) {
     console.error(`Error processing file ${filePath}:`, error)
@@ -169,16 +169,16 @@ async function main() {
   const targetDir = process.argv[2] ? resolve(process.cwd(), process.argv[2]) : resolve(process.cwd(), 'src')
   console.log('🔄 Converting relative imports to barrel exports...')
   console.log(`📁 Scanning directory: ${targetDir}`)
-  
+
   const tsFiles = await getAllTypeScriptFiles(targetDir)
   console.log(`📄 Found ${tsFiles.length} TypeScript files`)
-  
+
   let totalModified = 0
   let totalChanges = 0
-  
+
   for (const filePath of tsFiles) {
     const result = await convertImportsInFile(filePath)
-    
+
     if (result.modified) {
       totalModified++
       totalChanges += result.changes.length
@@ -189,12 +189,12 @@ async function main() {
       }
     }
   }
-  
+
   console.log(`\n📊 Summary:`)
   console.log(`   Files processed: ${tsFiles.length}`)
   console.log(`   Files modified: ${totalModified}`)
   console.log(`   Total changes: ${totalChanges}`)
-  
+
   if (totalModified === 0) {
     console.log('✨ No imports needed conversion!')
   } else {

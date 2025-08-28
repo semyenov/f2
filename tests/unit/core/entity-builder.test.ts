@@ -1,7 +1,7 @@
+import { createEntityBuilder } from '@core'
 import * as Effect from 'effect/Effect'
 import * as Schema from 'effect/Schema'
 import { describe, expect, it } from 'vitest'
-import { createEntityBuilder } from '@core'
 
 describe('FederationEntityBuilder', () => {
   const UserSchema = Schema.Struct({
@@ -67,8 +67,8 @@ describe('FederationEntityBuilder', () => {
 
   it('should handle field resolvers with Effect', async () => {
     const builder = createEntityBuilder('User', UserSchema, ['id'])
-      .withField('id', (parent: any) =>
-        Effect.succeed(`${parent.name || 'Anonymous'} (${parent.email})`)
+      .withField('id', (parent) =>
+        Effect.succeed(`${(Boolean(parent.name)) || 'Anonymous'} (${parent.email})`)
       )
 
     const entityEffect = builder.build()

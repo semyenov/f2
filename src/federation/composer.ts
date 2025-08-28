@@ -186,6 +186,14 @@
  * @see {@link https://effect.website/docs/guides/context-management | Effect Context Management}
  */
 
+import type {
+  FederatedSchema,
+  FederationCompositionConfig,
+  FederationEntity,
+  SchemaMetadata,
+  ServiceDefinition,
+} from '@core'
+import { CompositionError, ErrorFactory, type ValidationError } from '@core'
 import { Duration } from 'effect'
 import * as Context from 'effect/Context'
 import * as Effect from 'effect/Effect'
@@ -194,14 +202,6 @@ import * as LogLevel from 'effect/LogLevel'
 import * as Match from 'effect/Match'
 import type { GraphQLSchema } from 'graphql'
 import { buildSchema as buildGraphQLSchema } from 'graphql'
-import { CompositionError, ErrorFactory, type ValidationError } from '@core'
-import type {
-  FederatedSchema,
-  FederationCompositionConfig,
-  FederationEntity,
-  SchemaMetadata,
-  ServiceDefinition,
-} from '@core'
 
 // Modern Composer Service using Context.Tag
 export class FederationComposer extends Context.Tag('FederationComposer')<
@@ -233,7 +233,7 @@ interface SubgraphSchemaInfo {
 }
 
 // Implementation using Effect.gen
-const makeComposer = Effect.gen(function* () {
+const makeComposer = Effect.tryPromise(async () => {
   // Use a simple console logger for composer to avoid dependency issues
   const logger = {
     trace: (message: string, meta?: Record<string, unknown>) =>

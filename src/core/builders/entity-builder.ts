@@ -1,5 +1,5 @@
-import type * as Schema from 'effect/Schema'
 import { Effect, pipe } from 'effect'
+import type * as Schema from 'effect/Schema'
 import type { GraphQLOutputType, GraphQLResolveInfo } from 'graphql'
 import type {
   EntityDirective,
@@ -608,7 +608,9 @@ export class FederationEntityBuilder<
       }
     }
 
-    const entity: ValidatedEntity<TSource, TContext, TResult> & { key: string[] } = {
+    const entity: ValidatedEntity<TSource, TContext, TResult> & {
+      key: string[]
+    } = {
       typename: this.typename,
       schema: this.schema as unknown as Schema.Schema<TSource, TContext, TResult>,
       keys,
@@ -709,7 +711,9 @@ export const toFederationEntity = <
   TResult = TSource,
   TReference = Record<string, unknown>,
 >(
-  validatedEntity: ValidatedEntity<TSource, TContext, TResult> & { key: string[] },
+  validatedEntity: ValidatedEntity<TSource, TContext, TResult> & {
+    key: string[]
+  },
   referenceResolver?: EntityReferenceResolver<TResult, TContext, TReference>
 ): FederationEntity<TSource, TContext, TResult, TReference> => {
   // Build directives map

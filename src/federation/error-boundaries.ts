@@ -248,21 +248,20 @@
  * @see {@link https://www.apollographql.com/docs/federation/errors/ | Federation Error Handling}
  */
 
-import { Effect, pipe, Duration } from 'effect'
-import type { GraphQLResolveInfo } from 'graphql'
 import type {
-  ErrorBoundaryConfig,
-  CircuitBreakerConfig,
-  PartialFailureConfig,
-  ErrorTransformationConfig,
   CircuitBreaker,
-  CircuitBreakerState,
-  CircuitBreakerMetrics,
-  FederationError,
+  CircuitBreakerConfig,
   CircuitBreakerError,
+  CircuitBreakerMetrics,
+  CircuitBreakerState,
+  ErrorBoundaryConfig,
+  ErrorTransformationConfig,
+  FederationError,
+  PartialFailureConfig,
 } from '@core'
-import { CompositionError } from '@core'
-import { ErrorFactory } from '@core'
+import { type CompositionError, ErrorFactory } from '@core'
+import { Duration, Effect, pipe } from 'effect'
+import type { GraphQLResolveInfo } from 'graphql'
 
 /**
  * GraphQL resolver function type
@@ -528,7 +527,10 @@ export namespace FederationErrorBoundaries {
     if (config.fallbackValues !== undefined) {
       failed.forEach(failedResult => {
         const fallback = config.fallbackValues?.[failedResult.subgraphId] ?? {}
-        data = { ...(typeof data === 'object' && data !== null ? data : {}), ...fallback }
+        data = {
+          ...(typeof data === 'object' && data !== null ? data : {}),
+          ...fallback,
+        }
       })
     }
 
@@ -621,7 +623,7 @@ export namespace FederationErrorBoundaries {
                   })
                 )
 
-              case 'closed':
+              default:
                 return pipe(
                   effect,
                   Effect.tap(() =>
@@ -765,7 +767,9 @@ export namespace FederationErrorBoundaries {
         success: metrics.success,
         timestamp: Date.now(),
         ...(metrics.error !== undefined &&
-          metrics.error !== null && { errorType: metrics.error.constructor.name }),
+          metrics.error !== null && {
+            errorType: metrics.error.constructor.name,
+          }),
       },
     })
 

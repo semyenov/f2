@@ -26,7 +26,7 @@ describe('Federation Composition Integration', () => {
           const builder = createUltraStrictEntityBuilder('User', UserSchema as Schema.Schema<unknown, unknown, never>)
           const composed = yield* Effect.succeed(
             withResolvers({
-              fullName: (parent) => `${(parent as {name?: string}).name || 'Anonymous'}`,
+              fullName: (parent: unknown) => `${((parent as { name?: string }).name != null) || 'Anonymous'}`,
             })(
               withDirectives([
                 UltraStrictEntityBuilder.Directive.shareable(),
@@ -122,7 +122,7 @@ describe('Federation Composition Integration', () => {
               )
             )
           }),
-          
+
           // Order entity (depends on User)
           Effect.gen(function* () {
             const schema = Schema.Struct({
@@ -183,7 +183,7 @@ describe('Federation Composition Integration', () => {
       )
 
       expect(entityWithOverride._tag).toBe('Valid')
-      
+
       if (entityWithOverride._tag === 'Valid') {
         const overrideDirective = entityWithOverride.entity.directives.find(
           d => d.name === 'override'
@@ -220,7 +220,7 @@ describe('Federation Composition Integration', () => {
       )
 
       expect(entityWithFieldDirectives._tag).toBe('Valid')
-      
+
       if (entityWithFieldDirectives._tag === 'Valid') {
         const providesDirective = entityWithFieldDirectives.entity.directives.find(
           d => d.name === 'provides'
@@ -228,10 +228,10 @@ describe('Federation Composition Integration', () => {
         const requiresDirective = entityWithFieldDirectives.entity.directives.find(
           d => d.name === 'requires'
         )
-        
+
         expect(providesDirective).toBeDefined()
         expect(providesDirective?.args['fields']).toBe('category')
-        
+
         expect(requiresDirective).toBeDefined()
         expect(requiresDirective?.args['fields']).toBe('categoryId')
       }

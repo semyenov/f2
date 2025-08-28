@@ -8,7 +8,7 @@ import * as Types from '@core'
  */
 
 // Mock Logger Service
-export class MockLogger extends Context.Tag("MockLogger")<
+export abstract class MockLogger extends Context.Tag("MockLogger")<
   MockLogger,
   {
     readonly logs: ReadonlyArray<{ level: string; message: string; meta?: unknown }>
@@ -83,7 +83,7 @@ const makeMockConfig = Effect.gen(function* () {
 export const MockConfigLive = Layer.effect(MockConfig, makeMockConfig)
 
 // Mock Subgraph Registry
-export class MockSubgraphRegistry extends Context.Tag("MockSubgraphRegistry")<
+export abstract class MockSubgraphRegistry extends Context.Tag("MockSubgraphRegistry")<
   MockSubgraphRegistry,
   {
     readonly services: ReadonlyArray<Types.ServiceDefinition>
@@ -98,8 +98,8 @@ export class MockSubgraphRegistry extends Context.Tag("MockSubgraphRegistry")<
 
 const makeMockSubgraphRegistry = Effect.gen(function* () {
   let services: Types.ServiceDefinition[] = []
-  let healthStatuses = new Map<string, Types.HealthStatus>()
-  let failureSimulations = new Map<string, boolean>()
+  const healthStatuses = new Map<string, Types.HealthStatus>()
+  const failureSimulations = new Map<string, boolean>()
 
   return {
     get services() { return services as ReadonlyArray<Types.ServiceDefinition> },
@@ -123,7 +123,7 @@ const makeMockSubgraphRegistry = Effect.gen(function* () {
     health: (serviceId: string) =>
       Effect.gen(function* () {
         const shouldFail = failureSimulations.get(serviceId)
-        if (shouldFail) {
+        if (shouldFail ?? false) {
           // Simulate failure for testing
           return yield* Effect.fail(new Error(`Health check failed for service ${serviceId}`))
         }
@@ -150,7 +150,7 @@ const makeMockSubgraphRegistry = Effect.gen(function* () {
 export const MockSubgraphRegistryLive = Layer.effect(MockSubgraphRegistry, makeMockSubgraphRegistry)
 
 // Mock Circuit Breaker
-export class MockCircuitBreaker extends Context.Tag("MockCircuitBreaker")<
+export abstract class MockCircuitBreaker extends Context.Tag("MockCircuitBreaker")<
   MockCircuitBreaker,
   {
     readonly state: "open" | "closed" | "half-open"

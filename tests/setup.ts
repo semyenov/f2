@@ -9,12 +9,12 @@ import { beforeAll, afterAll, afterEach } from 'vitest'
 // Setup global test environment
 beforeAll(() => {
   // Set test environment variables if needed
-  // process.env.NODE_ENV = 'test'
+  process.env.NODE_ENV = 'test'
   
   // Suppress console output during tests (optional)
-  // console.log = () => {}
-  // console.info = () => {}
-  // console.warn = () => {}
+  console.log = () => {}
+  console.info = () => {}
+  console.warn = () => {}
 })
 
 // Cleanup after each test
@@ -29,10 +29,10 @@ afterAll(() => {
 
 // Make expect available globally for compatibility
 
-// declare global {
-//   namespace NodeJS {
-//     interface Global {
-//       expect: typeof expect
-//     }
-//   }
-// }
+declare global {
+  interface Global {
+    fetch: typeof fetch
+  }
+}
+
+export {}
