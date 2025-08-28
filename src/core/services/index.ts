@@ -1,6 +1,6 @@
 /**
- * Service layer exports for Federation Framework v2
- * 
+ * Service layer exports for Federation Framework
+ *
  * Provides all the core services needed for the federation system
  */
 

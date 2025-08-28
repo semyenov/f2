@@ -1,5 +1,5 @@
 /**
- * Schema-First Development Patterns for Federation Framework v2
+ * Schema-First Development Patterns for Federation Framework
  *
  * Advanced schema-first development system that enables GraphQL schema evolution,
  * automated code generation, validation pipelines, and seamless integration with
@@ -10,7 +10,7 @@
  * Schema-first development puts the GraphQL schema at the center of your development workflow:
  * - **Schema as Source of Truth**: GraphQL schema defines the contract between services
  * - **Code Generation**: Automatically generate TypeScript types, resolvers, and validators
- * - **Schema Evolution**: Manage schema changes with migration and compatibility checking
+ * - **Schema Evolution**: Manage schema changes with compatibility checking
  * - **Validation Pipelines**: Ensure schema compliance before deployment
  * - **Federation Integration**: Seamless integration with Apollo Federation directives
  *
@@ -30,8 +30,8 @@
  * - **Hot Schema Reloading**: Watch GraphQL files and automatically regenerate types
  * - **Schema Validation**: Comprehensive validation with Federation directive checking
  * - **Entity Code Generation**: Generate ultra-strict entity builders from GraphQL
- * - **Migration Management**: Track schema changes and generate migration scripts
- * - **Compatibility Checking**: Ensure backward compatibility across schema versions
+ * - **Change Management**: Track schema changes and generate evolution strategies
+ * - **Compatibility Checking**: Ensure compatibility across schema versions
  * - **Federation Directives**: Full support for @key, @shareable, @inaccessible, etc.
  * - **TypeScript Integration**: Generate type-safe resolvers and context types
  *
@@ -66,7 +66,7 @@
  * })
  * ```
  *
- * @example Advanced schema evolution with migrations
+ * @example Advanced schema evolution
  * ```typescript
  * const schemaEvolution = Effect.gen(function* () {
  *   const manager = yield* SchemaFirstDevelopment.create(config)
@@ -83,19 +83,19 @@
  *   return yield* Match.value(compatibility).pipe(
  *     Match.tag('Compatible', ({ changes }) =>
  *       Effect.gen(function* () {
- *         yield* logger.info('Schema is backward compatible', { changes })
+ *         yield* logger.info('Schema is compatible', { changes })
  *         return yield* manager.deploySchema(newSchema)
  *       })
  *     ),
- *     Match.tag('BreakingChanges', ({ breakingChanges, migrations }) =>
+ *     Match.tag('BreakingChanges', ({ breakingChanges, changes }) =>
  *       Effect.gen(function* () {
  *         yield* logger.warn('Breaking changes detected', { breakingChanges })
  *
- *         // Generate migration strategy
- *         const strategy = yield* manager.generateMigrationStrategy(migrations)
+ *         // Generate evolution strategy
+ *         const strategy = yield* manager.generateEvolutionStrategy(changes)
  *
- *         // Apply migrations in staging first
- *         yield* manager.applyMigrations(strategy, 'staging')
+ *         // Apply changes in staging first
+ *         yield* manager.applyChanges(strategy, 'staging')
  *
  *         // Validate in staging
  *         yield* manager.validateDeployment('staging')

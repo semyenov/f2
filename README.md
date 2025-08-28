@@ -1,4 +1,4 @@
-# 🌐 Federation Framework v2
+# 🌐 Federation Framework
 
 > **Complete Apollo Federation 2.x framework with Effect-TS, ultra-strict TypeScript patterns, schema-first development, and enterprise-grade resilience features**
 
@@ -156,7 +156,7 @@ const createUserEntity = () => {
 
 ```typescript
 import {
-  ModernFederationComposer,
+  FederationComposer,
   SubgraphManagement,
   FederationErrorBoundaries,
   PerformanceOptimizations,
@@ -210,7 +210,7 @@ const setupEnterpriseFederation = Effect.gen(function* () {
   })
 
   // Compose federation schema
-  const federatedSchema = yield* ModernFederationComposer.create({
+  const federatedSchema = yield* FederationComposer.create({
     entities: [userEntity],
     registry,
     errorBoundary,
@@ -273,7 +273,7 @@ const developSchema = Effect.gen(function* () {
 
 ## 🏗️ **Architecture Overview**
 
-Federation Framework v2 follows a layered architecture with strict separation of concerns:
+Federation Framework follows a layered architecture with strict separation of concerns:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -496,7 +496,7 @@ return Effect.fail(
 <details>
 <summary><strong>How does this compare to Apollo Federation Gateway?</strong></summary>
 
-Federation Framework v2 is designed as a **development framework** rather than a runtime gateway. Key differences:
+Federation Framework is designed as a **development framework** rather than a runtime gateway. Key differences:
 
 - **Development Focus**: Provides tools for building federation-enabled GraphQL services
 - **Effect-TS Integration**: Leverages Effect-TS for type-safe, composable operations
@@ -590,8 +590,8 @@ const evolution = yield * SchemaEvolution.analyze(previousSchema, currentSchema)
 const breakingChanges = evolution.breakingChanges
 const safeChanges = evolution.safeChanges
 
-// Generate migration steps
-const migrationPlan = yield * SchemaEvolution.createMigrationPlan(evolution)
+// Generate evolution strategy
+const evolutionPlan = yield * SchemaEvolution.createEvolutionPlan(evolution)
 ```
 
 See the **[Schema Evolution Guide](https://federation-v2-docs.netlify.app/modules.html#SchemaEvolution)** for detailed examples.

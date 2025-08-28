@@ -1,5 +1,5 @@
 /**
- * Effect-based configuration service for Federation Framework v2
+ * Effect-based configuration service for Federation Framework
  *
  * Comprehensive configuration management system providing type-safe configuration
  * loading, validation, environment variable support, and runtime configuration updates
@@ -28,7 +28,7 @@
  * ### Database Configuration
  * - Connection strings and pool settings
  * - Transaction and query timeouts
- * - Migration and seeding options
+ * - Database initialization options
  *
  * ### Cache Configuration
  * - Redis connection and clustering
@@ -144,7 +144,7 @@ import * as Config from 'effect/Config'
 import * as Schema from '@effect/schema/Schema'
 
 /**
- * Federation Framework v2 configuration schema with comprehensive validation
+ * Federation Framework configuration schema with comprehensive validation
  *
  * Defines the complete configuration structure for federated GraphQL services,
  * including server settings, database connections, caching, resilience patterns,
@@ -275,7 +275,7 @@ const defaultConfig: FederationServiceConfig = {
     },
     tracing: {
       enabled: true,
-      serviceName: 'federation-v2',
+      serviceName: 'federation',
       endpoint: 'http://localhost:14268/api/traces',
     },
   },

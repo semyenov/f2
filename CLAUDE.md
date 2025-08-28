@@ -39,7 +39,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture Overview
 
-**Federation Framework v2** - Apollo Federation 2.x framework built with Effect-TS, emphasizing functional programming and enterprise resilience.
+**Federation Framework** - Apollo Federation framework built with Effect-TS, emphasizing functional programming and enterprise resilience.
 
 ### Core Architecture
 
@@ -142,4 +142,4 @@ health: (serviceId: string) =>
 - ValidatedEntity structure differs from FederationEntity (uses `keys` array not `key`)
 - Schema-first patterns may use `any` for generic entity types due to interface constraints
 - Entity builder's `build()` method returns `Effect.Effect<ValidatedEntity<>, ValidationError>`
-- For backward compatibility, entity builder adds a `key` property alongside `keys`
+- For compatibility, entity builder adds a `key` property alongside `keys`

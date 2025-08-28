@@ -2,7 +2,7 @@
  * # Comprehensive Functional Programming Patterns Demo
  * 
  * This comprehensive example demonstrates all major functional programming patterns
- * used in the Federation Framework v2, showcasing how Effect-TS enables elegant,
+ * used in the Federation Framework, showcasing how Effect-TS enables elegant,
  * type-safe, and composable GraphQL federation systems.
  * 
  * ## 🎯 Featured Patterns
@@ -628,7 +628,7 @@ const createFederatedSchema = () =>
  * Demonstrates: Effect.gen composition, error handling, and layer management
  */
 const mainDemo = Effect.gen(function* () {
-  yield* Effect.logInfo('🚀 Starting Federation Framework v2 Functional Patterns Demo')
+  yield* Effect.logInfo('🚀 Starting Federation Framework Functional Patterns Demo')
 
   // === 1. Schema and Entity Creation ===
   yield* Effect.logInfo('📋 Creating federated entities with Apollo Federation 2.x directives...')
@@ -706,7 +706,7 @@ const mainDemo = Effect.gen(function* () {
 
   yield* Effect.logInfo(`📈 Metrics: ${performanceData.executionMetrics.totalExecutions} executions, ${performanceData.executionMetrics.averageDuration}ms avg`)
 
-  yield* Effect.logInfo('🎉 Federation Framework v2 Functional Patterns Demo completed successfully!')
+  yield* Effect.logInfo('🎉 Federation Framework Functional Patterns Demo completed successfully!')
 
   return {
     schema,
@@ -758,11 +758,11 @@ const demoWithErrorHandling = pipe(
 /**
  * Run the complete demonstration with proper layer management
  * This showcases the complete functional programming approach used throughout
- * the Federation Framework v2.
+ * the Federation Framework.
  */
 const runDemo = () => {
   console.log('\n' + '='.repeat(80))
-  console.log('🌐 Federation Framework v2 - Comprehensive Functional Patterns Demo')
+  console.log('🌐 Federation Framework - Comprehensive Functional Patterns Demo')
   console.log('='.repeat(80) + '\n')
 
   return Effect.runPromise(

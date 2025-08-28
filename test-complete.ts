@@ -1,4 +1,4 @@
-// Comprehensive test of the built Federation v2 package
+// Comprehensive test of the built Federation package
 import * as Effect from "effect/Effect"
 import {
   FederationEntityBuilder,
@@ -15,7 +15,7 @@ import { Duration } from "effect"
 
 // Note: Demo code is bundled within the main package for comprehensive testing
 
-console.log("🧪 Testing Complete Federation v2 Package")
+console.log("🧪 Testing Complete Federation Package")
 console.log("=".repeat(50))
 console.log(`📦 Package: ${FRAMEWORK_INFO.name} v${VERSION}`)
 console.log(`🚀 Features: ${FRAMEWORK_INFO.features.length} total`)
@@ -23,8 +23,8 @@ FRAMEWORK_INFO.features.forEach((feature, i) => {
   console.log(`   ${i + 1}. ${feature}`)
 })
 
-// Legacy compatibility tests
-console.log("\n📋 === LEGACY COMPATIBILITY TESTS ===")
+// Compatibility tests
+console.log("\n📋 === COMPATIBILITY TESTS ===")
 
 // Test 1: Original Entity Builder
 console.log("\n✅ Testing FederationEntityBuilder...")
@@ -79,7 +79,7 @@ console.log("   ✓ Workflow orchestration patterns ready")
 console.log("   ✓ Evolution safety mechanisms enabled")
 
 console.log("\n" + "=".repeat(50))
-console.log("🎉 All Federation v2 Components Working!")
+console.log("🎉 All Federation Components Working!")
 console.log("=".repeat(50))
 console.log("✅ Core Entity Builder - Federation 2.x directives")
 console.log("✅ Subgraph Management - Service discovery & health")
@@ -91,7 +91,7 @@ console.log("✅ AST Conversion - Effect Schema to GraphQL")
 console.log("✅ Effect-First Architecture - Functional patterns")
 console.log("✅ Ultra-Strict TypeScript - Type safety")
 
-console.log("\n🚀 Federation v2 Framework is production-ready!")
+console.log("\n🚀 Federation Framework is production-ready!")
 console.log(`📊 Package size: ~79 KB (ESM), ~87 KB (CJS)`)
 console.log(`🗜️  Compressed: ~18 KB gzipped`)
 
@@ -113,5 +113,5 @@ console.log("   🏗️  Architecture: Effect-first functional patterns")
 console.log("   🛡️  Resilience: Circuit breakers & error boundaries")
 console.log("   🚀 Performance: Caching & DataLoader batching")
 
-console.log("\n🎉 Federation Framework v2 is fully operational!")
+console.log("\n🎉 Federation Framework is fully operational!")
 console.log("All components tested and working in harmony. 🚀")

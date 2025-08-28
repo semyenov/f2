@@ -43,18 +43,18 @@
  * - **Complexity Trade-offs**: Added type safety comes with learning curve overhead
  * - **Ecosystem Maturity**: Integration with tooling may be limited
  *
- * ## 🚀 Migration Path
+ * ## 🚀 Usage Comparison
  *
- * To migrate from standard to ultra-strict builder:
+ * Comparing standard and ultra-strict builder approaches:
  *
  * ```typescript
- * // Before: Standard builder
+ * // Standard builder
  * const entity = createEntityBuilder('User', UserSchema, ['id'])
  *   .withShareableField('name')
  *   .withReferenceResolver(resolveUser)
  *   .build()
  *
- * // After: Ultra-strict builder
+ * // Ultra-strict builder
  * const entity = createUltraStrictEntityBuilder('User')
  *   .pipe(withSchema(UserSchema))
  *   .pipe(withKeys([UltraStrictEntityBuilder.Key.create('id', GraphQLID)]))

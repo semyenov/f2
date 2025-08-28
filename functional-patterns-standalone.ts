@@ -1,7 +1,7 @@
 /**
  * # Comprehensive Functional Programming Patterns Demo - Standalone
  * 
- * This example demonstrates functional programming patterns used in Federation Framework v2
+ * This example demonstrates functional programming patterns used in Federation Framework
  * without depending on the complex entity builders, focusing purely on Effect-TS patterns.
  * 
  * ## 🎯 Featured Patterns
@@ -492,7 +492,7 @@ const demonstrateErrorHandling = (
  */
 const mainDemo = Effect.gen(function* () {
   yield* Effect.log('================================================================================')
-  yield* Effect.log('🌐 Federation Framework v2 - Functional Programming Patterns Demo')
+  yield* Effect.log('🌐 Federation Framework - Functional Programming Patterns Demo')
   yield* Effect.log('================================================================================')
   yield* Effect.log('')
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "name": "Federation Framework v2",
+  "name": "Federation Framework",
   "entryPoints": ["src/index.ts"],
   "entryPointStrategy": "expand",
   "out": "docs",
@@ -44,7 +44,6 @@
   },
   "sidebarLinks": {
     "🚀 Getting Started": "https://github.com/cqrs/federation#getting-started",
-    "📋 Migration Guide": "https://github.com/cqrs/federation/blob/main/MIGRATION.md",
     "💡 Examples": "https://github.com/cqrs/federation/tree/main/src/examples",
     "🔧 Configuration": "https://github.com/cqrs/federation#configuration",
     "🎯 Best Practices": "https://github.com/cqrs/federation#best-practices",
@@ -130,7 +129,7 @@
     "@packageDocumentation",
     "@template"
   ],
-  "inlineTags": ["@link", "@linkcode", "@linkplain", "@label"],
+  "inlineTags": ["@link", "@linkcode", "@linkplain", "@label", "@since"],
   "modifierTags": [
     "@override",
     "@internal",

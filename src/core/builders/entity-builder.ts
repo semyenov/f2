@@ -20,7 +20,7 @@ import type {
 import { ErrorFactory } from '../errors.js'
 
 /**
- * Modern Federation Entity Builder with full Apollo Federation 2.x directive support
+ * Federation Entity Builder with full Apollo Federation 2.x directive support
  *
  * A fluent builder for creating federated GraphQL entities with comprehensive directive support,
  * Effect-based error handling, and type-safe field resolution.
@@ -239,7 +239,7 @@ export class FederationEntityBuilder<
    *
    * The @override directive indicates that the current subgraph is taking over
    * responsibility for resolving a particular field from the specified subgraph.
-   * This allows for gradual migration of field ownership between services.
+   * This allows for gradual transfer of field ownership between services.
    *
    * @example Basic field override
    * ```typescript
@@ -251,7 +251,7 @@ export class FederationEntityBuilder<
    *   .build()
    * ```
    *
-   * @example Service migration scenario
+   * @example Service ownership transfer
    * ```typescript
    * // Taking over user profile management from auth service
    * const userEntity = createEntityBuilder('User', UserSchema, ['id'])
@@ -612,7 +612,7 @@ export class FederationEntityBuilder<
       directives,
       resolvers,
       metadata,
-      // Add backward-compatible key property for tests
+      // Add compatible key property for tests
       key: keys.map(k => k.field),
     }
 

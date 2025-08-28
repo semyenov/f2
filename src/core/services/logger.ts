@@ -1,5 +1,5 @@
 /**
- * Effect-based logging service for Federation Framework v2
+ * Effect-based logging service for Federation Framework
  *
  * Advanced structured logging system built on Effect-TS with support for distributed tracing,
  * contextual metadata, different log levels, and environment-specific configurations.
@@ -203,8 +203,7 @@ const make = Effect.gen(function* () {
     withSpan: <A, E, R>(name: string, effect: Effect.Effect<A, E, R>) =>
       Effect.withSpan(effect, name, {
         attributes: {
-          service: 'federation-v2',
-          version: '2.0.0',
+          service: 'federation',
         },
       }),
   }

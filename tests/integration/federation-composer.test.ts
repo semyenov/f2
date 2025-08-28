@@ -3,7 +3,7 @@ import * as Effect from 'effect/Effect'
 import * as Schema from '@effect/schema/Schema'
 import { Duration, Layer } from 'effect'
 import { createEntityBuilder } from '../../src/core/builders/entity-builder.js'
-import { createFederatedSchema, ModernFederationComposerLive } from '../../src/federation/composer.js'
+import { createFederatedSchema, FederationComposerLive } from '../../src/federation/composer.js'
 import { TestLayerLive } from '../../src/core/services/layers.js'
 import { asUntypedEntity } from '../../src/core/types.js'
 import type { FederationEntity } from '../../src/core/types.js'
@@ -11,7 +11,7 @@ import type { FederationEntity } from '../../src/core/types.js'
 describe('Federation Composer Integration', () => {
   // Ensure all required services are explicitly provided with correct dependency order
   const testLayers = TestLayerLive.pipe(
-    Layer.provide(ModernFederationComposerLive)
+    Layer.provide(FederationComposerLive)
   )
   
   const UserSchema = Schema.Struct({

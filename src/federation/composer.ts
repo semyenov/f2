@@ -30,11 +30,11 @@
  *
  * @example Basic federation composition
  * ```typescript
- * import { ModernFederationComposer } from '@cqrs/federation-v2'
+ * import { FederationComposer } from '@cqrs/federation-v2'
  * import { Effect } from 'effect'
  *
  * const composeSchema = Effect.gen(function* () {
- *   const composer = yield* ModernFederationComposer
+ *   const composer = yield* FederationComposer
  *
  *   const config = {
  *     entities: [userEntity, productEntity, orderEntity],
@@ -72,7 +72,7 @@
  * @example Advanced composition with custom validation
  * ```typescript
  * const composeWithValidation = Effect.gen(function* () {
- *   const composer = yield* ModernFederationComposer
+ *   const composer = yield* FederationComposer
  *
  *   // Step 1: Custom validation
  *   const validatedConfig = yield* composer.validate(baseConfig).pipe(
@@ -92,7 +92,7 @@
  * ```typescript
  * const hotComposeSchema = (newConfig: FederationCompositionConfig) =>
  *   Effect.gen(function* () {
- *     const composer = yield* ModernFederationComposer
+ *     const composer = yield* FederationComposer
  *     const logger = yield* FederationLogger
  *
  *     yield* logger.info('Starting hot schema composition', {
@@ -124,7 +124,7 @@
  * @example Error handling and fallback strategies
  * ```typescript
  * const robustComposition = Effect.gen(function* () {
- *   const composer = yield* ModernFederationComposer
+ *   const composer = yield* FederationComposer
  *   const logger = yield* FederationLogger
  *
  *   return yield* composer.compose(config).pipe(
@@ -163,7 +163,7 @@
  * ```typescript
  * const environmentAwareComposition = (environment: string) =>
  *   Effect.gen(function* () {
- *     const composer = yield* ModernFederationComposer
+ *     const composer = yield* FederationComposer
  *
  *     // Environment-specific configuration
  *     const envConfig = yield* Match.value(environment).pipe(
@@ -203,8 +203,8 @@ import type {
 import { ValidationError, CompositionError, ErrorFactory } from '../core/errors.js'
 
 // Modern Composer Service using Context.Tag
-export class ModernFederationComposer extends Context.Tag('ModernFederationComposer')<
-  ModernFederationComposer,
+export class FederationComposer extends Context.Tag('FederationComposer')<
+  FederationComposer,
   {
     readonly compose: (
       config: FederationCompositionConfig
@@ -464,7 +464,7 @@ const createMetadata = (
 }
 
 // Layer for the composer service - depends on FederationLogger
-export const ModernFederationComposerLive = Layer.effect(ModernFederationComposer, makeComposer)
+export const FederationComposerLive = Layer.effect(FederationComposer, makeComposer)
 
 // Convenience functions - use the internal compose function directly
 export const compose = (config: FederationCompositionConfig) =>
@@ -475,7 +475,7 @@ export const compose = (config: FederationCompositionConfig) =>
   })
 
 export const validateConfig = (config: FederationCompositionConfig) =>
-  Effect.flatMap(ModernFederationComposer, composer => composer.validate(config))
+  Effect.flatMap(FederationComposer, composer => composer.validate(config))
 
 // Pattern matching for composition errors
 export const handleCompositionError = (error: CompositionError) =>

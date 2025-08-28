@@ -1,5 +1,5 @@
 /**
- * Layer compositions for Federation Framework v2
+ * Layer compositions for Federation Framework
  *
  * Pre-composed Effect layers for different deployment environments and use cases,
  * providing dependency injection patterns, service composition, and environment-specific
