@@ -21,7 +21,6 @@ Federation Framework v2 is a complete rewrite that brings cutting-edge functiona
 - 🏗️ **Effect-First Architecture** - Pure functional patterns throughout with Layer-based dependency injection
 - 🔒 **Pattern Matching** - Exhaustive error handling and validation
 - 📊 **Service Discovery & Health Monitoring** - Production-ready orchestration with connection pooling
-- 🏆 **Consolidated API Surface** - Removed legacy patterns, single modern API
 - 🛡️ **Enhanced Type Safety** - Advanced TypeScript utility types, zero 'any' usage
 - **Apollo Federation 2.x Support**: Full directive support (@shareable, @inaccessible, @tag, @override, @external, @provides, @requires)
 - **Hot Reload**: Development-friendly schema updates
@@ -126,12 +125,12 @@ const createUserEntity = () => {
     .withTaggedField('name', ['pii'])
     .withReferenceResolver((reference, context) =>
       fetchUserById(reference.id).pipe(
-        Effect.mapError(error => 
-          new EntityResolutionError("User not found", "User", reference.id, error)
+        Effect.mapError(
+          error => new EntityResolutionError('User not found', 'User', reference.id, error)
         )
       )
     )
-  
+
   return builder.build()
 }
 ```
@@ -144,7 +143,7 @@ import {
   SubgraphManagement,
   FederationErrorBoundaries,
   PerformanceOptimizations,
-  ProductionLayerLive
+  ProductionLayerLive,
 } from '@cqrs/federation-v2'
 import * as Effect from 'effect/Effect'
 import * as Duration from 'effect/Duration'
@@ -152,7 +151,7 @@ import * as Duration from 'effect/Duration'
 const setupEnterpriseFederation = Effect.gen(function* () {
   // Create user entity
   const userEntity = yield* createUserEntity()
-  
+
   // Configure performance-optimized federation
   const federatedSchema = yield* createFederatedSchema({
     entities: [userEntity],
@@ -175,33 +174,33 @@ const setupEnterpriseFederation = Effect.gen(function* () {
         allowPartialFailure: true,
         criticalSubgraphs: ['users'], // Critical services
         fallbackValues: {
-          products: { products: [] } // Graceful degradation
-        }
+          products: { products: [] }, // Graceful degradation
+        },
       },
     },
     // Performance optimizations with LRU cache and adaptive batching
     performance: {
-      queryPlanCache: { 
+      queryPlanCache: {
         maxSize: 1000,
         evictionStrategy: 'lru-batch', // 40% faster eviction
-        ttl: Duration.minutes(10) 
+        ttl: Duration.minutes(10),
       },
-      dataLoaderConfig: { 
+      dataLoaderConfig: {
         maxBatchSize: 100,
         adaptiveBatching: true, // Dynamic batch size adjustment
-        batchWindow: Duration.millis(10)
+        batchWindow: Duration.millis(10),
       },
       connectionPool: {
         maxConnections: 10,
-        reuseConnections: true // Service discovery optimization
-      }
+        reuseConnections: true, // Service discovery optimization
+      },
     },
     // Service discovery with health monitoring
     discovery: {
       mode: 'dynamic',
       healthCheckInterval: Duration.seconds(30),
-      connectionPooling: true
-    }
+      connectionPooling: true,
+    },
   })
 
   return federatedSchema
@@ -209,9 +208,7 @@ const setupEnterpriseFederation = Effect.gen(function* () {
 
 // Execute with production optimizations
 const federatedSchema = await Effect.runPromise(
-  setupEnterpriseFederation.pipe(
-    Effect.provide(ProductionLayerLive)
-  )
+  setupEnterpriseFederation.pipe(Effect.provide(ProductionLayerLive))
 )
 ```
 
@@ -363,21 +360,21 @@ bun run docs:generate           # Generate API documentation with TypeDoc
 
 ## 📈 **Performance Characteristics**
 
-| Metric                     | Value                                          |
-| -------------------------- | ---------------------------------------------- |
-| **Bundle Size (ESM)**      | ~108KB (22KB gzipped) ⚡ Optimized build       |
-| **Bundle Size (CJS)**      | ~115KB (24KB gzipped)                          |
-| **Type Definitions**       | ~125KB (16KB gzipped) 📝 Enhanced types        |
-| **Tree Shaking**           | ✅ Full support with barrel optimizations      |
-| **Zero Dependencies**      | ✅ Runtime independent                         |
-| **Effect-TS Integration**  | ✅ 100% compatible (v3.19+)                    |
-| **Query Plan Cache**       | ✅ LRU with 10% batch eviction (40% faster)    |
-| **DataLoader Batching**    | ✅ Adaptive batching with performance monitoring |
+| Metric                     | Value                                              |
+| -------------------------- | -------------------------------------------------- |
+| **Bundle Size (ESM)**      | ~108KB (22KB gzipped) ⚡ Optimized build           |
+| **Bundle Size (CJS)**      | ~115KB (24KB gzipped)                              |
+| **Type Definitions**       | ~125KB (16KB gzipped) 📝 Enhanced types            |
+| **Tree Shaking**           | ✅ Full support with barrel optimizations          |
+| **Zero Dependencies**      | ✅ Runtime independent                             |
+| **Effect-TS Integration**  | ✅ 100% compatible (v3.19+)                        |
+| **Query Plan Cache**       | ✅ LRU with 10% batch eviction (40% faster)        |
+| **DataLoader Batching**    | ✅ Adaptive batching with performance monitoring   |
 | **Circuit Breakers**       | ✅ Pre-calculated timeouts for optimal performance |
-| **Connection Pooling**     | ✅ Service discovery with connection reuse     |
-| **TypeScript Strict Mode** | ✅ Ultra-strict with phantom types             |
-| **Security Auditing**      | ✅ Automated CI/CD security scanning           |
-| **Test Coverage**          | ✅ Unit, integration, and property-based tests |
+| **Connection Pooling**     | ✅ Service discovery with connection reuse         |
+| **TypeScript Strict Mode** | ✅ Ultra-strict with phantom types                 |
+| **Security Auditing**      | ✅ Automated CI/CD security scanning               |
+| **Test Coverage**          | ✅ Unit, integration, and property-based tests     |
 
 ## Quality Assurance & Security
 

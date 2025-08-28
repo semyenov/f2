@@ -1,7 +1,7 @@
-import { Effect, pipe, Duration } from "effect"
-import DataLoader from "dataloader"
-import type { ExecutionResult } from "graphql"
-import { GraphQLError } from "graphql"
+import { Effect, pipe, Duration } from 'effect'
+import DataLoader from 'dataloader'
+import type { ExecutionResult } from 'graphql'
+import { GraphQLError } from 'graphql'
 import type {
   FederatedSchema,
   PerformanceConfig,
@@ -9,9 +9,9 @@ import type {
   DataLoaderConfig,
   MetricsConfig,
   CompositionError,
-  ValidationError
-} from "../core/types.js"
-import { ErrorFactory } from "../core/errors.js"
+  ValidationError,
+} from '../core/types.js'
+import { ErrorFactory } from '../core/errors.js'
 
 /**
  * Query plan representation
@@ -114,7 +114,7 @@ interface SubgraphCall {
  * Cache operation metrics
  */
 interface CacheOperation {
-  readonly type: "hit" | "miss" | "set" | "evict"
+  readonly type: 'hit' | 'miss' | 'set' | 'evict'
   readonly key: string
   readonly duration?: number
 }
@@ -138,7 +138,7 @@ interface PerformanceMetrics {
 export interface OptimizedExecutor {
   readonly execute: (
     query: string,
-    variables: Record<string, any>,
+    variables: Record<string, unknown>,
     context: ExecutionContext
   ) => Effect.Effect<ExecutionResult, ExecutionError>
 }
@@ -155,15 +155,15 @@ interface ExecutionContext {
  * Execution error
  */
 interface ExecutionError extends Error {
-  readonly _tag: "ExecutionError"
-  readonly name: "ExecutionError"
+  readonly _tag: 'ExecutionError'
+  readonly name: 'ExecutionError'
   readonly message: string
   readonly cause?: unknown
 }
 
 /**
  * PerformanceOptimizations - Query planning cache, DataLoader batching, and performance monitoring
- * 
+ *
  * Features:
  * - Query plan caching with LRU eviction
  * - DataLoader batching integration per subgraph
@@ -181,30 +181,50 @@ export namespace PerformanceOptimizations {
   ): Effect.Effect<OptimizedExecutor, CompositionError> =>
     pipe(
       Effect.succeed(config),
-      Effect.flatMap(config => 
+      Effect.flatMap(config =>
         validatePerformanceConfig(config).pipe(
-          Effect.mapError((error): CompositionError => 
-            ErrorFactory.composition(`Performance configuration invalid: ${error.message}`, schema.metadata.subgraphCount.toString(), "performance")
+          Effect.mapError(
+            (error): CompositionError =>
+              ErrorFactory.composition(
+                `Performance configuration invalid: ${error.message}`,
+                schema.metadata.subgraphCount.toString(),
+                'performance'
+              )
           )
         )
       ),
       Effect.flatMap(validConfig =>
         Effect.all({
           queryPlanCache: createQueryPlanCache(validConfig.queryPlanCache).pipe(
-            Effect.mapError((error): CompositionError => 
-              ErrorFactory.composition(`Query plan cache creation failed: ${error.message}`, undefined, "cache")
+            Effect.mapError(
+              (error): CompositionError =>
+                ErrorFactory.composition(
+                  `Query plan cache creation failed: ${error.message}`,
+                  undefined,
+                  'cache'
+                )
             )
           ),
           dataLoader: createFederatedDataLoader(validConfig.dataLoaderConfig).pipe(
-            Effect.mapError((error): CompositionError => 
-              ErrorFactory.composition(`DataLoader creation failed: ${error.message}`, undefined, "dataloader")
+            Effect.mapError(
+              (error): CompositionError =>
+                ErrorFactory.composition(
+                  `DataLoader creation failed: ${error.message}`,
+                  undefined,
+                  'dataloader'
+                )
             )
           ),
           metricsCollector: createMetricsCollector(validConfig.metricsCollection).pipe(
-            Effect.mapError((error): CompositionError => 
-              ErrorFactory.composition(`Metrics collector creation failed: ${error.message}`, undefined, "metrics")
+            Effect.mapError(
+              (error): CompositionError =>
+                ErrorFactory.composition(
+                  `Metrics collector creation failed: ${error.message}`,
+                  undefined,
+                  'metrics'
+                )
             )
-          )
+          ),
         })
       ),
       Effect.map(({ queryPlanCache, dataLoader, metricsCollector }) => ({
@@ -212,8 +232,8 @@ export namespace PerformanceOptimizations {
           executeOptimizedQuery(schema, query, variables, context, {
             queryPlanCache,
             dataLoader,
-            metricsCollector
-          })
+            metricsCollector,
+          }),
       }))
     )
 
@@ -227,7 +247,7 @@ export namespace PerformanceOptimizations {
     const stats = {
       hits: 0,
       misses: 0,
-      evictions: 0
+      evictions: 0,
     }
 
     return Effect.succeed({
@@ -236,13 +256,14 @@ export namespace PerformanceOptimizations {
           const cached = cache.get(queryHash)
           if (cached) {
             stats.hits++
-            // Update access time
-            cache.set(queryHash, {
+            // Update access time and count
+            const updated = {
               ...cached,
               accessCount: cached.accessCount + 1,
-              lastAccessed: Date.now()
-            })
-            return cached
+              lastAccessed: Date.now(),
+            }
+            cache.set(queryHash, updated)
+            return updated
           } else {
             stats.misses++
             return undefined
@@ -257,7 +278,7 @@ export namespace PerformanceOptimizations {
             const sortedEntries = Array.from(cache.entries())
               .sort(([, a], [, b]) => a.lastAccessed - b.lastAccessed)
               .slice(0, entriesToEvict)
-            
+
             for (const [key] of sortedEntries) {
               cache.delete(key)
               stats.evictions++
@@ -268,13 +289,13 @@ export namespace PerformanceOptimizations {
             plan,
             createdAt: Date.now(),
             accessCount: 1,
-            lastAccessed: Date.now()
+            lastAccessed: Date.now(),
           })
         }),
 
       invalidate: (pattern?: string) =>
         Effect.sync(() => {
-          if (pattern) {
+          if (pattern !== undefined) {
             for (const [key] of cache) {
               if (key.includes(pattern)) {
                 cache.delete(key)
@@ -290,8 +311,8 @@ export namespace PerformanceOptimizations {
           size: cache.size,
           hitRate: stats.hits / (stats.hits + stats.misses) || 0,
           missRate: stats.misses / (stats.hits + stats.misses) || 0,
-          evictionCount: stats.evictions
-        })
+          evictionCount: stats.evictions,
+        }),
     })
   }
 
@@ -302,13 +323,16 @@ export namespace PerformanceOptimizations {
     config: DataLoaderConfig
   ): Effect.Effect<FederatedDataLoader, ValidationError> => {
     const loaders = new Map<string, DataLoader<unknown, unknown>>()
-    const stats = new Map<string, {
-      readonly loadCount: number
-      readonly batchCount: number
-      readonly totalBatchSize: number
-      readonly cacheHits: number
-      readonly cacheMisses: number
-    }>()
+    const stats = new Map<
+      string,
+      {
+        readonly loadCount: number
+        readonly batchCount: number
+        readonly totalBatchSize: number
+        readonly cacheHits: number
+        readonly cacheMisses: number
+      }
+    >()
 
     return Effect.succeed({
       getLoader: <K, V>(
@@ -316,7 +340,7 @@ export namespace PerformanceOptimizations {
         batchLoadFn: (keys: readonly K[]) => Promise<readonly V[]>
       ) =>
         Effect.sync(() => {
-          const loaderKey = `${subgraphId}:${batchLoadFn.name}`
+          const loaderKey = `${subgraphId}:${batchLoadFn.name || 'default'}`
 
           if (!loaders.has(loaderKey)) {
             // Initialize stats for this subgraph
@@ -326,36 +350,45 @@ export namespace PerformanceOptimizations {
                 batchCount: 0,
                 totalBatchSize: 0,
                 cacheHits: 0,
-                cacheMisses: 0
+                cacheMisses: 0,
               })
             }
 
             const subgraphStats = stats.get(subgraphId)!
 
             const instrumentedBatchFn = async (keys: readonly K[]): Promise<readonly V[]> => {
-              const currentStats = stats.get(subgraphId)!
+              const currentStats = stats.get(subgraphId) ?? {
+                loadCount: 0,
+                batchCount: 0,
+                totalBatchSize: 0,
+                cacheHits: 0,
+                cacheMisses: 0,
+              }
               stats.set(subgraphId, {
                 ...currentStats,
                 batchCount: currentStats.batchCount + 1,
-                totalBatchSize: currentStats.totalBatchSize + keys.length
+                totalBatchSize: currentStats.totalBatchSize + keys.length,
               })
-              
+
               if (config.enableBatchLogging !== false) {
                 console.log(`🔄 DataLoader batch for ${subgraphId}: ${keys.length} keys`)
               }
-              
+
               const startTime = Date.now()
               try {
                 const results = await batchLoadFn(keys)
                 const duration = Date.now() - startTime
-                
+
                 if (config.enableBatchLogging !== false) {
                   console.log(`✅ DataLoader batch completed for ${subgraphId} in ${duration}ms`)
                 }
                 return results
               } catch (error) {
                 const duration = Date.now() - startTime
-                console.error(`❌ DataLoader batch failed for ${subgraphId} after ${duration}ms:`, error)
+                console.error(
+                  `❌ DataLoader batch failed for ${subgraphId} after ${duration}ms:`,
+                  error
+                )
                 throw error
               }
             }
@@ -363,8 +396,9 @@ export namespace PerformanceOptimizations {
             const dataLoaderOptions = {
               maxBatchSize: config.maxBatchSize,
               ...(config.cacheKeyFn && { cacheKeyFn: config.cacheKeyFn }),
-              ...(config.batchWindowMs && { 
-                batchScheduleFn: (callback: () => void) => setTimeout(callback, config.batchWindowMs) 
+              ...(config.batchWindowMs !== undefined && {
+                batchScheduleFn: (callback: () => void) =>
+                  setTimeout(callback, config.batchWindowMs),
               }),
               cacheMap: (() => {
                 const map = new Map()
@@ -372,9 +406,15 @@ export namespace PerformanceOptimizations {
                   get: (key: string) => {
                     const result = map.get(key)
                     if (result !== undefined) {
-                      stats.set(subgraphId, { ...subgraphStats, cacheHits: subgraphStats.cacheHits + 1 })
+                      stats.set(subgraphId, {
+                        ...subgraphStats,
+                        cacheHits: subgraphStats.cacheHits + 1,
+                      })
                     } else {
-                      stats.set(subgraphId, { ...subgraphStats, cacheMisses: subgraphStats.cacheMisses + 1 })
+                      stats.set(subgraphId, {
+                        ...subgraphStats,
+                        cacheMisses: subgraphStats.cacheMisses + 1,
+                      })
                     }
                     return result
                   },
@@ -383,9 +423,9 @@ export namespace PerformanceOptimizations {
                     return map
                   },
                   delete: (key: string) => map.delete(key),
-                  clear: () => map.clear()
+                  clear: () => map.clear(),
                 }
-              })()
+              })(),
             }
 
             loaders.set(loaderKey, new DataLoader(instrumentedBatchFn, dataLoaderOptions))
@@ -409,12 +449,15 @@ export namespace PerformanceOptimizations {
               {
                 loadCount: stat.loadCount,
                 batchCount: stat.batchCount,
-                averageBatchSize: stat.totalBatchSize / stat.batchCount || 0,
-                cacheHitRate: stat.cacheHits / (stat.cacheHits + stat.cacheMisses) || 0
-              }
+                averageBatchSize: stat.batchCount > 0 ? stat.totalBatchSize / stat.batchCount : 0,
+                cacheHitRate:
+                  stat.cacheHits + stat.cacheMisses > 0
+                    ? stat.cacheHits / (stat.cacheHits + stat.cacheMisses)
+                    : 0,
+              },
             ])
           )
-        )
+        ),
     })
   }
 
@@ -434,9 +477,9 @@ export namespace PerformanceOptimizations {
             executionMetrics.push({
               ...metrics,
               // Add timestamp
-              timestamp: Date.now()
+              timestamp: Date.now(),
             } as ExecutionMetrics & { readonly timestamp: number })
-            
+
             // Keep only recent metrics with efficient cleanup
             const maxMetrics = config.maxExecutionMetrics ?? 1000
             if (executionMetrics.length > maxMetrics) {
@@ -451,9 +494,9 @@ export namespace PerformanceOptimizations {
           if (config.enabled && config.collectCacheMetrics !== false) {
             cacheOperations.push({
               ...operation,
-              timestamp: Date.now()
+              timestamp: Date.now(),
             } as CacheOperation & { readonly timestamp: number })
-            
+
             // Keep only recent operations with efficient cleanup
             const maxOperations = config.maxCacheOperations ?? 1000
             if (cacheOperations.length > maxOperations) {
@@ -467,17 +510,22 @@ export namespace PerformanceOptimizations {
         Effect.succeed({
           executionMetrics: {
             totalExecutions: executionMetrics.length,
-            averageDuration: executionMetrics.reduce((sum, m) => sum + m.duration, 0) / executionMetrics.length || 0,
-            successRate: executionMetrics.filter(m => m.success).length / executionMetrics.length || 0
+            averageDuration:
+              executionMetrics.reduce((sum, m) => sum + m.duration, 0) / executionMetrics.length ||
+              0,
+            successRate:
+              executionMetrics.filter(m => m.success).length / executionMetrics.length || 0,
           },
           cacheMetrics: {
             size: 0, // Would be populated from actual cache
-            hitRate: cacheOperations.filter(op => op.type === "hit").length / cacheOperations.length || 0,
-            missRate: cacheOperations.filter(op => op.type === "miss").length / cacheOperations.length || 0,
-            evictionCount: cacheOperations.filter(op => op.type === "evict").length
+            hitRate:
+              cacheOperations.filter(op => op.type === 'hit').length / cacheOperations.length || 0,
+            missRate:
+              cacheOperations.filter(op => op.type === 'miss').length / cacheOperations.length || 0,
+            evictionCount: cacheOperations.filter(op => op.type === 'evict').length,
           },
-          dataLoaderMetrics: {} // Would be populated from DataLoader stats
-        })
+          dataLoaderMetrics: {}, // Would be populated from DataLoader stats
+        }),
     })
   }
 
@@ -489,7 +537,7 @@ export namespace PerformanceOptimizations {
   const executeOptimizedQuery = (
     schema: FederatedSchema,
     query: string,
-    variables: Record<string, any>,
+    variables: Record<string, unknown>,
     context: ExecutionContext,
     optimizations: {
       readonly queryPlanCache: QueryPlanCache
@@ -506,12 +554,12 @@ export namespace PerformanceOptimizations {
       Effect.flatMap(cachedPlan => {
         if (cachedPlan) {
           return pipe(
-            optimizations.metricsCollector.recordCacheOperation({ type: "hit", key: queryHash }),
+            optimizations.metricsCollector.recordCacheOperation({ type: 'hit', key: queryHash }),
             Effect.as(cachedPlan.plan)
           )
         } else {
           return pipe(
-            optimizations.metricsCollector.recordCacheOperation({ type: "miss", key: queryHash }),
+            optimizations.metricsCollector.recordCacheOperation({ type: 'miss', key: queryHash }),
             Effect.flatMap(() => createQueryPlan(schema, query)),
             Effect.tap(plan => optimizations.queryPlanCache.set(queryHash, plan))
           )
@@ -520,7 +568,7 @@ export namespace PerformanceOptimizations {
       Effect.flatMap(queryPlan =>
         executeQueryPlan(queryPlan, variables, {
           ...context,
-          dataLoader: optimizations.dataLoader
+          dataLoader: optimizations.dataLoader,
         })
       ),
       Effect.tap(result => {
@@ -528,25 +576,28 @@ export namespace PerformanceOptimizations {
         return optimizations.metricsCollector.recordExecution({
           queryHash,
           duration,
-          success: !result.errors?.length,
-          subgraphCalls: (result.extensions?.['subgraphCalls'] as ReadonlyArray<SubgraphCall>) ?? []
+          success: (result.errors?.length ?? 0) === 0,
+          subgraphCalls:
+            (result.extensions?.['subgraphCalls'] as ReadonlyArray<SubgraphCall>) ?? [],
         })
       }),
       Effect.catchAll(error =>
         Effect.succeed({
           data: null,
-          errors: [new GraphQLError(
-            error.message || "Execution failed",
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            error,
-            {
-              code: "EXECUTION_ERROR",
-              timestamp: new Date().toISOString()
-            }
-          )]
+          errors: [
+            new GraphQLError(
+              error.message || 'Execution failed',
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              error,
+              {
+                code: 'EXECUTION_ERROR',
+                timestamp: new Date().toISOString(),
+              }
+            ),
+          ],
         } as ExecutionResult)
       )
     )
@@ -555,52 +606,55 @@ export namespace PerformanceOptimizations {
   /**
    * Create query hash for caching using FNV-1a algorithm for better distribution
    */
-  const createQueryHash = (query: string, variables: Record<string, any>): string => {
+  const createQueryHash = (query: string, variables: Record<string, unknown>): string => {
     // Use FNV-1a hash for better distribution and fewer collisions
     const content = query + JSON.stringify(variables, Object.keys(variables).sort())
     let hash = 2166136261 // FNV offset basis
-    
+
     for (let i = 0; i < content.length; i++) {
       hash ^= content.charCodeAt(i)
       hash = Math.imul(hash, 16777619) // FNV prime
     }
-    
+
     return (hash >>> 0).toString(16) // Convert to unsigned 32-bit
   }
 
   /**
    * Create query plan from GraphQL query
    */
-  const createQueryPlan = (_schema: FederatedSchema, query: string): Effect.Effect<QueryPlan, ExecutionError> =>
+  const createQueryPlan = (
+    _schema: FederatedSchema,
+    query: string
+  ): Effect.Effect<QueryPlan, ExecutionError> =>
     pipe(
       Effect.tryPromise({
         try: async () => {
           // In a real implementation, this would analyze the query
           // and create an optimized execution plan
           console.log(`📋 Creating query plan for query`)
-          
+
           return {
             id: createQueryHash(query, {}),
             steps: [
               {
-                subgraphId: "default",
+                subgraphId: 'default',
                 operation: query,
-                dependencies: []
-              }
+                dependencies: [],
+              },
             ],
             complexity: 1,
-            estimatedCost: 10
+            estimatedCost: 10,
           }
         },
-        catch: (error) => {
+        catch: error => {
           const execError: ExecutionError = {
-            _tag: "ExecutionError",
-            name: "ExecutionError",
-            message: "Failed to create query plan",
-            cause: error
+            _tag: 'ExecutionError',
+            name: 'ExecutionError',
+            message: 'Failed to create query plan',
+            cause: error,
           }
           return execError
-        }
+        },
       })
     )
 
@@ -609,38 +663,37 @@ export namespace PerformanceOptimizations {
    */
   const executeQueryPlan = (
     plan: QueryPlan,
-    _variables: Record<string, any>,
+    _variables: Record<string, unknown>,
     _context: ExecutionContext
   ): Effect.Effect<ExecutionResult, ExecutionError> =>
     pipe(
       Effect.tryPromise({
         try: async () => {
           console.log(`⚡ Executing query plan with ${plan.steps.length} steps`)
-          
+
           // Mock execution result
           return {
-            data: { mock: "This is a mock result for demonstration" },
+            data: { mock: 'This is a mock result for demonstration' },
             extensions: {
               subgraphCalls: plan.steps.map(step => ({
                 subgraphId: step.subgraphId,
                 duration: Math.random() * 100,
-                success: true
-              }))
-            }
+                success: true,
+              })),
+            },
           }
         },
-        catch: (error) => {
+        catch: error => {
           const execError: ExecutionError = {
-            _tag: "ExecutionError",
-            name: "ExecutionError", 
-            message: "Query execution failed",
-            cause: error
+            _tag: 'ExecutionError',
+            name: 'ExecutionError',
+            message: 'Query execution failed',
+            cause: error,
           }
           return execError
-        }
+        },
       })
     )
-
 
   /**
    * Validate performance configuration
@@ -652,11 +705,15 @@ export namespace PerformanceOptimizations {
       Effect.succeed(config),
       Effect.filterOrFail(
         conf => conf.queryPlanCache.maxSize > 0,
-        () => ErrorFactory.validation("Query plan cache max size must be greater than 0", "maxSize")
+        () => ErrorFactory.validation('Query plan cache max size must be greater than 0', 'maxSize')
       ),
       Effect.filterOrFail(
         conf => conf.dataLoaderConfig.maxBatchSize > 0,
-        () => ErrorFactory.validation("DataLoader max batch size must be greater than 0", "maxBatchSize")
+        () =>
+          ErrorFactory.validation(
+            'DataLoader max batch size must be greater than 0',
+            'maxBatchSize'
+          )
       )
     )
 
@@ -666,17 +723,17 @@ export namespace PerformanceOptimizations {
   export const defaultConfig: PerformanceConfig = {
     queryPlanCache: {
       maxSize: 1000,
-      ttl: Duration.minutes(30)
+      ttl: Duration.minutes(30),
     },
     dataLoaderConfig: {
       maxBatchSize: 100,
-      batchWindowMs: 10
+      batchWindowMs: 10,
     },
     metricsCollection: {
       enabled: true,
       collectExecutionMetrics: true,
-      collectCacheMetrics: true
-    }
+      collectCacheMetrics: true,
+    },
   }
 
   /**
@@ -685,17 +742,17 @@ export namespace PerformanceOptimizations {
   export const productionConfig: PerformanceConfig = {
     queryPlanCache: {
       maxSize: 10000,
-      ttl: Duration.hours(1)
+      ttl: Duration.hours(1),
     },
     dataLoaderConfig: {
       maxBatchSize: 1000,
-      batchWindowMs: 5
+      batchWindowMs: 5,
     },
     metricsCollection: {
       enabled: true,
       collectExecutionMetrics: true,
-      collectCacheMetrics: true
-    }
+      collectCacheMetrics: true,
+    },
   }
 
   /**
@@ -704,17 +761,17 @@ export namespace PerformanceOptimizations {
   export const developmentConfig: PerformanceConfig = {
     queryPlanCache: {
       maxSize: 100,
-      ttl: Duration.minutes(5)
+      ttl: Duration.minutes(5),
     },
     dataLoaderConfig: {
       maxBatchSize: 10,
-      batchWindowMs: 50
+      batchWindowMs: 50,
     },
     metricsCollection: {
       enabled: true,
       collectExecutionMetrics: true,
-      collectCacheMetrics: true
-    }
+      collectCacheMetrics: true,
+    },
   }
 }
 
@@ -722,10 +779,7 @@ export namespace PerformanceOptimizations {
  * Factory functions for common performance setups
  */
 export const createBasicOptimizedExecutor = (schema: FederatedSchema) =>
-  PerformanceOptimizations.createOptimizedExecutor(
-    schema,
-    PerformanceOptimizations.defaultConfig
-  )
+  PerformanceOptimizations.createOptimizedExecutor(schema, PerformanceOptimizations.defaultConfig)
 
 export const createProductionOptimizedExecutor = (schema: FederatedSchema) =>
   PerformanceOptimizations.createOptimizedExecutor(

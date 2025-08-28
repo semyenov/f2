@@ -27,7 +27,7 @@ describe('Federation Composition Integration', () => {
           const builder = createUltraStrictEntityBuilder('User')
           const composed = yield* Effect.succeed(
             withResolvers({
-              fullName: (parent: unknown) => `${(parent as {name?: string}).name || 'Anonymous'}`,
+              fullName: (parent) => `${(parent as {name?: string}).name || 'Anonymous'}`,
             })(
               withDirectives([
                 UltraStrictEntityBuilder.Directive.shareable(),

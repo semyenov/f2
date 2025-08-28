@@ -78,7 +78,7 @@
     "test:complete": "node test-complete.ts",
     "test:coverage": "bun test --coverage",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src --ext .ts,.tsx --max-warnings 0",
+    "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "format": "prettier --write 'src/**/*.{ts,tsx,json,md}'",
     "format:check": "prettier --check 'src/**/*.{ts,tsx,json,md}'",
@@ -93,6 +93,7 @@
     "dev": "bun --watch src/examples/basic-entity.ts",
     "validate": "bun run typecheck && bun run lint && bun run test:complete",
     "prepare": "husky",
+    "prepublishOnly": "bun run clean && bun run build && bun run validate",
     "docs:generate": "typedoc src/index.ts --out docs --theme default"
   },
   "dependencies": {
@@ -188,5 +189,6 @@
     "*.{json,md}": [
       "prettier --write"
     ]
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

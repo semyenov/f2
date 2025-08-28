@@ -3,6 +3,7 @@ import * as Effect from 'effect/Effect'
 import * as Layer from 'effect/Layer'
 import * as Either from 'effect/Either'
 import { Duration } from 'effect'
+import type { GraphQLResolveInfo } from 'graphql'
 import { SubgraphManagement } from '../../src/federation/subgraph.js'
 import { FederationErrorBoundaries } from '../../src/federation/error-boundaries.js'
 import { PerformanceOptimizations } from '../../src/federation/performance.js'
@@ -764,17 +765,13 @@ describe('End-to-End Federation Integration Tests', () => {
       // Execute resolver multiple times to trigger circuit breaker
       const results = []
       for (let i = 0; i < 10; i++) {
-        try {
-          await wrappedResolver(null, {}, {}, {} as any)
-          results.push('success')
-        } catch (error) {
-          results.push('failure')
-        }
+        const result = await wrappedResolver(null, {}, {}, {} as GraphQLResolveInfo)
+        results.push(result === null ? 'failure' : 'success')
         // Small delay between attempts
         await new Promise(resolve => setTimeout(resolve, 10))
       }
 
-      // Should have some failures initially, then circuit breaker should kick in
+      // Should have some failures initially (returns null due to partial failure handling)
       expect(results.filter(r => r === 'failure').length).toBeGreaterThan(0)
       
       // Wait for potential circuit breaker reset

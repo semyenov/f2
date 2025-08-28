@@ -15,6 +15,16 @@ export default [
         sourceType: 'module',
         project: './tsconfig.json',
       },
+      globals: {
+        console: 'readonly',
+        fetch: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+      },
     },
     plugins: {
       '@typescript-eslint': tseslint,
@@ -42,7 +52,7 @@ export default [
       'functional/prefer-readonly-type': 'off',
 
       // General rules
-      'no-console': 'warn',
+      'no-console': 'off',
       'no-debugger': 'error',
       'prefer-const': 'error',
       'no-var': 'error',

@@ -1,17 +1,22 @@
-import { Effect, pipe, Schedule, Duration } from "effect"
+import { Effect, pipe, Schedule, Duration } from 'effect'
 import type {
   SubgraphRegistry,
   ServiceDefinition,
   HealthStatus,
-  CompositionError
-} from "../core/types.js"
-import { ErrorFactory, HealthCheckError, DiscoveryError, RegistrationError } from "../core/errors.js"
+  CompositionError,
+} from '../core/types.js'
+import {
+  ErrorFactory,
+  HealthCheckError,
+  DiscoveryError,
+  RegistrationError,
+} from '../core/errors.js'
 
 /**
  * Registry configuration for subgraph management
  */
 interface RegistryConfig {
-  readonly discoveryMode: "static" | "dynamic"
+  readonly discoveryMode: 'static' | 'dynamic'
   readonly staticServices: ReadonlyArray<ServiceDefinition>
   readonly discoveryEndpoints: ReadonlyArray<string>
   readonly healthCheckInterval: Duration.Duration
@@ -34,7 +39,7 @@ interface ServiceStore {
 
 /**
  * SubgraphManagement - Advanced subgraph discovery and management
- * 
+ *
  * Features:
  * - Service registry with discovery
  * - Health checking and monitoring
@@ -46,21 +51,28 @@ export namespace SubgraphManagement {
   /**
    * Create a subgraph registry with comprehensive service management
    */
-  export const createRegistry = (config: RegistryConfig): Effect.Effect<SubgraphRegistry, CompositionError> =>
+  export const createRegistry = (
+    config: RegistryConfig
+  ): Effect.Effect<SubgraphRegistry, CompositionError> =>
     pipe(
       Effect.succeed(config),
       Effect.flatMap(validateRegistryConfig),
-      Effect.mapError((error) => {
-        return ErrorFactory.composition(`Registry configuration validation failed: ${error.message}`, undefined, "config")
+      Effect.mapError(error => {
+        return ErrorFactory.composition(
+          `Registry configuration validation failed: ${error.message}`,
+          undefined,
+          'config'
+        )
       }),
-      Effect.flatMap(validConfig => 
+      Effect.flatMap(validConfig =>
         pipe(
           createServiceStore(),
           Effect.map(store => ({
-            register: (definition: ServiceDefinition) => registerSubgraph(definition, validConfig, store),
+            register: (definition: ServiceDefinition) =>
+              registerSubgraph(definition, validConfig, store),
             unregister: (serviceId: string) => unregisterSubgraph(serviceId, validConfig, store),
             discover: () => discoverSubgraphs(validConfig, store),
-            health: (serviceId: string) => checkSubgraphHealth(serviceId, validConfig, store)
+            health: (serviceId: string) => checkSubgraphHealth(serviceId, validConfig, store),
           }))
         )
       )
@@ -75,12 +87,7 @@ export namespace SubgraphManagement {
   ): Effect.Effect<SubgraphRegistry, never> =>
     pipe(
       Effect.succeed(registry),
-      Effect.tap(() => 
-        pipe(
-          scheduleDiscovery(registry, interval),
-          Effect.fork
-        )
-      )
+      Effect.tap(() => pipe(scheduleDiscovery(registry, interval), Effect.fork))
     )
 
   /**
@@ -92,12 +99,7 @@ export namespace SubgraphManagement {
   ): Effect.Effect<SubgraphRegistry, never> =>
     pipe(
       Effect.succeed(registry),
-      Effect.tap(() => 
-        pipe(
-          scheduleHealthChecks(registry, interval),
-          Effect.fork
-        )
-      )
+      Effect.tap(() => pipe(scheduleHealthChecks(registry, interval), Effect.fork))
     )
 
   // === Internal Implementation ===
@@ -105,12 +107,20 @@ export namespace SubgraphManagement {
   /**
    * Validate registry configuration
    */
-  const validateRegistryConfig = (config: RegistryConfig): Effect.Effect<RegistryConfig, CompositionError> =>
+  const validateRegistryConfig = (
+    config: RegistryConfig
+  ): Effect.Effect<RegistryConfig, CompositionError> =>
     pipe(
       Effect.succeed(config),
       Effect.filterOrFail(
-        config => config.discoveryMode === "static" ? config.staticServices.length > 0 : config.discoveryEndpoints.length > 0,
-        () => ErrorFactory.composition("Registry configuration must have services or discovery endpoints")
+        config =>
+          config.discoveryMode === 'static'
+            ? config.staticServices.length > 0
+            : config.discoveryEndpoints.length > 0,
+        () =>
+          ErrorFactory.composition(
+            'Registry configuration must have services or discovery endpoints'
+          )
       )
     )
 
@@ -121,21 +131,21 @@ export namespace SubgraphManagement {
     const services = new Map<string, ServiceDefinition>()
     const servicesByUrl = new Map<string, ServiceDefinition>()
     const healthyServices = new Set<string>()
-    
+
     return Effect.succeed({
-      store: (service: ServiceDefinition) => 
+      store: (service: ServiceDefinition) =>
         Effect.sync(() => {
           // Remove old URL mapping if service already exists
           const existingService = services.get(service.id)
           if (existingService) {
             servicesByUrl.delete(existingService.url)
           }
-          
+
           services.set(service.id, service)
           servicesByUrl.set(service.url, service)
         }),
-      
-      remove: (serviceId: string) => 
+
+      remove: (serviceId: string) =>
         Effect.sync(() => {
           const service = services.get(serviceId)
           if (service) {
@@ -144,12 +154,10 @@ export namespace SubgraphManagement {
             healthyServices.delete(serviceId)
           }
         }),
-      
-      getAll: () => 
-        Effect.succeed(Array.from(services.values())),
-      
-      get: (serviceId: string) => 
-        Effect.succeed(services.get(serviceId))
+
+      getAll: () => Effect.succeed(Array.from(services.values())),
+
+      get: (serviceId: string) => Effect.succeed(services.get(serviceId)),
     })
   }
 
@@ -166,31 +174,47 @@ export namespace SubgraphManagement {
       Effect.flatMap(validateServiceDefinition),
       Effect.flatMap(validDef => store.store(validDef)),
       Effect.flatMap(() => triggerSchemaRecomposition(definition, config)),
-      Effect.catchAll(_error => 
-        Effect.fail(ErrorFactory.CommonErrors.registrationError(`Failed to register service ${definition.id}`, definition.id))
+      Effect.catchAll(_error =>
+        Effect.fail(
+          ErrorFactory.CommonErrors.registrationError(
+            `Failed to register service ${definition.id}`,
+            definition.id
+          )
+        )
       )
     )
 
   /**
    * Validate service definition
    */
-  const validateServiceDefinition = (definition: ServiceDefinition): Effect.Effect<ServiceDefinition, RegistrationError> =>
+  const validateServiceDefinition = (
+    definition: ServiceDefinition
+  ): Effect.Effect<ServiceDefinition, RegistrationError> =>
     pipe(
       Effect.succeed(definition),
       Effect.filterOrFail(
         def => !!def.id?.trim(),
-        () => ErrorFactory.CommonErrors.registrationError("Service ID is required", "unknown")
+        () => ErrorFactory.CommonErrors.registrationError('Service ID is required', 'unknown')
       ),
       Effect.filterOrFail(
         def => !!def.url?.trim(),
-        () => ErrorFactory.CommonErrors.registrationError("Service URL is required", definition.id || "unknown")
+        () =>
+          ErrorFactory.CommonErrors.registrationError(
+            'Service URL is required',
+            definition.id || 'unknown'
+          )
       ),
       Effect.flatMap(def => {
         try {
           new URL(def.url)
           return Effect.succeed(def)
         } catch {
-          return Effect.fail(ErrorFactory.CommonErrors.registrationError(`Invalid service URL: ${def.url}`, def.id || "unknown"))
+          return Effect.fail(
+            ErrorFactory.CommonErrors.registrationError(
+              `Invalid service URL: ${def.url}`,
+              def.id || 'unknown'
+            )
+          )
         }
       })
     )
@@ -205,29 +229,36 @@ export namespace SubgraphManagement {
   ): Effect.Effect<void, RegistrationError> =>
     pipe(
       store.get(serviceId),
-      Effect.mapError((error): RegistrationError => 
-        ErrorFactory.CommonErrors.registrationError(
-          `Failed to get service ${serviceId}: ${error.message}`,
-          serviceId
-        )
+      Effect.mapError(
+        (error): RegistrationError =>
+          ErrorFactory.CommonErrors.registrationError(
+            `Failed to get service ${serviceId}: ${error.message}`,
+            serviceId
+          )
       ),
-      Effect.flatMap(service => 
-        service 
+      Effect.flatMap(service =>
+        service
           ? pipe(
               store.remove(serviceId),
-              Effect.flatMap(() => 
+              Effect.flatMap(() =>
                 pipe(
-                  triggerSchemaRecomposition({ id: serviceId, url: "" }, config),
-                  Effect.mapError((error): RegistrationError => 
-                    ErrorFactory.CommonErrors.registrationError(
-                      `Failed to trigger recomposition for service ${serviceId}: ${error.message}`,
-                      serviceId
-                    )
+                  triggerSchemaRecomposition({ id: serviceId, url: '' }, config),
+                  Effect.mapError(
+                    (error): RegistrationError =>
+                      ErrorFactory.CommonErrors.registrationError(
+                        `Failed to trigger recomposition for service ${serviceId}: ${error.message}`,
+                        serviceId
+                      )
                   )
                 )
               )
             )
-          : Effect.fail(ErrorFactory.CommonErrors.registrationError(`Service ${serviceId} not found`, serviceId))
+          : Effect.fail(
+              ErrorFactory.CommonErrors.registrationError(
+                `Service ${serviceId} not found`,
+                serviceId
+              )
+            )
       )
     )
 
@@ -238,34 +269,40 @@ export namespace SubgraphManagement {
     config: RegistryConfig,
     store: ServiceStore
   ): Effect.Effect<ReadonlyArray<ServiceDefinition>, DiscoveryError> =>
-    config.discoveryMode === "static"
+    config.discoveryMode === 'static'
       ? Effect.succeed(config.staticServices)
       : pipe(
           Effect.succeed(config.discoveryEndpoints),
           Effect.flatMap(endpoints =>
-            Effect.all(endpoints.map(endpoint =>
-              pipe(
-                fetchFromDiscoveryEndpoint(endpoint, config),
-                Effect.catchAll(error => {
-                  console.warn(`Discovery endpoint ${endpoint} failed:`, error)
-                  return Effect.succeed([])
-                })
-              )
-            ), { concurrency: 3 })
+            Effect.all(
+              endpoints.map(endpoint =>
+                pipe(
+                  fetchFromDiscoveryEndpoint(endpoint, config),
+                  Effect.catchAll(error => {
+                    console.warn(`Discovery endpoint ${endpoint} failed:`, error)
+                    return Effect.succeed([])
+                  })
+                )
+              ),
+              { concurrency: 3 }
+            )
           ),
           Effect.map(results => results.flat()),
-          Effect.tap(services => 
-            Effect.all(services.map(service => 
-              pipe(
-                store.store(service),
-                Effect.mapError((error): DiscoveryError => 
-                  ErrorFactory.CommonErrors.discoveryError(
-                    `Failed to store discovered service ${service.id}: ${error.message}`,
-                    service.url
+          Effect.tap(services =>
+            Effect.all(
+              services.map(service =>
+                pipe(
+                  store.store(service),
+                  Effect.mapError(
+                    (error): DiscoveryError =>
+                      ErrorFactory.CommonErrors.discoveryError(
+                        `Failed to store discovered service ${service.id}: ${error.message}`,
+                        service.url
+                      )
                   )
                 )
               )
-            ))
+            )
           )
         )
 
@@ -280,80 +317,106 @@ export namespace SubgraphManagement {
     // Note: Caching implementation could be added here in the future
     // const cacheKey = `discovery:${endpoint}`
     // const cacheTimeout = 30000
-    
+
     return pipe(
       Effect.tryPromise({
-        try: () => fetch(endpoint, {
-          method: 'GET',
-          headers: { 
-            'Accept': 'application/json',
-            'Cache-Control': 'max-age=30',
-            'User-Agent': 'Federation-Framework/2.0'
-          },
-          // Enable connection reuse
-          keepalive: true
-        }),
-        catch: (error) => ErrorFactory.CommonErrors.discoveryError(`Discovery endpoint unavailable: ${endpoint}`, endpoint, error)
+        try: () =>
+          fetch(endpoint, {
+            method: 'GET',
+            headers: {
+              Accept: 'application/json',
+              'Cache-Control': 'max-age=30',
+              'User-Agent': 'Federation-Framework/2.0',
+            },
+            // Enable connection reuse
+            keepalive: true,
+          }),
+        catch: error =>
+          ErrorFactory.CommonErrors.discoveryError(
+            `Discovery endpoint unavailable: ${endpoint}`,
+            endpoint,
+            error
+          ),
       }),
       Effect.timeout(config.healthCheckTimeout),
-      Effect.mapError((error) => 
-        error._tag === "TimeoutException" 
-          ? ErrorFactory.CommonErrors.discoveryError(`Timeout accessing discovery endpoint: ${endpoint}`, endpoint)
-          : ErrorFactory.CommonErrors.discoveryError(`Discovery endpoint unavailable: ${endpoint}`, endpoint, error)
+      Effect.mapError(error =>
+        error._tag === 'TimeoutException'
+          ? ErrorFactory.CommonErrors.discoveryError(
+              `Timeout accessing discovery endpoint: ${endpoint}`,
+              endpoint
+            )
+          : ErrorFactory.CommonErrors.discoveryError(
+              `Discovery endpoint unavailable: ${endpoint}`,
+              endpoint,
+              error
+            )
       ),
       Effect.flatMap((response: Response) => {
         if (!response.ok) {
-          return Effect.fail(ErrorFactory.CommonErrors.discoveryError(
-            `Discovery endpoint returned ${response.status}: ${response.statusText}`,
-            endpoint
-          ))
+          return Effect.fail(
+            ErrorFactory.CommonErrors.discoveryError(
+              `Discovery endpoint returned ${response.status}: ${response.statusText}`,
+              endpoint
+            )
+          )
         }
-        
+
         return pipe(
           Effect.tryPromise({
             try: async () => {
               const text = await response.text()
               try {
                 return JSON.parse(text) as Record<string, unknown>
-              } catch (parseError) {
+              } catch {
                 throw new Error(`Invalid JSON: ${text.slice(0, 100)}...`)
               }
             },
-            catch: (error) => ErrorFactory.CommonErrors.discoveryError(
-              `Invalid JSON response: ${(error as Error).message}`,
-              endpoint
-            )
+            catch: error =>
+              ErrorFactory.CommonErrors.discoveryError(
+                `Invalid JSON response: ${(error as Error).message}`,
+                endpoint
+              ),
           }),
           Effect.flatMap((data: Record<string, unknown>) => {
-            if (!data || !Array.isArray(data['services'])) {
-              return Effect.fail(ErrorFactory.CommonErrors.discoveryError(
-                `Expected services array, got: ${typeof data}`,
-                endpoint
-              ))
+            if (!Array.isArray(data['services'])) {
+              return Effect.fail(
+                ErrorFactory.CommonErrors.discoveryError(
+                  `Expected services array, got: ${typeof data}`,
+                  endpoint
+                )
+              )
             }
-            
+
             // Validate service definitions
             const services = data['services'] as unknown[]
-            const validServices = services.filter((service: unknown): service is ServiceDefinition => {
-              return service != null && 
-                     typeof service === 'object' && 
-                     'id' in service && 
-                     'url' in service &&
-                     typeof (service as ServiceDefinition).id === 'string' && 
-                     typeof (service as ServiceDefinition).url === 'string'
-            })
-            
+            const validServices = services.filter(
+              (service: unknown): service is ServiceDefinition => {
+                return (
+                  service != null &&
+                  typeof service === 'object' &&
+                  'id' in service &&
+                  'url' in service &&
+                  typeof (service as ServiceDefinition).id === 'string' &&
+                  typeof (service as ServiceDefinition).url === 'string'
+                )
+              }
+            )
+
             if (validServices.length !== services.length) {
-              console.warn(`Filtered out ${services.length - validServices.length} invalid services from ${endpoint}`)
+              console.warn(
+                `Filtered out ${services.length - validServices.length} invalid services from ${endpoint}`
+              )
             }
-            
+
             return Effect.succeed(validServices)
           })
         )
       }),
-      Effect.retry(Schedule.exponential(config.retryPolicy.initialDelay).pipe(
-        Schedule.compose(Schedule.recurs(config.retryPolicy.maxAttempts))
-      ))
+      Effect.retry(
+        Schedule.exponential(config.retryPolicy.initialDelay).pipe(
+          Schedule.compose(Schedule.recurs(config.retryPolicy.maxAttempts))
+        )
+      )
     )
   }
 
@@ -367,19 +430,14 @@ export namespace SubgraphManagement {
   ): Effect.Effect<HealthStatus, HealthCheckError> =>
     pipe(
       store.get(serviceId),
-      Effect.mapError((error): HealthCheckError => 
-        new HealthCheckError(
-          `Failed to get service ${serviceId}: ${error.message}`,
-          serviceId
-        )
+      Effect.mapError(
+        (error): HealthCheckError =>
+          new HealthCheckError(`Failed to get service ${serviceId}: ${error.message}`, serviceId)
       ),
-      Effect.flatMap(service => 
-        service 
+      Effect.flatMap(service =>
+        service
           ? performHealthCheck(service, config)
-          : Effect.fail(new HealthCheckError(
-              `Service ${serviceId} not found`,
-              serviceId
-            ))
+          : Effect.fail(new HealthCheckError(`Service ${serviceId} not found`, serviceId))
       )
     )
 
@@ -391,71 +449,72 @@ export namespace SubgraphManagement {
     config: RegistryConfig
   ): Effect.Effect<HealthStatus, HealthCheckError> => {
     const startTime = Date.now()
-    
+
     // Adaptive timeout based on service history
     const adaptiveTimeout = Duration.toMillis(config.healthCheckTimeout)
-    
+
     return pipe(
       Effect.tryPromise({
         try: () => {
           const controller = new AbortController()
           const timeoutId = setTimeout(() => controller.abort(), adaptiveTimeout)
-          
+
           return fetch(`${service.url}/health`, {
             method: 'GET',
-            headers: { 
-              'Accept': 'application/json',
+            headers: {
+              Accept: 'application/json',
               'User-Agent': 'Federation-Framework/2.0',
-              'Cache-Control': 'no-cache'
+              'Cache-Control': 'no-cache',
             },
             signal: controller.signal,
-            keepalive: true
+            keepalive: true,
           }).finally(() => clearTimeout(timeoutId))
         },
-        catch: (error) => {
+        catch: error => {
           const responseTime = Date.now() - startTime
-          const errorMessage = (error as Error).name === 'AbortError' 
-            ? `Health check timed out after ${responseTime}ms`
-            : `Health check failed: ${(error as Error).message}`
-          
+          const errorMessage =
+            (error as Error).name === 'AbortError'
+              ? `Health check timed out after ${responseTime}ms`
+              : `Health check failed: ${(error as Error).message}`
+
           return ErrorFactory.healthCheck(errorMessage, service.id, error)
-        }
+        },
       }),
       Effect.flatMap((response): Effect.Effect<HealthStatus, never> => {
         const responseTime = Date.now() - startTime
         const baseMetrics = {
           responseTimeMs: responseTime,
           statusCode: response.status,
-          contentLength: parseInt(response.headers.get('content-length') || '0', 10)
+          contentLength: parseInt(response.headers.get('content-length') ?? '0', 10),
         }
-        
+
         const baseStatus = {
           serviceId: service.id,
           lastCheck: new Date(),
-          metrics: baseMetrics
+          metrics: baseMetrics,
         }
-        
+
         // Categorize health based on response time and status
         if (response.ok) {
-          const status = responseTime < 100 ? "healthy" : 
-                        responseTime < 500 ? "degraded" : "unhealthy"
+          const status =
+            responseTime < 100 ? 'healthy' : responseTime < 500 ? 'degraded' : 'unhealthy'
           return Effect.succeed({ ...baseStatus, status })
         } else if (response.status >= 500) {
-          return Effect.succeed({ ...baseStatus, status: "unhealthy" as const })
+          return Effect.succeed({ ...baseStatus, status: 'unhealthy' as const })
         } else {
-          return Effect.succeed({ ...baseStatus, status: "degraded" as const })
+          return Effect.succeed({ ...baseStatus, status: 'degraded' as const })
         }
       }),
-      Effect.catchAll((_error) => {
+      Effect.catchAll(_error => {
         const responseTime = Date.now() - startTime
         return Effect.succeed({
-          status: "unhealthy" as const,
+          status: 'unhealthy' as const,
           serviceId: service.id,
           lastCheck: new Date(),
           metrics: {
             responseTimeMs: responseTime,
-            errorCount: 1
-          }
+            errorCount: 1,
+          },
         })
       })
     )
@@ -470,7 +529,7 @@ export namespace SubgraphManagement {
   ): Effect.Effect<void, CompositionError> =>
     pipe(
       Effect.succeed(service),
-      Effect.tap(() => 
+      Effect.tap(() =>
         Effect.sync(() => {
           console.log(`🔄 Triggering schema recomposition for service: ${service.id}`)
           // In a real implementation, this would trigger the FederationComposer
@@ -488,13 +547,13 @@ export namespace SubgraphManagement {
   ): Effect.Effect<void, never> =>
     pipe(
       registry.discover(),
-      Effect.tap(services => 
+      Effect.tap(services =>
         Effect.sync(() => {
           console.log(`🔍 Discovered ${services.length} services`)
         })
       ),
       Effect.catchAll(error => {
-        console.warn("Service discovery failed:", error)
+        console.warn('Service discovery failed:', error)
         return Effect.succeed([])
       }),
       Effect.repeat(Schedule.fixed(interval)),
@@ -509,7 +568,7 @@ export namespace SubgraphManagement {
     interval: Duration.Duration
   ): Effect.Effect<void, never> => {
     let healthCheckRound = 0
-    
+
     return pipe(
       registry.discover(),
       Effect.catchAll(error => {
@@ -519,17 +578,19 @@ export namespace SubgraphManagement {
       Effect.flatMap(services => {
         healthCheckRound++
         const batchSize = Math.min(10, Math.max(3, Math.ceil(services.length / 3)))
-        
-        console.log(`🔍 Health check round ${healthCheckRound} for ${services.length} services (batch size: ${batchSize})`)
-        
+
+        console.log(
+          `🔍 Health check round ${healthCheckRound} for ${services.length} services (batch size: ${batchSize})`
+        )
+
         return Effect.all(
           services.map(service =>
             pipe(
               registry.health(service.id),
-              Effect.tap(health => 
+              Effect.tap(health =>
                 Effect.sync(() => {
-                  const status = health.status === "healthy" ? "✅" : 
-                                health.status === "degraded" ? "⚠️" : "❌"
+                  const status =
+                    health.status === 'healthy' ? '✅' : health.status === 'degraded' ? '⚠️' : '❌'
                   const responseTime = health.metrics?.['responseTimeMs'] ?? 0
                   console.log(`${status} ${service.id}: ${health.status} (${responseTime}ms)`)
                 })
@@ -537,9 +598,9 @@ export namespace SubgraphManagement {
               Effect.catchAll(error => {
                 console.warn(`Health check failed for ${service.id}:`, error.message)
                 return Effect.succeed({
-                  status: "unhealthy" as const,
+                  status: 'unhealthy' as const,
                   serviceId: service.id,
-                  lastCheck: new Date()
+                  lastCheck: new Date(),
                 })
               })
             )
@@ -556,30 +617,30 @@ export namespace SubgraphManagement {
    * Create a default registry configuration
    */
   export const defaultConfig = (services: ReadonlyArray<ServiceDefinition>): RegistryConfig => ({
-    discoveryMode: "static",
+    discoveryMode: 'static',
     staticServices: services,
     discoveryEndpoints: [],
     healthCheckInterval: Duration.seconds(30),
     healthCheckTimeout: Duration.seconds(5),
     retryPolicy: {
       maxAttempts: 3,
-      initialDelay: Duration.seconds(1)
-    }
+      initialDelay: Duration.seconds(1),
+    },
   })
 
   /**
    * Create a dynamic registry configuration
    */
   export const dynamicConfig = (discoveryEndpoints: ReadonlyArray<string>): RegistryConfig => ({
-    discoveryMode: "dynamic",
+    discoveryMode: 'dynamic',
     staticServices: [],
     discoveryEndpoints,
     healthCheckInterval: Duration.seconds(30),
     healthCheckTimeout: Duration.seconds(5),
     retryPolicy: {
       maxAttempts: 3,
-      initialDelay: Duration.seconds(1)
-    }
+      initialDelay: Duration.seconds(1),
+    },
   })
 }
 
@@ -605,7 +666,10 @@ export const createMonitoredRegistry = (
       pipe(
         SubgraphManagement.withAutoDiscovery(registry, options?.discoveryInterval),
         Effect.flatMap(registryWithDiscovery =>
-          SubgraphManagement.withHealthMonitoring(registryWithDiscovery, options?.healthCheckInterval)
+          SubgraphManagement.withHealthMonitoring(
+            registryWithDiscovery,
+            options?.healthCheckInterval
+          )
         )
       )
     )

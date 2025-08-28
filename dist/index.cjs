@@ -40,7 +40,8 @@ const effect_Logger = __toESM(require("effect/Logger"));
 const effect_LogLevel = __toESM(require("effect/LogLevel"));
 const effect_Config = __toESM(require("effect/Config"));
 const dataloader = __toESM(require("dataloader"));
-const effect_index = __toESM(require("effect/index"));
+const __effect_schema_AST = __toESM(require("@effect/schema/AST"));
+const effect_Option = __toESM(require("effect/Option"));
 
 //#region src/core/types.ts
 const asUntypedEntity = (entity) => entity;
@@ -598,7 +599,7 @@ const withSchema = (schema) => (builder) => {
 * ```
 */
 const withKeys = (keys) => (builder) => {
-	const actualKeys = keys || [];
+	const actualKeys = keys ?? [];
 	if (actualKeys.length > 0) {
 		const duplicateKeys = actualKeys.map((k) => k.field).filter((field, index, arr) => arr.indexOf(field) !== index);
 		if (duplicateKeys.length > 0) throw new Error(`Duplicate key fields found: ${duplicateKeys.join(", ")}`);
@@ -684,7 +685,7 @@ const withResolvers = (resolvers) => (builder) => {
 */
 const validateEntityBuilder = (builder) => (0, effect_Function.pipe)(effect_Effect.succeed(builder), effect_Effect.flatMap(validateSchema), effect_Effect.flatMap(validateKeys), effect_Effect.flatMap(validateDirectives), effect_Effect.flatMap(validateCircularDependencies), effect_Effect.flatMap(validateCompatibility), effect_Effect.map(createValidResult), effect_Effect.catchAll(handleValidationErrors));
 const validateSchema = (builder) => (0, effect_Function.pipe)(effect_Effect.succeed(builder.schema), effect_Effect.flatMap((schema) => {
-	if (!schema) return effect_Effect.fail([new SchemaValidationError$1({
+	if (schema === void 0) return effect_Effect.fail([new SchemaValidationError$1({
 		message: `Schema is required`,
 		schemaPath: ["schema"],
 		suggestion: "Ensure a valid schema is provided"
@@ -773,12 +774,13 @@ const handleValidationErrors = (errors) => (0, effect_Function.pipe)(effect_Matc
 * Exhaustive pattern matching over entity validation results
 */
 const matchEntityValidationResult = (handlers) => (result) => effect_Match.value(result).pipe(effect_Match.tag("Valid", handlers.Valid), effect_Match.tag("InvalidSchema", handlers.InvalidSchema), effect_Match.tag("InvalidKeys", handlers.InvalidKeys), effect_Match.tag("InvalidDirectives", handlers.InvalidDirectives), effect_Match.tag("CircularDependency", handlers.CircularDependency), effect_Match.tag("IncompatibleVersion", handlers.IncompatibleVersion), effect_Match.exhaustive);
-const getSchemaFields = (_schema) => {
-	return [
-		"id",
-		"name",
-		"email"
-	];
+const getSchemaFields = (schema) => {
+	const ast = schema.ast;
+	if (ast._tag === "TypeLiteral") return ast.propertySignatures.map((prop) => {
+		if (typeof prop.name === "string") return prop.name;
+		return String(prop.name);
+	});
+	return [];
 };
 /**
 * Creates an entity key for federation (internal implementation)
@@ -826,20 +828,6 @@ let UltraStrictEntityBuilder;
 		_Key.create = createEntityKey;
 	})(Key || (Key = _UltraStrictEntityBuilder.Key || (_UltraStrictEntityBuilder.Key = {})));
 })(UltraStrictEntityBuilder || (UltraStrictEntityBuilder = {}));
-let DirectiveUtils;
-(function(_DirectiveUtils) {
-	_DirectiveUtils.shareable = UltraStrictEntityBuilder.Directive.shareable;
-	_DirectiveUtils.inaccessible = UltraStrictEntityBuilder.Directive.inaccessible;
-	_DirectiveUtils.tag = UltraStrictEntityBuilder.Directive.tag;
-	_DirectiveUtils.override = UltraStrictEntityBuilder.Directive.override;
-	_DirectiveUtils.external = UltraStrictEntityBuilder.Directive.external;
-	_DirectiveUtils.provides = UltraStrictEntityBuilder.Directive.provides;
-	_DirectiveUtils.requires = UltraStrictEntityBuilder.Directive.requires;
-})(DirectiveUtils || (DirectiveUtils = {}));
-let KeyUtils;
-(function(_KeyUtils) {
-	_KeyUtils.create = UltraStrictEntityBuilder.Key.create;
-})(KeyUtils || (KeyUtils = {}));
 
 //#endregion
 //#region src/core/schema-first-patterns.ts
@@ -850,7 +838,8 @@ var SchemaEvolutionError = class extends effect_Data.TaggedError("SchemaEvolutio
 var CodeGenerationError = class extends effect_Data.TaggedError("CodeGenerationError") {};
 const SchemaFirstService = effect_Context.GenericTag("@federation/SchemaFirstService");
 const createSchemaFirstService = () => ({
-	parseSchemaDefinition: (_schemaSource) => (0, effect_Function.pipe)(effect_Effect.try(() => {
+	parseSchemaDefinition: (schemaSource) => (0, effect_Function.pipe)(effect_Effect.try(() => {
+		if (!schemaSource?.includes("type")) throw new Error("Invalid GraphQL schema");
 		return {
 			kind: graphql.Kind.DOCUMENT,
 			definitions: []
@@ -942,17 +931,20 @@ const generateUserEntityBuilder = () => (0, effect_Function.pipe)(createUltraStr
 	id: __effect_schema_Schema.String,
 	email: __effect_schema_Schema.String,
 	name: __effect_schema_Schema.optional(__effect_schema_Schema.String)
-})), withKeys([KeyUtils.create("id", { name: "ID" }, false)]), withDirectives([DirectiveUtils.shareable(), DirectiveUtils.tag("user")]), withResolvers({ fullName: (parent) => `${parent.name ?? "Anonymous"}` }), validateEntityBuilder, effect_Effect.map((result) => (0, effect_Function.pipe)(effect_Match.value(result), effect_Match.tag("Valid", ({ entity }) => entity), effect_Match.orElse(() => null))), effect_Effect.catchAll(() => effect_Effect.succeed(null)));
+})), withKeys([UltraStrictEntityBuilder.Key.create("id", { name: "ID" }, false)]), withDirectives([UltraStrictEntityBuilder.Directive.shareable(), UltraStrictEntityBuilder.Directive.tag("user")]), withResolvers({ fullName: (parent) => `${parent.name ?? "Anonymous"}` }), validateEntityBuilder, effect_Effect.map((result) => (0, effect_Function.pipe)(effect_Match.value(result), effect_Match.tag("Valid", ({ entity }) => entity), effect_Match.orElse(() => null))), effect_Effect.catchAll(() => effect_Effect.succeed(null)));
 const generateProductEntityBuilder = () => (0, effect_Function.pipe)(createUltraStrictEntityBuilder("Product"), withSchema(__effect_schema_Schema.Struct({
 	id: __effect_schema_Schema.String,
 	name: __effect_schema_Schema.String,
 	price: __effect_schema_Schema.Number
-})), withKeys([KeyUtils.create("id", { name: "ID" }, false)]), withDirectives([DirectiveUtils.shareable()]), withResolvers({ formattedPrice: (parent) => `$${parent.price.toFixed(2)}` }), validateEntityBuilder, effect_Effect.map((result) => (0, effect_Function.pipe)(effect_Match.value(result), effect_Match.tag("Valid", ({ entity }) => entity), effect_Match.orElse(() => null))), effect_Effect.catchAll(() => effect_Effect.succeed(null)));
+})), withKeys([UltraStrictEntityBuilder.Key.create("id", { name: "ID" }, false)]), withDirectives([UltraStrictEntityBuilder.Directive.shareable()]), withResolvers({ formattedPrice: (parent) => `$${parent.price.toFixed(2)}` }), validateEntityBuilder, effect_Effect.map((result) => (0, effect_Function.pipe)(effect_Match.value(result), effect_Match.tag("Valid", ({ entity }) => entity), effect_Match.orElse(() => null))), effect_Effect.catchAll(() => effect_Effect.succeed(null)));
 const generateOrderEntityBuilder = () => (0, effect_Function.pipe)(createUltraStrictEntityBuilder("Order"), withSchema(__effect_schema_Schema.Struct({
 	id: __effect_schema_Schema.String,
 	userId: __effect_schema_Schema.String,
 	total: __effect_schema_Schema.Number
-})), withKeys([KeyUtils.create("id", { name: "ID" }, false)]), withDirectives([DirectiveUtils.requires("userId")]), withResolvers({ formattedTotal: (parent) => `$${parent.total.toFixed(2)}` }), validateEntityBuilder, effect_Effect.map((result) => (0, effect_Function.pipe)(effect_Match.value(result), effect_Match.tag("Valid", ({ entity }) => entity), effect_Match.orElse(() => null))), effect_Effect.catchAll(() => effect_Effect.succeed(null)));
+})), withKeys([UltraStrictEntityBuilder.Key.create("id", { name: "ID" }, false)]), withDirectives([UltraStrictEntityBuilder.Directive.requires("userId")]), withResolvers({ formattedTotal: (parent) => {
+	const typedParent = parent;
+	return `$${typedParent.total.toFixed(2)}`;
+} }), validateEntityBuilder, effect_Effect.map((result) => (0, effect_Function.pipe)(effect_Match.value(result), effect_Match.tag("Valid", ({ entity }) => entity), effect_Match.orElse(() => null))), effect_Effect.catchAll(() => effect_Effect.succeed(null)));
 const generateTypeScriptTypes = (entities) => effect_Effect.succeed(entities.map((entity) => `
 export interface ${entity.typename} {
   ${entity.keys.map((key) => `readonly ${key.field}: string`).join("\n  ")}
@@ -1484,13 +1476,13 @@ let SubgraphManagement;
 					const text = await response.text();
 					try {
 						return JSON.parse(text);
-					} catch (parseError) {
+					} catch {
 						throw new Error(`Invalid JSON: ${text.slice(0, 100)}...`);
 					}
 				},
 				catch: (error$1) => ErrorFactory.CommonErrors.discoveryError(`Invalid JSON response: ${error$1.message}`, endpoint)
 			}), effect.Effect.flatMap((data) => {
-				if (!data || !Array.isArray(data["services"])) return effect.Effect.fail(ErrorFactory.CommonErrors.discoveryError(`Expected services array, got: ${typeof data}`, endpoint));
+				if (!Array.isArray(data["services"])) return effect.Effect.fail(ErrorFactory.CommonErrors.discoveryError(`Expected services array, got: ${typeof data}`, endpoint));
 				const services = data["services"];
 				const validServices = services.filter((service) => {
 					return service != null && typeof service === "object" && "id" in service && "url" in service && typeof service.id === "string" && typeof service.url === "string";
@@ -1535,7 +1527,7 @@ let SubgraphManagement;
 			const baseMetrics = {
 				responseTimeMs: responseTime,
 				statusCode: response.status,
-				contentLength: parseInt(response.headers.get("content-length") || "0", 10)
+				contentLength: parseInt(response.headers.get("content-length") ?? "0", 10)
 			};
 			const baseStatus = {
 				serviceId: service.id,
@@ -1689,7 +1681,7 @@ let FederationErrorBoundaries;
 			errors: []
 		});
 		if (!config.allowPartialFailure) return effect.Effect.fail(ErrorFactory.federation("Subgraph failures not allowed", void 0, "partial_failure", { failedSubgraphs: failed.map((f) => f.subgraphId) }));
-		const criticalFailures = failed.filter((f) => config.criticalSubgraphs?.includes(f.subgraphId));
+		const criticalFailures = failed.filter((f) => config.criticalSubgraphs?.includes(f.subgraphId) ?? false);
 		if (criticalFailures.length > 0) return effect.Effect.fail(ErrorFactory.federation("Critical subgraph failure", void 0, "critical_failure", { failedSubgraphs: criticalFailures.map((f) => f.subgraphId) }));
 		const dataWithFallbacks = applyFallbackValues(successful, failed, config);
 		return effect.Effect.succeed({
@@ -1716,7 +1708,7 @@ let FederationErrorBoundaries;
 	const mergeSuccessfulResults = (results) => {
 		return results.reduce((merged, result) => ({
 			...merged,
-			...result.data
+			...typeof result.data === "object" && result.data !== null ? result.data : {}
 		}), {});
 	};
 	/**
@@ -1725,9 +1717,9 @@ let FederationErrorBoundaries;
 	const applyFallbackValues = (successful, failed, config) => {
 		let data = mergeSuccessfulResults(successful);
 		if (config.fallbackValues) failed.forEach((failedResult) => {
-			const fallback = config.fallbackValues?.[failedResult.subgraphId];
-			if (fallback) data = {
-				...data,
+			const fallback = config.fallbackValues?.[failedResult.subgraphId] ?? {};
+			data = {
+				...typeof data === "object" && data !== null ? data : {},
 				...fallback
 			};
 		});
@@ -1737,12 +1729,13 @@ let FederationErrorBoundaries;
 	* Transform subgraph error for client consumption
 	*/
 	const transformSubgraphError = (error$1) => {
+		const errorObj = error$1;
 		return {
-			message: error$1.message || "Subgraph execution failed",
+			message: errorObj.message ?? "Subgraph execution failed",
 			extensions: {
-				code: error$1.code || "SUBGRAPH_ERROR",
+				code: errorObj.code ?? "SUBGRAPH_ERROR",
 				timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-				...error$1.extensions
+				...errorObj.extensions
 			}
 		};
 	};
@@ -1761,7 +1754,7 @@ let FederationErrorBoundaries;
 			protect: (effect$1) => (0, effect.pipe)(effect.Effect.succeed(state), effect.Effect.flatMap((currentState) => {
 				switch (currentState) {
 					case "open": {
-						const canReset = lastFailureTime && Date.now() - lastFailureTime >= resetTimeoutMs;
+						const canReset = lastFailureTime !== null && Date.now() - lastFailureTime >= resetTimeoutMs;
 						return canReset ? (0, effect.pipe)(effect.Effect.sync(() => {
 							state = "half-open";
 							successCount = 0;
@@ -1835,15 +1828,16 @@ let FederationErrorBoundaries;
 	* Transform federation error for client consumption
 	*/
 	const transformFederationError = (error$1, context, config) => {
+		const errorCode = error$1._tag || ("code" in error$1 && typeof error$1.code === "string" ? error$1.code : "FEDERATION_ERROR");
 		const baseError = {
-			message: config?.sanitizeErrors ? "Internal server error" : error$1.message,
-			code: error$1._tag || "FEDERATION_ERROR",
+			message: config?.sanitizeErrors ?? false ? "Internal server error" : error$1.message,
+			code: errorCode,
 			path: context.fieldPath,
 			extensions: {
 				subgraphId: context.subgraphId,
 				operationType: context.operationType,
 				timestamp: context.timestamp.toISOString(),
-				...config?.includeStackTrace && error$1.cause ? { stack: String(error$1.cause) } : {}
+				...(config?.includeStackTrace ?? false) && Boolean(error$1.cause) ? { stack: String(error$1.cause) } : {}
 			}
 		};
 		if (config?.customTransformer) {
@@ -1868,7 +1862,7 @@ let FederationErrorBoundaries;
 				duration: metrics.duration,
 				success: metrics.success,
 				timestamp: Date.now(),
-				...metrics.error && { errorType: metrics.error.constructor.name }
+				...metrics.error !== void 0 && metrics.error !== null && { errorType: metrics.error.constructor.name }
 			}
 		});
 		scheduleMetricsFlush();
@@ -1954,12 +1948,13 @@ let PerformanceOptimizations;
 				const cached = cache.get(queryHash);
 				if (cached) {
 					stats.hits++;
-					cache.set(queryHash, {
+					const updated = {
 						...cached,
 						accessCount: cached.accessCount + 1,
 						lastAccessed: Date.now()
-					});
-					return cached;
+					};
+					cache.set(queryHash, updated);
+					return updated;
 				} else {
 					stats.misses++;
 					return void 0;
@@ -1982,7 +1977,7 @@ let PerformanceOptimizations;
 				});
 			}),
 			invalidate: (pattern) => effect.Effect.sync(() => {
-				if (pattern) {
+				if (pattern !== void 0) {
 					for (const [key] of cache) if (key.includes(pattern)) cache.delete(key);
 				} else cache.clear();
 			}),
@@ -1999,7 +1994,7 @@ let PerformanceOptimizations;
 		const stats = /* @__PURE__ */ new Map();
 		return effect.Effect.succeed({
 			getLoader: (subgraphId, batchLoadFn) => effect.Effect.sync(() => {
-				const loaderKey = `${subgraphId}:${batchLoadFn.name}`;
+				const loaderKey = `${subgraphId}:${batchLoadFn.name || "default"}`;
 				if (!loaders.has(loaderKey)) {
 					if (!stats.has(subgraphId)) stats.set(subgraphId, {
 						loadCount: 0,
@@ -2010,7 +2005,13 @@ let PerformanceOptimizations;
 					});
 					const subgraphStats = stats.get(subgraphId);
 					const instrumentedBatchFn = async (keys) => {
-						const currentStats = stats.get(subgraphId);
+						const currentStats = stats.get(subgraphId) ?? {
+							loadCount: 0,
+							batchCount: 0,
+							totalBatchSize: 0,
+							cacheHits: 0,
+							cacheMisses: 0
+						};
 						stats.set(subgraphId, {
 							...currentStats,
 							batchCount: currentStats.batchCount + 1,
@@ -2032,7 +2033,7 @@ let PerformanceOptimizations;
 					const dataLoaderOptions = {
 						maxBatchSize: config.maxBatchSize,
 						...config.cacheKeyFn && { cacheKeyFn: config.cacheKeyFn },
-						...config.batchWindowMs && { batchScheduleFn: (callback) => setTimeout(callback, config.batchWindowMs) },
+						...config.batchWindowMs !== void 0 && { batchScheduleFn: (callback) => setTimeout(callback, config.batchWindowMs) },
 						cacheMap: (() => {
 							const map = /* @__PURE__ */ new Map();
 							return {
@@ -2069,8 +2070,8 @@ let PerformanceOptimizations;
 			getStats: () => effect.Effect.succeed(Object.fromEntries(Array.from(stats.entries()).map(([subgraphId, stat]) => [subgraphId, {
 				loadCount: stat.loadCount,
 				batchCount: stat.batchCount,
-				averageBatchSize: stat.totalBatchSize / stat.batchCount || 0,
-				cacheHitRate: stat.cacheHits / (stat.cacheHits + stat.cacheMisses) || 0
+				averageBatchSize: stat.batchCount > 0 ? stat.totalBatchSize / stat.batchCount : 0,
+				cacheHitRate: stat.cacheHits + stat.cacheMisses > 0 ? stat.cacheHits / (stat.cacheHits + stat.cacheMisses) : 0
 			}])))
 		});
 	};
@@ -2137,7 +2138,7 @@ let PerformanceOptimizations;
 			return optimizations.metricsCollector.recordExecution({
 				queryHash,
 				duration,
-				success: !result.errors?.length,
+				success: (result.errors?.length ?? 0) === 0,
 				subgraphCalls: result.extensions?.["subgraphCalls"] ?? []
 			});
 		}), effect.Effect.catchAll((error$1) => effect.Effect.succeed({
@@ -2270,12 +2271,201 @@ const createProductionOptimizedExecutor = (schema) => PerformanceOptimizations.c
 const createDevelopmentOptimizedExecutor = (schema) => PerformanceOptimizations.createOptimizedExecutor(schema, PerformanceOptimizations.developmentConfig);
 
 //#endregion
-//#region src/schema/index.ts
-const SCHEMA_MODULE_VERSION = "2.0.0";
-
-//#endregion
-//#region src/patterns/index.ts
-const PATTERNS_MODULE_VERSION = "2.0.0";
+//#region src/schema/ast-conversion.ts
+const MAX_RECURSION_DEPTH = 10;
+/**
+* Create a new type conversion context
+*/
+const createConversionContext = (isInput = false, scalars = {}, options = {}) => ({
+	cache: /* @__PURE__ */ new Map(),
+	isInput,
+	scalars,
+	depth: 0,
+	maxDepth: options.maxDepth ?? MAX_RECURSION_DEPTH,
+	strictMode: options.strictMode ?? true
+});
+let ASTConversion;
+(function(_ASTConversion) {
+	const schemaToGraphQLType = _ASTConversion.schemaToGraphQLType = (schema, context = createConversionContext()) => {
+		if (context.depth > context.maxDepth) return effect_Effect.fail(ErrorFactory.typeConversion(`Maximum recursion depth (${context.maxDepth}) exceeded`, "depth_exceeded"));
+		const ast = schema.ast;
+		const cacheKey = generateCacheKey(ast, context.isInput);
+		const cachedType = context.cache.get(cacheKey);
+		if (cachedType) return effect_Effect.succeed(cachedType);
+		const nextContext = {
+			...context,
+			depth: context.depth + 1
+		};
+		return (0, effect_Function.pipe)(convertAST(ast, nextContext), effect_Effect.tap((type) => effect_Effect.sync(() => context.cache.set(cacheKey, type))));
+	};
+	const convertSchemasParallel = _ASTConversion.convertSchemasParallel = (schemas, context = createConversionContext()) => (0, effect_Function.pipe)(effect_Effect.all(schemas.map(({ name, schema }) => (0, effect_Function.pipe)(schemaToGraphQLType(schema, context), effect_Effect.map((type) => [name, type]))), { concurrency: 5 }), effect_Effect.map((pairs) => Object.fromEntries(pairs)));
+	_ASTConversion.createGraphQLSchema = (entities, queries = {}, mutations = {}) => {
+		const outputContext = createConversionContext(false);
+		return (0, effect_Function.pipe)(effect_Effect.all({
+			types: (0, effect_Function.pipe)(convertSchemasParallel(Object.entries(entities).map(([name, schema]) => ({
+				name,
+				schema
+			})), outputContext), effect_Effect.map((result) => filterOutputTypes(result))),
+			queries: (0, effect_Function.pipe)(convertSchemasParallel(Object.entries(queries).map(([name, schema]) => ({
+				name,
+				schema
+			})), outputContext), effect_Effect.map((result) => filterOutputTypes(result))),
+			mutations: (0, effect_Function.pipe)(convertSchemasParallel(Object.entries(mutations).map(([name, schema]) => ({
+				name,
+				schema
+			})), outputContext), effect_Effect.map((result) => filterOutputTypes(result)))
+		}));
+	};
+	const filterOutputTypes = (record) => {
+		const filtered = {};
+		for (const [key, type] of Object.entries(record)) if ((0, graphql.isOutputType)(type)) filtered[key] = type;
+		return filtered;
+	};
+	/**
+	* Convert AST node using exhaustive pattern matching
+	*/
+	const convertAST = (ast, context) => effect_Match.value(ast).pipe(effect_Match.tag("StringKeyword", () => effect_Effect.succeed(graphql.GraphQLString)), effect_Match.tag("NumberKeyword", () => effect_Effect.succeed(graphql.GraphQLFloat)), effect_Match.tag("BooleanKeyword", () => effect_Effect.succeed(graphql.GraphQLBoolean)), effect_Match.tag("BigIntKeyword", () => effect_Effect.succeed(graphql.GraphQLString)), effect_Match.tag("SymbolKeyword", () => effect_Effect.succeed(graphql.GraphQLString)), effect_Match.tag("UnknownKeyword", () => effect_Effect.succeed(context.scalars["JSON"] ?? graphql.GraphQLString)), effect_Match.tag("AnyKeyword", () => effect_Effect.succeed(context.scalars["JSON"] ?? graphql.GraphQLString)), effect_Match.tag("VoidKeyword", () => effect_Effect.succeed(graphql.GraphQLString)), effect_Match.tag("NeverKeyword", () => effect_Effect.fail(ErrorFactory.typeConversion("Never type cannot be represented in GraphQL", "never_type"))), effect_Match.tag("Literal", (ast$1) => convertLiteral(ast$1, context)), effect_Match.tag("Refinement", (ast$1) => convertRefinement(ast$1, context)), effect_Match.tag("TypeLiteral", (ast$1) => convertTypeLiteral(ast$1, context)), effect_Match.tag("Union", (ast$1) => convertUnion(ast$1, context)), effect_Match.tag("Enums", (ast$1) => convertEnums(ast$1, context)), effect_Match.tag("TupleType", (ast$1) => convertTuple(ast$1, context)), effect_Match.tag("TemplateLiteral", (ast$1) => convertTemplateLiteral(ast$1, context)), effect_Match.tag("Declaration", (ast$1) => convertDeclaration(ast$1, context)), effect_Match.tag("Transformation", (ast$1) => schemaToGraphQLType(__effect_schema_Schema.make(ast$1.from), context)), effect_Match.tag("Suspend", (ast$1) => convertSuspend(ast$1, context)), effect_Match.orElse((unsupportedAst) => effect_Effect.fail(ErrorFactory.typeConversion(`Unsupported AST type: ${unsupportedAst._tag}`, unsupportedAst._tag, "astType"))));
+	/**
+	* Convert literal AST to appropriate GraphQL type
+	*/
+	const convertLiteral = (ast, _context) => {
+		const literalValue = ast.literal;
+		if (typeof literalValue === "string") return effect_Effect.succeed(graphql.GraphQLString);
+		else if (typeof literalValue === "number") return effect_Effect.succeed(Number.isInteger(literalValue) ? graphql.GraphQLInt : graphql.GraphQLFloat);
+		else if (typeof literalValue === "boolean") return effect_Effect.succeed(graphql.GraphQLBoolean);
+		else return effect_Effect.succeed(graphql.GraphQLString);
+	};
+	/**
+	* Convert refinement AST with branded type mapping
+	*/
+	const convertRefinement = (ast, context) => {
+		const titleAnnotation = __effect_schema_AST.getAnnotation(__effect_schema_AST.TitleAnnotationId)(ast);
+		return (0, effect_Function.pipe)(effect_Effect.fromNullable(titleAnnotation), effect_Effect.flatMap((annotation) => {
+			let title;
+			if (typeof annotation === "string") title = annotation;
+			else if (annotation !== null && typeof annotation === "object" && "value" in annotation) title = String(annotation.value);
+			else title = String(annotation);
+			return effect_Match.value(title).pipe(effect_Match.when((t) => t === "Int", () => effect_Effect.succeed(graphql.GraphQLInt)), effect_Match.when((t) => t?.endsWith("Id") || t?.includes("Identity") || t === "ID", () => effect_Effect.succeed(graphql.GraphQLID)), effect_Match.when((t) => t === "Email" || t === "EmailAddress", () => effect_Effect.succeed(graphql.GraphQLString)), effect_Match.when((t) => t === "Phone" || t === "PhoneNumber", () => effect_Effect.succeed(graphql.GraphQLString)), effect_Match.when((t) => t === "URL" || t === "Uri" || t === "Link", () => effect_Effect.succeed(graphql.GraphQLString)), effect_Match.when((t) => t === "Timestamp" || t === "DateTime", () => effect_Effect.succeed(context.scalars["DateTime"] ?? graphql.GraphQLString)), effect_Match.when((t) => t === "Date", () => effect_Effect.succeed(context.scalars["Date"] ?? graphql.GraphQLString)), effect_Match.when((t) => t === "Time", () => effect_Effect.succeed(context.scalars["Time"] ?? graphql.GraphQLString)), effect_Match.when((t) => t === "Money" || t === "Currency" || t === "Amount", () => effect_Effect.succeed(context.scalars["Money"] ?? graphql.GraphQLFloat)), effect_Match.when((t) => t === "Percentage", () => effect_Effect.succeed(graphql.GraphQLFloat)), effect_Match.when((t) => t === "Version" || t === "SequenceNumber", () => effect_Effect.succeed(graphql.GraphQLInt)), effect_Match.when((t) => t === "Port" || t === "Count", () => effect_Effect.succeed(graphql.GraphQLInt)), effect_Match.when((t) => t === "JSON" || t === "JsonValue", () => effect_Effect.succeed(context.scalars["JSON"] ?? graphql.GraphQLString)), effect_Match.when((t) => t === "Password" || t === "Secret" || t === "Token", (sensitiveType) => context.strictMode ? effect_Effect.fail(ErrorFactory.typeConversion(`Sensitive type ${sensitiveType} cannot be converted to GraphQL type`, "sensitive_type", sensitiveType)) : effect_Effect.succeed(graphql.GraphQLString)), effect_Match.when((t) => Boolean(t && context.scalars[t]), (t) => effect_Effect.succeed(context.scalars[t])), effect_Match.orElse(() => schemaToGraphQLType(__effect_schema_Schema.make(ast.from), context)));
+		}), effect_Effect.orElse(() => schemaToGraphQLType(__effect_schema_Schema.make(ast.from), context)), effect_Effect.orElse(() => effect_Effect.succeed(graphql.GraphQLString)));
+	};
+	/**
+	* Convert type literal AST to GraphQL Object/Input type
+	*/
+	const convertTypeLiteral = (ast, context) => {
+		const typename = generateTypeName(ast, context);
+		return (0, effect_Function.pipe)(effect_Effect.all(ast.propertySignatures.map((propSig) => (0, effect_Function.pipe)(schemaToGraphQLType(__effect_schema_Schema.make(propSig.type), context), effect_Effect.map((fieldType) => {
+			const isOptional = propSig.isOptional;
+			const finalType = isOptional ? fieldType : new graphql.GraphQLNonNull(fieldType);
+			return [String(propSig.name), {
+				type: finalType,
+				description: extractDescription(propSig.type)
+			}];
+		})))), effect_Effect.map((fields) => Object.fromEntries(fields)), effect_Effect.map((fieldConfig) => {
+			const description = extractDescription(ast);
+			return context.isInput ? new graphql.GraphQLInputObjectType({
+				name: `${typename}Input`,
+				description,
+				fields: fieldConfig
+			}) : new graphql.GraphQLObjectType({
+				name: typename,
+				description,
+				fields: fieldConfig
+			});
+		}));
+	};
+	/**
+	* Convert union AST to GraphQL Union type
+	*/
+	const convertUnion = (ast, context) => {
+		if (context.isInput) return effect_Effect.fail(ErrorFactory.typeConversion("Union types are not supported in GraphQL input types", "union_input_type"));
+		const typename = generateTypeName(ast, context);
+		return (0, effect_Function.pipe)(effect_Effect.all(ast.types.map((type) => schemaToGraphQLType(__effect_schema_Schema.make(type), context))), effect_Effect.map((types) => new graphql.GraphQLUnionType({
+			name: typename,
+			description: extractDescription(ast),
+			types: types.filter(isObjectType),
+			resolveType: (value) => {
+				if (value !== null && typeof value === "object" && "_tag" in value) return String(value._tag);
+				return void 0;
+			}
+		})));
+	};
+	/**
+	* Convert enums AST to GraphQL Enum type
+	*/
+	const convertEnums = (ast, context) => {
+		const typename = generateTypeName(ast, context);
+		return effect_Effect.succeed(new graphql.GraphQLEnumType({
+			name: typename,
+			description: extractDescription(ast),
+			values: Object.fromEntries(ast.enums.map(([key, value]) => [String(key), {
+				value,
+				description: `Enum value: ${String(value)}`
+			}]))
+		}));
+	};
+	/**
+	* Convert tuple AST to GraphQL List type
+	*/
+	const convertTuple = (ast, context) => {
+		if (ast.elements.length === 0) return effect_Effect.succeed(new graphql.GraphQLList(graphql.GraphQLString));
+		const firstElementType = ast.elements[0]?.type;
+		if (!firstElementType) return effect_Effect.succeed(new graphql.GraphQLList(graphql.GraphQLString));
+		return (0, effect_Function.pipe)(schemaToGraphQLType(__effect_schema_Schema.make(firstElementType), context), effect_Effect.map((elementType) => {
+			if ((0, graphql.isOutputType)(elementType)) return new graphql.GraphQLList(elementType);
+			else return new graphql.GraphQLList(graphql.GraphQLString);
+		}));
+	};
+	/**
+	* Convert template literal AST to GraphQL String
+	*/
+	const convertTemplateLiteral = (_ast, _context) => effect_Effect.succeed(graphql.GraphQLString);
+	/**
+	* Convert declaration AST by delegating to the declared type
+	*/
+	const convertDeclaration = (_ast, _context) => effect_Effect.succeed(graphql.GraphQLString);
+	/**
+	* Convert suspend AST by evaluating the suspended computation
+	*/
+	const convertSuspend = (ast, context) => (0, effect_Function.pipe)(effect_Effect.sync(() => ast.f()), effect_Effect.flatMap((suspendedAST) => schemaToGraphQLType(__effect_schema_Schema.make(suspendedAST), context)));
+	/**
+	* Generate cache key for AST node
+	*/
+	const generateCacheKey = (ast, isInput) => {
+		const baseKey = ast._tag;
+		const suffix = isInput ? ":input" : ":output";
+		if ("annotations" in ast) {
+			const titleAnnotation = __effect_schema_AST.getAnnotation(__effect_schema_AST.TitleAnnotationId)(ast);
+			if (effect_Option.isSome(titleAnnotation)) return `${titleAnnotation.value}${suffix}`;
+		}
+		return `${baseKey}${suffix}:${ast.toString?.() ?? "unknown"}`;
+	};
+	/**
+	* Generate GraphQL type name from AST
+	*/
+	const generateTypeName = (ast, context) => {
+		if ("annotations" in ast) {
+			const titleAnnotation = __effect_schema_AST.getAnnotation(__effect_schema_AST.TitleAnnotationId)(ast);
+			if (effect_Option.isSome(titleAnnotation)) return String(titleAnnotation.value);
+		}
+		return `Generated${ast._tag}${context.depth}`;
+	};
+	/**
+	* Extract description from AST annotations
+	*/
+	const extractDescription = (ast) => {
+		if ("annotations" in ast) {
+			const descriptionAnnotation = __effect_schema_AST.getAnnotation(__effect_schema_AST.DescriptionAnnotationId)(ast);
+			if (effect_Option.isSome(descriptionAnnotation)) return String(descriptionAnnotation.value);
+		}
+		return void 0;
+	};
+	/**
+	* Type guard for GraphQL Object types
+	*/
+	const isObjectType = (type) => {
+		return type instanceof graphql.GraphQLObjectType;
+	};
+})(ASTConversion || (ASTConversion = {}));
 
 //#endregion
 //#region src/experimental/index.ts
@@ -2289,83 +2479,6 @@ __export(experimental_exports, {
 	withKeys: () => withKeys,
 	withResolvers: () => withResolvers,
 	withSchema: () => withSchema
-});
-
-//#endregion
-//#region src/examples/basic-entity.ts
-/**
-* Basic Federation v2 Example
-*
-* Demonstrates:
-* - Entity creation with Effect Schema
-* - Federation directives (@shareable, @tag)
-* - Reference resolution with Effect-based error handling
-* - Schema composition
-*/
-const UserSchema = __effect_schema_Schema.Struct({
-	id: __effect_schema_Schema.String,
-	email: __effect_schema_Schema.String,
-	name: __effect_schema_Schema.optional(__effect_schema_Schema.String),
-	createdAt: __effect_schema_Schema.Unknown
-});
-const createUserEntity = () => {
-	const builder = createEntityBuilder("User", UserSchema, ["id"]).withShareableField("email").withTaggedField("name", ["pii"], ({ email }, _args, _context, _info) => effect_Effect.succeed(email.split("@")[0])).withReferenceResolver((reference, _context, _info) => (0, effect_Function.pipe)(effect_Effect.succeed(reference), effect_Effect.flatMap((ref) => {
-		console.log(`Resolving User entity:`, ref);
-		const user = {
-			id: ref.id,
-			email: `user${ref.id}@example.com`,
-			name: `User ${ref.id}`,
-			createdAt: /* @__PURE__ */ new Date()
-		};
-		return effect_Effect.succeed(user);
-	})));
-	return builder.build();
-};
-const example = (0, effect_Function.pipe)(createUserEntity(), effect_Effect.flatMap((userEntity) => {
-	console.log("✓ User entity created successfully");
-	console.log(`  - Typename: ${userEntity.typename}`);
-	console.log(`  - Key fields: ${JSON.stringify(userEntity.key)}`);
-	console.log(`  - Directives:`, userEntity.directives);
-	return createFederatedSchema({
-		entities: [asUntypedEntity(userEntity)],
-		services: [{
-			id: "users",
-			url: "http://localhost:4001"
-		}],
-		errorBoundaries: {
-			subgraphTimeouts: { "users": effect_index.Duration.seconds(5) },
-			circuitBreakerConfig: {
-				failureThreshold: 3,
-				resetTimeout: effect_index.Duration.seconds(30),
-				halfOpenMaxCalls: 5
-			},
-			partialFailureHandling: {
-				allowPartialFailure: true,
-				criticalSubgraphs: ["users"]
-			}
-		},
-		performance: {
-			queryPlanCache: { maxSize: 100 },
-			dataLoaderConfig: { maxBatchSize: 50 },
-			metricsCollection: { enabled: true }
-		}
-	});
-}), effect_Effect.tap((schema) => {
-	console.log("✓ Federation schema composed successfully");
-	console.log(`  - Version: ${schema.version}`);
-	console.log(`  - Entity count: ${schema.metadata.entityCount}`);
-	console.log(`  - Subgraph count: ${schema.metadata.subgraphCount}`);
-}), effect_Effect.catchAll((error$1) => {
-	console.error("✗ Federation example failed:");
-	console.error(`  - Error: ${error$1 instanceof Error ? error$1.message : String(error$1)}`);
-	if (error$1 instanceof Error && error$1.cause) console.error(`  - Cause: ${error$1.cause}`);
-	return effect_Effect.succeed(null);
-}));
-console.log("🚀 Starting Federation v2 Basic Example...");
-effect_Effect.runPromise(example.pipe(effect_Effect.provide(DevelopmentLayerLive))).then(() => {
-	console.log("🎉 Example completed!");
-}).catch((error$1) => {
-	console.error("💥 Example failed:", error$1);
 });
 
 //#endregion
@@ -2400,6 +2513,12 @@ const FRAMEWORK_INFO = {
 };
 
 //#endregion
+Object.defineProperty(exports, 'ASTConversion', {
+  enumerable: true,
+  get: function () {
+    return ASTConversion;
+  }
+});
 exports.BaseDomainError = BaseDomainError;
 exports.CircuitBreakerError = CircuitBreakerError;
 exports.CodeGenerationError = CodeGenerationError;
@@ -2445,7 +2564,6 @@ exports.HealthCheckError = HealthCheckError;
 exports.MinimalLayerLive = MinimalLayerLive;
 exports.ModernFederationComposer = ModernFederationComposer;
 exports.ModernFederationComposerLive = ModernFederationComposerLive;
-exports.PATTERNS_MODULE_VERSION = PATTERNS_MODULE_VERSION;
 Object.defineProperty(exports, 'PerformanceOptimizations', {
   enumerable: true,
   get: function () {
@@ -2454,7 +2572,6 @@ Object.defineProperty(exports, 'PerformanceOptimizations', {
 });
 exports.ProductionLayerLive = ProductionLayerLive;
 exports.RegistrationError = RegistrationError;
-exports.SCHEMA_MODULE_VERSION = SCHEMA_MODULE_VERSION;
 exports.SchemaEvolution = SchemaEvolution;
 exports.SchemaEvolutionError = SchemaEvolutionError;
 Object.defineProperty(exports, 'SchemaFirst', {
@@ -2479,9 +2596,9 @@ exports.TypeConversionError = TypeConversionError;
 exports.VERSION = VERSION;
 exports.ValidationError = ValidationError;
 exports.asUntypedEntity = asUntypedEntity;
-exports.basicEntityExample = example;
 exports.compose = compose;
 exports.createBasicOptimizedExecutor = createBasicOptimizedExecutor;
+exports.createConversionContext = createConversionContext;
 exports.createDevelopmentOptimizedExecutor = createDevelopmentOptimizedExecutor;
 exports.createDynamicRegistry = createDynamicRegistry;
 exports.createEntityBuilder = createEntityBuilder;

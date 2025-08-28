@@ -5,30 +5,36 @@ This guide helps you migrate to Federation Framework v2 with its modern patterns
 ## 📋 **Migration Overview**
 
 Federation Framework v2 represents a significant evolution focused on:
-- **Consolidated API Surface**: Single modern API, legacy patterns removed
+
+- **Modern API Surface**: Single unified API with Effect-TS patterns
 - **Performance Optimizations**: 40% faster caching, adaptive batching
 - **Enhanced Type Safety**: Zero 'any' types, advanced TypeScript patterns
 - **Effect-First Architecture**: Layer-based dependency injection
 
 ## ⚠️ **Breaking Changes**
 
-### 1. Legacy Composer Removed
+### 1. API Changes
 
-**Before (v1.x/Legacy):**
+**Before (v1.x):**
+
 ```typescript
-// ❌ No longer available
-import { FederationComposer } from '@cqrs/federation-v2'
+// Old promise-based patterns
+import { createEntity } from '@cqrs/federation'
 
-const schema = pipe(
-  FederationComposer.create({
-    entities: [userEntity],
-    services: [{ id: "users", url: "http://localhost:4001" }]
-  }),
-  Effect.provide(DevelopmentLayerLive)
-)
+const entity = createEntity({
+  typename: 'User',
+  keys: ['id'],
+  resolvers: {
+    // Promise-based resolvers
+    async getUser(id) {
+      return await fetchUser(id)
+    },
+  },
+})
 ```
 
-**After (v2.x):**
+**After (v2.0):**
+
 ```typescript
 // ✅ Use modern createFederatedSchema function
 import { createFederatedSchema } from '@cqrs/federation-v2'
@@ -36,19 +42,22 @@ import { createFederatedSchema } from '@cqrs/federation-v2'
 const schema = Effect.gen(function* () {
   return yield* createFederatedSchema({
     entities: [userEntity],
-    services: [{ id: "users", url: "http://localhost:4001" }],
+    services: [{ id: 'users', url: 'http://localhost:4001' }],
     // Enhanced configuration options
-    errorBoundaries: { /* ... */ },
-    performance: { /* ... */ }
+    errorBoundaries: {
+      /* ... */
+    },
+    performance: {
+      /* ... */
+    },
   })
-}).pipe(
-  Effect.provide(DevelopmentLayerLive)
-)
+}).pipe(Effect.provide(DevelopmentLayerLive))
 ```
 
 ### 2. Import Path Changes
 
 **Before:**
+
 ```typescript
 // ❌ Old import paths
 import { ModernFederationComposer } from '@cqrs/federation-v2/federation/composer-modern'
@@ -56,6 +65,7 @@ import { FederationComposer } from '@cqrs/federation-v2/federation/composer'
 ```
 
 **After:**
+
 ```typescript
 // ✅ Consolidated imports
 import { createFederatedSchema } from '@cqrs/federation-v2'
@@ -65,29 +75,26 @@ import { createFederatedSchema } from '@cqrs/federation-v2'
 ### 3. Effect Pattern Changes
 
 **Before (Pipe-based):**
+
 ```typescript
 // ❌ Legacy pipe patterns
-const result = pipe(
-  createEntity(),
-  Effect.flatMap(validateEntity),
-  Effect.provide(services)
-)
+const result = pipe(createEntity(), Effect.flatMap(validateEntity), Effect.provide(services))
 ```
 
 **After (Effect.gen):**
+
 ```typescript
 // ✅ Modern Effect.gen patterns
 const result = Effect.gen(function* () {
   const entity = yield* createEntity()
   return yield* validateEntity(entity)
-}).pipe(
-  Effect.provide(services)
-)
+}).pipe(Effect.provide(services))
 ```
 
 ### 4. Type System Enhancements
 
 **Before:**
+
 ```typescript
 // ❌ Generic types with any
 const resolver: FieldResolver<any, any, any> = (parent, args, context) => {
@@ -96,6 +103,7 @@ const resolver: FieldResolver<any, any, any> = (parent, args, context) => {
 ```
 
 **After:**
+
 ```typescript
 // ✅ Strict typing with utility types
 const resolver: FieldResolver<User, UserContext, string> = (parent, args, context) => {
@@ -104,7 +112,7 @@ const resolver: FieldResolver<User, UserContext, string> = (parent, args, contex
 
 // Or use new utility types
 const resolvers: SafeResolverMap<User, UserContext> = {
-  fullName: (parent) => Effect.succeed(`${parent.firstName} ${parent.lastName}`)
+  fullName: parent => Effect.succeed(`${parent.firstName} ${parent.lastName}`),
 }
 ```
 
@@ -130,23 +138,25 @@ Find and replace legacy composer patterns:
 **Replace with:** `createFederatedSchema`
 
 **Before:**
+
 ```typescript
 const setupFederation = pipe(
   FederationComposer.create({
     entities: [userEntity, productEntity],
     services: services,
-    errorBoundaries: errorConfig
+    errorBoundaries: errorConfig,
   }),
   Effect.provide(layers)
 )
 ```
 
 **After:**
+
 ```typescript
 const setupFederation = Effect.gen(function* () {
   const userEntity = yield* createUserEntity()
   const productEntity = yield* createProductEntity()
-  
+
   return yield* createFederatedSchema({
     entities: [userEntity, productEntity],
     services: services,
@@ -154,55 +164,57 @@ const setupFederation = Effect.gen(function* () {
     // New performance options
     performance: {
       queryPlanCache: { maxSize: 1000 },
-      dataLoaderConfig: { adaptiveBatching: true }
-    }
+      dataLoaderConfig: { adaptiveBatching: true },
+    },
   })
-}).pipe(
-  Effect.provide(layers)
-)
+}).pipe(Effect.provide(layers))
 ```
 
 ### Step 3: Modernize Entity Creation
 
 **Before:**
+
 ```typescript
-const userEntity = new FederationEntityBuilder("User", UserSchema, ["id"])
-  .withShareableField("email")
+const userEntity = new FederationEntityBuilder('User', UserSchema, ['id'])
+  .withShareableField('email')
   .build()
 ```
 
 **After:**
+
 ```typescript
 const createUserEntity = () => {
-  const builder = new FederationEntityBuilder("User", UserSchema, ["id"])
-    .withShareableField("email")
+  const builder = new FederationEntityBuilder('User', UserSchema, ['id'])
+    .withShareableField('email')
     .withReferenceResolver((reference, context) =>
       fetchUserById(reference.id).pipe(
-        Effect.mapError(error => 
-          new EntityResolutionError("User not found", "User", reference.id, error)
+        Effect.mapError(
+          error => new EntityResolutionError('User not found', 'User', reference.id, error)
         )
       )
     )
-  
+
   return builder.build()
 }
 
 // Use in Effect.gen
-const userEntity = yield* createUserEntity()
+const userEntity = yield * createUserEntity()
 ```
 
 ### Step 4: Update Error Handling
 
 **Before:**
+
 ```typescript
 // Basic error handling
 .mapError(err => new Error(err.message))
 ```
 
 **After:**
+
 ```typescript
 // Rich error handling with pattern matching
-.mapError(err => 
+.mapError(err =>
   Match.value(err).pipe(
     Match.tag("ValidationError", e => ErrorFactory.validation(e.message, e.field)),
     Match.tag("NetworkError", e => ErrorFactory.federation(e.message, "users-service")),
@@ -216,39 +228,41 @@ const userEntity = yield* createUserEntity()
 Add new performance optimizations:
 
 ```typescript
-const schema = yield* createFederatedSchema({
-  entities: entities,
-  services: services,
-  // New performance features
-  performance: {
-    queryPlanCache: {
-      maxSize: 1000,
-      evictionStrategy: 'lru-batch', // 40% faster
-      ttl: Duration.minutes(10)
+const schema =
+  yield *
+  createFederatedSchema({
+    entities: entities,
+    services: services,
+    // New performance features
+    performance: {
+      queryPlanCache: {
+        maxSize: 1000,
+        evictionStrategy: 'lru-batch', // 40% faster
+        ttl: Duration.minutes(10),
+      },
+      dataLoaderConfig: {
+        maxBatchSize: 100,
+        adaptiveBatching: true, // Dynamic optimization
+        batchWindow: Duration.millis(10),
+      },
+      connectionPool: {
+        maxConnections: 10,
+        reuseConnections: true,
+      },
     },
-    dataLoaderConfig: {
-      maxBatchSize: 100,
-      adaptiveBatching: true, // Dynamic optimization
-      batchWindow: Duration.millis(10)
+    // Enhanced error boundaries
+    errorBoundaries: {
+      circuitBreakerConfig: {
+        halfOpenMaxCalls: 3, // New optimization
+      },
+      partialFailureHandling: {
+        criticalSubgraphs: ['users'], // Define critical services
+        fallbackValues: {
+          products: { products: [] },
+        },
+      },
     },
-    connectionPool: {
-      maxConnections: 10,
-      reuseConnections: true
-    }
-  },
-  // Enhanced error boundaries
-  errorBoundaries: {
-    circuitBreakerConfig: {
-      halfOpenMaxCalls: 3 // New optimization
-    },
-    partialFailureHandling: {
-      criticalSubgraphs: ['users'], // Define critical services
-      fallbackValues: {
-        products: { products: [] }
-      }
-    }
-  }
-})
+  })
 ```
 
 ## 🔧 **Configuration Updates**
@@ -256,23 +270,23 @@ const schema = yield* createFederatedSchema({
 ### Layer Configuration
 
 **Before:**
+
 ```typescript
 // Manual service configuration
-const services = [
-  { id: "users", url: "http://localhost:4001" }
-]
+const services = [{ id: 'users', url: 'http://localhost:4001' }]
 ```
 
 **After:**
+
 ```typescript
 // Enhanced service configuration with health monitoring
 const services = [
-  { 
-    id: "users", 
-    url: "http://localhost:4001",
-    healthEndpoint: "/health", // New health monitoring
-    connectionPoolSize: 5 // New connection pooling
-  }
+  {
+    id: 'users',
+    url: 'http://localhost:4001',
+    healthEndpoint: '/health', // New health monitoring
+    connectionPoolSize: 5, // New connection pooling
+  },
 ]
 
 // Layer-based configuration
@@ -280,7 +294,7 @@ export const AppLayerLive = Layer.mergeAll(
   ProductionLayerLive, // Enhanced production layer
   Layer.succeed(FederationConfigService, {
     performance: { enableAdaptiveBatching: true },
-    monitoring: { collectMetrics: true }
+    monitoring: { collectMetrics: true },
   })
 )
 ```
@@ -303,17 +317,19 @@ After migration, you'll benefit from:
 // Test that your schema builds successfully
 const testSchema = Effect.gen(function* () {
   const schema = yield* createFederatedSchema({
-    entities: [/* your entities */],
-    services: [/* your services */]
+    entities: [
+      /* your entities */
+    ],
+    services: [
+      /* your services */
+    ],
   })
-  
+
   expect(schema.schema).toBeDefined()
   expect(schema.entities).toHaveLength(expectedCount)
 })
 
-await Effect.runPromise(testSchema.pipe(
-  Effect.provide(TestLayerLive)
-))
+await Effect.runPromise(testSchema.pipe(Effect.provide(TestLayerLive)))
 ```
 
 ### 2. Performance Regression Testing
@@ -335,7 +351,7 @@ expect(endTime - startTime).toBeLessThan(previousBenchmark * 0.6)
 ```typescript
 // Ensure no 'any' types in your resolvers
 const resolvers: SafeResolverMap<User, UserContext> = {
-  fullName: (parent) => Effect.succeed(`${parent.firstName} ${parent.lastName}`),
+  fullName: parent => Effect.succeed(`${parent.firstName} ${parent.lastName}`),
   // TypeScript will enforce correct types
 }
 ```

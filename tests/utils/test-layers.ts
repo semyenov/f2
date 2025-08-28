@@ -1,7 +1,6 @@
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Context from "effect/Context"
-import * as Logger from "effect/Logger"
 import type {
   ServiceDefinition,
   HealthStatus
@@ -15,7 +14,7 @@ import type {
 export class MockLogger extends Context.Tag("MockLogger")<
   MockLogger,
   {
-    readonly logs: ReadonlyArray<{ level: string; message: string; meta?: any }>
+    readonly logs: ReadonlyArray<{ level: string; message: string; meta?: unknown }>
     readonly trace: (message: string, meta?: Record<string, unknown>) => Effect.Effect<void>
     readonly debug: (message: string, meta?: Record<string, unknown>) => Effect.Effect<void>
     readonly info: (message: string, meta?: Record<string, unknown>) => Effect.Effect<void>
@@ -28,7 +27,7 @@ export class MockLogger extends Context.Tag("MockLogger")<
 
 // Mock logger implementation
 const makeMockLogger = Effect.gen(function* () {
-  let logs: Array<{ level: string; message: string; meta?: any }> = []
+  let logs: Array<{ level: string; message: string; meta?: unknown }> = []
 
   const log = (level: string) => (message: string, meta?: Record<string, unknown>) =>
     Effect.sync(() => {
@@ -36,7 +35,7 @@ const makeMockLogger = Effect.gen(function* () {
     })
 
   return {
-    logs: logs as ReadonlyArray<{ level: string; message: string; meta?: any }>,
+    logs: logs as ReadonlyArray<{ level: string; message: string; meta?: unknown }>,
     trace: log("trace"),
     debug: log("debug"),
     info: log("info"),
@@ -66,7 +65,7 @@ export class MockConfig extends Context.Tag("MockConfig")<
 >() {}
 
 const makeMockConfig = Effect.gen(function* () {
-  const config = new Map<string, any>()
+  const config = new Map<string, unknown>()
   
   // Set default test values
   config.set("environment", "test")
@@ -75,7 +74,7 @@ const makeMockConfig = Effect.gen(function* () {
 
   return {
     get: <T>(key: string, defaultValue?: T): T => {
-      return config.get(key) ?? defaultValue
+      return (config.get(key) as T) ?? defaultValue as T
     },
     set: <T>(key: string, value: T) => Effect.sync(() => {
       config.set(key, value)
@@ -106,15 +105,17 @@ const makeMockSubgraphRegistry = Effect.gen(function* () {
   let failureSimulations = new Map<string, boolean>()
 
   return {
-    services: services as ReadonlyArray<ServiceDefinition>,
+    get services() { return services as ReadonlyArray<ServiceDefinition> },
     register: (definition: ServiceDefinition) =>
       Effect.sync(() => {
         services = [...services.filter(s => s.id !== definition.id), definition]
         healthStatuses.set(definition.id, {
           status: "healthy",
           serviceId: definition.id,
-          timestamp: new Date(),
-          responseTime: 50
+          lastCheck: new Date(),
+          metrics: {
+            responseTime: 50
+          }
         })
       }),
     unregister: (serviceId: string) =>
@@ -157,7 +158,7 @@ export class MockCircuitBreaker extends Context.Tag("MockCircuitBreaker")<
   {
     readonly state: "open" | "closed" | "half-open"
     readonly failureCount: number
-    readonly execute: <A>(operation: Effect.Effect<A>) => Effect.Effect<A>
+    readonly execute: <A, E, R>(operation: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
     readonly setState: (state: "open" | "closed" | "half-open") => Effect.Effect<void>
     readonly getMetrics: () => Effect.Effect<{ failureCount: number; successCount: number; state: string }>
     readonly reset: () => Effect.Effect<void>
@@ -172,7 +173,7 @@ const makeMockCircuitBreaker = Effect.gen(function* () {
   return {
     state,
     failureCount,
-    execute: <A>(operation: Effect.Effect<A>) =>
+    execute: <A, E, R>(operation: Effect.Effect<A, E, R>) =>
       Effect.gen(function* () {
         if (state === "open") {
           return yield* Effect.fail(new Error("Circuit breaker is open"))
@@ -227,7 +228,6 @@ export const MinimalTestLive = Layer.mergeAll(
 // Federation test layer (includes real services with mocked dependencies)  
 export const FederationTestLive = Layer.mergeAll(
   TestServicesLive,
-  Logger.none // Disable actual logging in tests
 )
 
 // Test utilities for layer management
@@ -242,9 +242,9 @@ export namespace TestLayers {
     effect.pipe(Effect.provide(FederationTestLive))
 
   // Helper to run effect with automatic cleanup
-  export const runWithCleanup = async <A, E>(
-    effect: Effect.Effect<A, E>,
-    layer: Layer.Layer<any> = TestServicesLive
+  export const runWithCleanup = async <A, E, R  >(
+    effect: Effect.Effect<A, E, R>,
+    layer: Layer.Layer<R> = TestServicesLive as Layer.Layer<R>
   ): Promise<A> => {
     return Effect.runPromise(effect.pipe(Effect.provide(layer)))
   }
