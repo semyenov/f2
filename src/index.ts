@@ -95,6 +95,10 @@ export * from './schema/ast-conversion.js'
 // Experimental features (advanced patterns)
 export * as Experimental from './experimental/index.js'
 
+// Simplified API facade for easier usage
+export { Federation, Presets, Patterns, QuickEntityBuilder } from './facade.js'
+export type { SimplifiedFederationConfig, SimplifiedEntityConfig } from './facade.js'
+
 /**
  * Framework version
  */

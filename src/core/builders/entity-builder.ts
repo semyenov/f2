@@ -84,7 +84,7 @@ export class FederationEntityBuilder<
   TSource extends Record<string, unknown> = Record<string, unknown>,
   TContext = Record<string, unknown>,
   TResult = TSource,
-  TReference extends Record<string, unknown> = Record<string, unknown>,
+  TReference = TSource,
   TExtensions = Record<string, unknown>,
 > {
   constructor(
@@ -394,7 +394,7 @@ export class FederationEntityBuilder<
   /**
    * Set the reference resolver for entity resolution
    */
-  withReferenceResolver<TReference extends Record<string, unknown> = Record<string, unknown>>(
+  withReferenceResolver<TReference>(
     resolver: EntityReferenceResolver<TResult, TContext, TReference>
   ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     return new FederationEntityBuilder(
@@ -633,7 +633,7 @@ export class FederationEntityBuilder<
       Effect.flatMap(keys =>
         Effect.all(
           keys.map(key =>
-            key in reference && reference[key as keyof TReference] !== undefined
+            typeof reference === 'object' && reference !== null && key in reference && reference[key as keyof TReference] !== undefined
               ? Effect.succeed(reference[key as keyof TReference])
               : Effect.fail(
                   ErrorFactory.validation(`Missing key field: ${String(key)}`, String(key))

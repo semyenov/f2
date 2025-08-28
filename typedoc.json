@@ -1,7 +1,12 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "name": "Federation Framework",
-  "entryPoints": ["src/index.ts"],
+  "name": "@cqrs/federation - Apollo Federation with Effect-TS",
+  "entryPoints": [
+    "src/index.ts",
+    "src/facade.ts",
+    "src/testing/index.ts",
+    "src/cli/index.ts"
+  ],
   "entryPointStrategy": "expand",
   "out": "docs",
   "theme": "default",
@@ -157,12 +162,16 @@
   ],
   "defaultCategory": "Other",
   "categoryOrder": [
+    "Quick Start",
+    "Facade",
     "Core API",
     "Entity Builders",
     "Federation Components",
     "Schema Processing",
     "Performance & Caching",
     "Error Handling & Resilience",
+    "Testing",
+    "CLI",
     "Experimental Features",
     "Utilities",
     "*",
