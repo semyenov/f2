@@ -13,8 +13,49 @@ import {
 } from '../core/errors.js'
 
 /**
- * Registry configuration for subgraph management
- * @category Federation
+ * Registry configuration for subgraph management and service discovery
+ *
+ * Defines how the subgraph registry operates, including discovery modes,
+ * health checking parameters, and retry policies for resilient operation.
+ *
+ * @example Static service configuration
+ * ```typescript
+ * const config: RegistryConfig = {
+ *   discoveryMode: 'static',
+ *   staticServices: [
+ *     { id: 'users', url: 'http://user-service:4001/graphql' },
+ *     { id: 'products', url: 'http://product-service:4002/graphql' }
+ *   ],
+ *   discoveryEndpoints: [],
+ *   healthCheckInterval: Duration.seconds(30),
+ *   healthCheckTimeout: Duration.seconds(5),
+ *   retryPolicy: {
+ *     maxAttempts: 3,
+ *     initialDelay: Duration.seconds(1)
+ *   }
+ * }
+ * ```
+ *
+ * @example Dynamic discovery configuration
+ * ```typescript
+ * const config: RegistryConfig = {
+ *   discoveryMode: 'dynamic',
+ *   staticServices: [],
+ *   discoveryEndpoints: [
+ *     'http://consul:8500/v1/health/service/graphql',
+ *     'http://eureka:8761/eureka/apps'
+ *   ],
+ *   healthCheckInterval: Duration.seconds(15),
+ *   healthCheckTimeout: Duration.seconds(3),
+ *   retryPolicy: {
+ *     maxAttempts: 5,
+ *     initialDelay: Duration.millis(500)
+ *   }
+ * }
+ * ```
+ *
+ * @category Federation Components
+ * @since 2.0.0
  */
 export interface RegistryConfig {
   readonly discoveryMode: 'static' | 'dynamic'
@@ -29,7 +70,26 @@ export interface RegistryConfig {
 }
 
 /**
- * Service storage interface for persistence
+ * Service storage interface for persistence and retrieval of subgraph services
+ *
+ * Provides the storage abstraction layer for the subgraph registry,
+ * allowing different persistence implementations (in-memory, Redis, database, etc.).
+ *
+ * @example In-memory implementation
+ * ```typescript
+ * const createMemoryStore = (): ServiceStore => {
+ *   const services = new Map<string, ServiceDefinition>()
+ *
+ *   return {
+ *     store: (service) => Effect.sync(() => services.set(service.id, service)),
+ *     remove: (id) => Effect.sync(() => services.delete(id)),
+ *     getAll: () => Effect.succeed(Array.from(services.values())),
+ *     get: (id) => Effect.succeed(services.get(id))
+ *   }
+ * }
+ * ```
+ *
+ * @internal
  */
 interface ServiceStore {
   readonly store: (service: ServiceDefinition) => Effect.Effect<void, RegistrationError>
@@ -41,12 +101,52 @@ interface ServiceStore {
 /**
  * SubgraphManagement - Advanced subgraph discovery and management
  *
- * Features:
- * - Service registry with discovery
- * - Health checking and monitoring
- * - Auto-discovery with scheduled polling
- * - Circuit breaker integration
- * - Service lifecycle management
+ * Comprehensive namespace providing subgraph registry creation, service discovery,
+ * health monitoring, and lifecycle management for Apollo Federation deployments.
+ *
+ * ## Features
+ * - **Service Registry**: Centralized subgraph service registration and discovery
+ * - **Health Monitoring**: Continuous health checking with configurable intervals
+ * - **Auto-Discovery**: Scheduled polling for dynamic service discovery
+ * - **Circuit Breaker Integration**: Fault tolerance for service communication
+ * - **Service Lifecycle**: Complete service registration and deregistration
+ *
+ * @example Basic registry setup
+ * ```typescript
+ * import { SubgraphManagement } from '@cqrs/federation-v2'
+ * import { Duration } from 'effect'
+ *
+ * const registry = yield* SubgraphManagement.createRegistry({
+ *   discoveryMode: 'static',
+ *   staticServices: [
+ *     { id: 'users', url: 'http://user-service:4001/graphql' },
+ *     { id: 'products', url: 'http://product-service:4002/graphql' }
+ *   ],
+ *   healthCheckInterval: Duration.seconds(30),
+ *   healthCheckTimeout: Duration.seconds(5),
+ *   retryPolicy: {
+ *     maxAttempts: 3,
+ *     initialDelay: Duration.seconds(1)
+ *   }
+ * })
+ * ```
+ *
+ * @example Registry with monitoring
+ * ```typescript
+ * const monitoredRegistry = yield* pipe(
+ *   SubgraphManagement.createRegistry(config),
+ *   Effect.flatMap(registry =>
+ *     SubgraphManagement.withHealthMonitoring(registry, Duration.seconds(10))
+ *   ),
+ *   Effect.flatMap(registry =>
+ *     SubgraphManagement.withAutoDiscovery(registry, Duration.seconds(30))
+ *   )
+ * )
+ * ```
+ *
+ * @namespace SubgraphManagement
+ * @category Federation Components
+ * @since 2.0.0
  */
 export namespace SubgraphManagement {
   /**
@@ -456,7 +556,7 @@ export namespace SubgraphManagement {
 
     return pipe(
       Effect.tryPromise({
-        try: () => {
+        try: async () => {
           const controller = new AbortController()
           const timeoutId = setTimeout(() => controller.abort(), adaptiveTimeout)
 

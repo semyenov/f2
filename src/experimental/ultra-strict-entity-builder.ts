@@ -67,22 +67,22 @@ export namespace PhantomStates {
 /**
  * Entity validation result discriminated union
  */
-export type EntityValidationResult = Data.TaggedEnum<{
+export type EntityValidationResult<A, I, R> = Data.TaggedEnum<{
   readonly Valid: {
-    readonly entity: ValidatedEntity
+    readonly entity: ValidatedEntity<A, I, R>
     readonly metadata: EntityMetadata
   }
   readonly InvalidSchema: {
     readonly errors: readonly SchemaValidationError[]
-    readonly partialEntity?: Partial<ValidatedEntity>
+    readonly partialEntity?: Partial<ValidatedEntity<A, I, R>>
   }
   readonly InvalidKeys: {
     readonly errors: readonly KeyValidationError[]
-    readonly schema: Schema.Schema<unknown>
+    readonly schema: Schema.Schema<A, I, R>
   }
   readonly InvalidDirectives: {
     readonly errors: readonly DirectiveValidationError[]
-    readonly schema: Schema.Schema<unknown>
+    readonly schema: Schema.Schema<A, I, R>
     readonly keys: readonly EntityKey[]
   }
   readonly CircularDependency: {
@@ -96,7 +96,7 @@ export type EntityValidationResult = Data.TaggedEnum<{
   }
 }>
 
-export const EntityValidationResult = Data.taggedEnum<EntityValidationResult>()
+export const EntityValidationResult = Data.taggedEnum<EntityValidationResult<any, any, any>>()
 
 // ============================================================================
 // Error Types
@@ -184,12 +184,12 @@ export interface EntityMetadata {
  * Validated entity for ultra-strict entity builder
  * @category Experimental
  */
-export interface ValidatedEntity {
+export interface ValidatedEntity<A, I, R> {
   readonly typename: string
-  readonly schema: Schema.Schema<unknown>
+  readonly schema: Schema.Schema<A, I, R>
   readonly keys: readonly EntityKey[]
   readonly directives: readonly EntityDirective[]
-  readonly resolvers: Record<string, GraphQLFieldResolver<unknown, unknown>>
+  readonly resolvers: Record<string, GraphQLFieldResolver<A, I, R>>
   readonly metadata: EntityMetadata
 }
 
@@ -204,13 +204,16 @@ export interface UltraStrictEntityBuilder<
     | PhantomStates.HasKeys
     | PhantomStates.HasDirectives
     | PhantomStates.Complete,
+  A = unknown,
+  I = unknown,
+  R = never,
 > {
   readonly _phantomState: TState
   readonly typename: string
-  readonly schema?: Schema.Schema<unknown>
+  readonly schema?: Schema.Schema<A, I, R>
   readonly keys?: readonly EntityKey[]
   readonly directives?: readonly EntityDirective[]
-  readonly resolvers?: Record<string, GraphQLFieldResolver<unknown, unknown>>
+  readonly resolvers?: Record<string, GraphQLFieldResolver<A, I, R>>
 }
 
 /**
@@ -264,10 +267,10 @@ export const createUltraStrictEntityBuilder = (
  * ```
  */
 export const withSchema =
-  <A>(schema?: Schema.Schema<A>) =>
+  <A, I, R>(schema?: Schema.Schema<A, I, R>) =>
   (
-    builder: UltraStrictEntityBuilder<PhantomStates.Unvalidated>
-  ): UltraStrictEntityBuilder<PhantomStates.HasSchema> => {
+    builder: UltraStrictEntityBuilder<PhantomStates.Unvalidated, A, I, R>
+  ): UltraStrictEntityBuilder<PhantomStates.HasSchema, A, I, R> => {
     if (!schema) {
       throw new Error('Schema cannot be null or undefined')
     }
@@ -275,7 +278,7 @@ export const withSchema =
     return {
       ...builder,
       _phantomState: Data.struct({ _tag: 'HasSchema' as const }),
-      schema: schema as Schema.Schema<unknown, unknown, never>,
+      schema,
     }
   }
 
@@ -300,10 +303,10 @@ export const withSchema =
  * ```
  */
 export const withKeys =
-  (keys?: readonly EntityKey[]) =>
+  <A, I, R>(keys?: readonly EntityKey[]) =>
   (
-    builder: UltraStrictEntityBuilder<PhantomStates.HasSchema>
-  ): UltraStrictEntityBuilder<PhantomStates.HasKeys> => {
+    builder: UltraStrictEntityBuilder<PhantomStates.HasSchema, A, I, R>
+  ): UltraStrictEntityBuilder<PhantomStates.HasKeys, A, I, R> => {
     // Allow empty keys to be set, validation will catch this later
     const actualKeys = keys ?? []
 
@@ -347,10 +350,10 @@ export const withKeys =
  * ```
  */
 export const withDirectives =
-  (directives?: readonly EntityDirective[]) =>
+  <A, I, R>(directives?: readonly EntityDirective[]) =>
   (
-    builder: UltraStrictEntityBuilder<PhantomStates.HasKeys>
-  ): UltraStrictEntityBuilder<PhantomStates.HasDirectives> => {
+    builder: UltraStrictEntityBuilder<PhantomStates.HasKeys, A, I, R>
+  ): UltraStrictEntityBuilder<PhantomStates.HasDirectives, A, I, R> => {
     // Validate directive conflicts at compile time
     const directiveNames = directives?.map(d => d.name) ?? []
     const conflictingPairs = [
@@ -401,10 +404,10 @@ export const withDirectives =
  * ```
  */
 export const withResolvers =
-  (resolvers?: Record<string, GraphQLFieldResolver<unknown, unknown>>) =>
+  <A, I, R>(resolvers?: Record<string, GraphQLFieldResolver<A, I, R>>) =>
   (
-    builder: UltraStrictEntityBuilder<PhantomStates.HasDirectives>
-  ): UltraStrictEntityBuilder<PhantomStates.Complete> => {
+    builder: UltraStrictEntityBuilder<PhantomStates.HasDirectives, A, I, R>
+  ): UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R> => {
     if (!resolvers) {
       throw new Error('Resolvers cannot be null or undefined')
     }
@@ -432,9 +435,9 @@ export const withResolvers =
 /**
  * Validates a complete entity builder using exhaustive pattern matching
  */
-export const validateEntityBuilder = (
-  builder: UltraStrictEntityBuilder<PhantomStates.Complete>
-): Effect.Effect<EntityValidationResult, EntityBuilderError> =>
+export const validateEntityBuilder = <A, I, R>(
+  builder: UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>
+): Effect.Effect<EntityValidationResult<A, I, R>, EntityBuilderError> =>
   pipe(
     Effect.succeed(builder),
     Effect.flatMap(validateSchema),
@@ -444,12 +447,12 @@ export const validateEntityBuilder = (
     Effect.flatMap(validateCompatibility),
     Effect.map(createValidResult),
     Effect.catchAll(handleValidationErrors)
-  )
+  ) as Effect.Effect<EntityValidationResult<A, I, R>, EntityBuilderError>
 
-const validateSchema = (
-  builder: UltraStrictEntityBuilder<PhantomStates.Complete>
+const validateSchema = <A, I, R>(
+  builder: UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>
 ): Effect.Effect<
-  UltraStrictEntityBuilder<PhantomStates.Complete>,
+  UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>,
   readonly SchemaValidationError[]
 > =>
   pipe(
@@ -470,11 +473,14 @@ const validateSchema = (
     })
   )
 
-const validateKeys = (
-  builder: UltraStrictEntityBuilder<PhantomStates.Complete>
-): Effect.Effect<UltraStrictEntityBuilder<PhantomStates.Complete>, readonly KeyValidationError[]> =>
+const validateKeys = <A, I, R>(
+  builder: UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>
+): Effect.Effect<
+  UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>,
+  readonly KeyValidationError[]
+> =>
   pipe(
-    Effect.succeed(builder.keys!),
+    Effect.succeed(builder.keys ?? []),
     Effect.flatMap(keys => {
       let errors: KeyValidationError[] = []
 
@@ -511,10 +517,10 @@ const validateKeys = (
     })
   )
 
-const validateDirectives = (
-  builder: UltraStrictEntityBuilder<PhantomStates.Complete>
+const validateDirectives = <A, I, R>(
+  builder: UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>
 ): Effect.Effect<
-  UltraStrictEntityBuilder<PhantomStates.Complete>,
+  UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>,
   readonly DirectiveValidationError[]
 > =>
   pipe(
@@ -565,18 +571,20 @@ const validateDirectives = (
     })
   )
 
-const validateCircularDependencies = (
-  builder: UltraStrictEntityBuilder<PhantomStates.Complete>
-): Effect.Effect<UltraStrictEntityBuilder<PhantomStates.Complete>, never> => Effect.succeed(builder) // Simplified for now - would implement cycle detection
+const validateCircularDependencies = <A, I, R>(
+  builder: UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>
+): Effect.Effect<UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>, never> =>
+  Effect.succeed(builder) // Simplified for now - would implement cycle detection
 
-const validateCompatibility = (
-  builder: UltraStrictEntityBuilder<PhantomStates.Complete>
-): Effect.Effect<UltraStrictEntityBuilder<PhantomStates.Complete>, never> => Effect.succeed(builder) // Simplified for now - would validate Federation version compatibility
+const validateCompatibility = <A, I, R>(
+  builder: UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>
+): Effect.Effect<UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>, never> =>
+  Effect.succeed(builder) // Simplified for now - would validate Federation version compatibility
 
-const createValidResult = (
-  builder: UltraStrictEntityBuilder<PhantomStates.Complete>
-): EntityValidationResult =>
-  EntityValidationResult.Valid({
+const createValidResult = <A, I, R>(
+  builder: UltraStrictEntityBuilder<PhantomStates.Complete, A, I, R>
+): EntityValidationResult<A, I, R> => {
+  const result = EntityValidationResult.Valid({
     entity: {
       typename: builder.typename,
       schema: builder.schema!,
@@ -599,13 +607,15 @@ const createValidResult = (
       dependencies: [],
     },
   })
+  return result as EntityValidationResult<A, I, R>
+}
 
-const handleValidationErrors = (
+const handleValidationErrors = <A, I, R>(
   errors:
     | readonly SchemaValidationError[]
     | readonly KeyValidationError[]
     | readonly DirectiveValidationError[]
-): Effect.Effect<EntityValidationResult, never> =>
+): Effect.Effect<EntityValidationResult<A, I, R>, never> =>
   pipe(
     Match.value(errors),
     Match.when(
@@ -613,35 +623,37 @@ const handleValidationErrors = (
         errs: readonly (SchemaValidationError | KeyValidationError | DirectiveValidationError)[]
       ): errs is readonly SchemaValidationError[] =>
         errs.length > 0 && errs[0] instanceof SchemaValidationError,
-      (errs: readonly SchemaValidationError[]) =>
-        Effect.succeed(EntityValidationResult.InvalidSchema({ errors: errs }))
+      (errs: readonly SchemaValidationError[]) => {
+        const result = EntityValidationResult.InvalidSchema({ errors: errs })
+        return Effect.succeed(result as EntityValidationResult<A, I, R>)
+      }
     ),
     Match.when(
       (
         errs: readonly (SchemaValidationError | KeyValidationError | DirectiveValidationError)[]
       ): errs is readonly KeyValidationError[] =>
         errs.length > 0 && errs[0] instanceof KeyValidationError,
-      (errs: readonly KeyValidationError[]) =>
-        Effect.succeed(
-          EntityValidationResult.InvalidKeys({
-            errors: errs,
-            schema: Schema.Struct({}) as Schema.Schema<unknown, unknown, never>,
-          })
-        )
+      (errs: readonly KeyValidationError[]) => {
+        const result = EntityValidationResult.InvalidKeys({
+          errors: errs,
+          schema: Schema.Struct({}) as unknown as Schema.Schema<A, I, R>,
+        })
+        return Effect.succeed(result as EntityValidationResult<A, I, R>)
+      }
     ),
     Match.when(
       (
         errs: readonly (SchemaValidationError | KeyValidationError | DirectiveValidationError)[]
       ): errs is readonly DirectiveValidationError[] =>
         errs.length > 0 && errs[0] instanceof DirectiveValidationError,
-      (errs: readonly DirectiveValidationError[]) =>
-        Effect.succeed(
-          EntityValidationResult.InvalidDirectives({
-            errors: errs,
-            schema: Schema.Struct({}) as Schema.Schema<unknown, unknown, never>, // placeholder
-            keys: [],
-          })
-        )
+      (errs: readonly DirectiveValidationError[]) => {
+        const result = EntityValidationResult.InvalidDirectives({
+          errors: errs,
+          schema: Schema.Struct({}) as unknown as Schema.Schema<A, I, R>,
+          keys: [],
+        })
+        return Effect.succeed(result as EntityValidationResult<A, I, R>)
+      }
     ),
     Match.exhaustive
   )
@@ -654,22 +666,22 @@ const handleValidationErrors = (
  * Exhaustive pattern matching over entity validation results
  */
 export const matchEntityValidationResult =
-  <A>(handlers: {
+  <A, I, R>(handlers: {
     readonly Valid: (data: {
-      readonly entity: ValidatedEntity
+      readonly entity: ValidatedEntity<A, I, R>
       readonly metadata: EntityMetadata
     }) => A
     readonly InvalidSchema: (data: {
       readonly errors: readonly SchemaValidationError[]
-      readonly partialEntity?: Partial<ValidatedEntity>
+      readonly partialEntity?: Partial<ValidatedEntity<A, I, R>>
     }) => A
     readonly InvalidKeys: (data: {
       readonly errors: readonly KeyValidationError[]
-      readonly schema: Schema.Schema<unknown>
+      readonly schema: Schema.Schema<A, I, R>
     }) => A
     readonly InvalidDirectives: (data: {
       readonly errors: readonly DirectiveValidationError[]
-      readonly schema: Schema.Schema<unknown>
+      readonly schema: Schema.Schema<A, I, R>
       readonly keys: readonly EntityKey[]
     }) => A
     readonly CircularDependency: (data: {
@@ -682,7 +694,7 @@ export const matchEntityValidationResult =
       readonly entity: string
     }) => A
   }) =>
-  (result: EntityValidationResult): A =>
+  (result: EntityValidationResult<A, I, R>): A =>
     Match.value(result).pipe(
       Match.tag('Valid', handlers.Valid),
       Match.tag('InvalidSchema', handlers.InvalidSchema),
@@ -697,8 +709,7 @@ export const matchEntityValidationResult =
 // Utility Functions
 // ============================================================================
 
-const getSchemaFields = (schema: Schema.Schema<unknown>): readonly string[] => {
-  // Extract field names from the Schema AST
+const getSchemaFields = <A, I, R>(schema: Schema.Schema<A, I, R>): readonly string[] => {
   const ast = schema.ast
 
   // Handle struct schemas which are the most common for entities

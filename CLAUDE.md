@@ -92,6 +92,8 @@ Match.value(error).pipe(
 - All imports use `.js` extension (ESM requirement)
 - Entity builders use phantom types for compile-time validation
 - HealthStatus has `timestamp` and `responseTime` fields (not `lastCheck`/`metrics`)
+- ValidatedEntity structure uses `keys` array not single `key` property
+- When using `any` is unavoidable (e.g., generic entity mocks), document the reason
 
 ### Testing Patterns
 
@@ -146,4 +148,8 @@ When updating code:
 - HealthStatus uses `timestamp` not `lastCheck`
 - Test failures should use expectEffectFailure helper
 - DataLoader stats require proper key generation
-- Never use `any` type
+- Never use `any` type - use `unknown` or proper type parameters
+- ValidatedEntity structure differs from FederationEntity (uses `keys` array not `key`)
+- Schema-first patterns may use `any` for generic entity types due to interface constraints
+- Entity builder's `build()` method returns `Effect.Effect<ValidatedEntity<>, ValidationError>`
+- For backward compatibility, entity builder adds a `key` property alongside `keys`

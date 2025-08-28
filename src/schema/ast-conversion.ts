@@ -32,7 +32,36 @@ const MAX_RECURSION_DEPTH = 10 as const
 
 /**
  * Type conversion context with caching and configuration
+ *
+ * Context object that manages the conversion of Effect Schema AST nodes to GraphQL types,
+ * providing caching for performance, custom scalar handling, and safety features like
+ * recursion depth limiting.
+ *
+ * @example Basic usage
+ * ```typescript
+ * const context = createConversionContext(false, {
+ *   DateTime: new GraphQLScalarType({ name: 'DateTime' }),
+ *   JSON: GraphQLJSON
+ * })
+ *
+ * const graphqlType = yield* convertSchemaToGraphQL(
+ *   Schema.Struct({ id: Schema.String, createdAt: Schema.Date }),
+ *   context
+ * )
+ * ```
+ *
+ * @example Input type conversion
+ * ```typescript
+ * const inputContext = createConversionContext(true, {}, {
+ *   strictMode: true,
+ *   maxDepth: 5
+ * })
+ *
+ * const inputType = yield* convertSchemaToGraphQL(CreateUserSchema, inputContext)
+ * ```
+ *
  * @category Schema Processing
+ * @since 2.0.0
  */
 export interface TypeConversionContext {
   readonly cache: Map<string, GraphQLType>
@@ -44,7 +73,36 @@ export interface TypeConversionContext {
 }
 
 /**
- * Create a new type conversion context
+ * Create a new type conversion context with specified configuration
+ *
+ * Factory function for creating a TypeConversionContext with appropriate defaults
+ * and customization options for different conversion scenarios.
+ *
+ * @param isInput - Whether to create context for GraphQL input types (default: false)
+ * @param scalars - Custom scalar type mappings for conversion
+ * @param options - Additional configuration options
+ * @param options.maxDepth - Maximum recursion depth to prevent infinite loops (default: 10)
+ * @param options.strictMode - Enable strict type validation during conversion (default: false)
+ * @returns Configured conversion context ready for use
+ *
+ * @example Creating output type context
+ * ```typescript
+ * const outputContext = createConversionContext(false, {
+ *   UUID: UUIDScalarType,
+ *   DateTime: DateTimeScalarType
+ * })
+ * ```
+ *
+ * @example Creating input type context with strict mode
+ * ```typescript
+ * const inputContext = createConversionContext(true, {}, {
+ *   maxDepth: 8,
+ *   strictMode: true
+ * })
+ * ```
+ *
+ * @category Schema Processing
+ * @since 2.0.0
  */
 export const createConversionContext = (
   isInput = false,

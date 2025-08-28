@@ -1,3 +1,254 @@
+/**
+ * Federation Error Boundaries and Resilience Patterns
+ *
+ * Comprehensive error handling and resilience system for federated GraphQL deployments,
+ * providing circuit breakers, partial failure handling, timeout management, and
+ * sophisticated error transformation strategies.
+ *
+ * ## 🛡️ Resilience Patterns
+ *
+ * ### Circuit Breaker Pattern
+ * Implements the circuit breaker pattern to prevent cascading failures:
+ * - **Closed**: Normal operation, requests flow through
+ * - **Open**: Circuit trips, requests fail-fast to prevent resource exhaustion
+ * - **Half-Open**: Test phase, limited requests to check service recovery
+ *
+ * ### Partial Failure Handling
+ * Gracefully handles subgraph failures with configurable strategies:
+ * - **Fail-fast**: Fail entire request if critical subgraphs fail
+ * - **Graceful degradation**: Return partial results with null fields for failed subgraphs
+ * - **Fallback values**: Use predefined fallback data when subgraphs are unavailable
+ *
+ * ### Error Transformation
+ * Sophisticated error processing and client-safe error messages:
+ * - **Error sanitization**: Remove sensitive information from client-facing errors
+ * - **Error correlation**: Link errors across distributed traces
+ * - **Error categorization**: Classify errors by type, severity, and retry-ability
+ *
+ * ## ⚡ Performance Features
+ * - **Timeout Management**: Per-subgraph timeout configuration with fallback strategies
+ * - **Request Hedging**: Duplicate requests to slow subgraphs for improved latency
+ * - **Load Shedding**: Reject requests when system is under heavy load
+ * - **Bulk Operations**: Batch multiple subgraph requests for efficiency
+ *
+ * @example Basic error boundary setup
+ * ```typescript
+ * import { FederationErrorBoundaries } from '@cqrs/federation-v2'
+ * import { Duration } from 'effect'
+ *
+ * const errorBoundary = yield* FederationErrorBoundaries.create({
+ *   subgraphTimeouts: {
+ *     'user-service': Duration.seconds(5),
+ *     'product-service': Duration.seconds(3),
+ *     'order-service': Duration.seconds(10)
+ *   },
+ *   circuitBreakerConfig: {
+ *     failureThreshold: 5,        // Trip after 5 consecutive failures
+ *     resetTimeout: Duration.seconds(30),  // Try again after 30s
+ *     halfOpenMaxCalls: 3         // Allow 3 test calls in half-open state
+ *   },
+ *   partialFailureHandling: {
+ *     allowPartialFailure: true,
+ *     criticalSubgraphs: ['user-service'],  // These must succeed
+ *     fallbackValues: {
+ *       'product-service': { products: [] },
+ *       'recommendation-service': { recommendations: [] }
+ *     }
+ *   },
+ *   errorTransformation: {
+ *     sanitizeErrors: true,       // Remove stack traces in production
+ *     includeStackTrace: false,   // Don't leak internal details
+ *     customTransformer: (error) => ({
+ *       message: 'Service temporarily unavailable',
+ *       code: 'SERVICE_UNAVAILABLE',
+ *       timestamp: new Date().toISOString()
+ *     })
+ *   }
+ * })
+ * ```
+ *
+ * @example Advanced circuit breaker usage
+ * ```typescript
+ * const createCircuitBreaker = (subgraphId: string) =>
+ *   FederationErrorBoundaries.createCircuitBreaker({
+ *     failureThreshold: 10,
+ *     resetTimeout: Duration.minutes(2),
+ *     halfOpenMaxCalls: 5
+ *   }).pipe(
+ *     Effect.tap(breaker =>
+ *       FederationLogger.flatMap(logger =>
+ *         logger.info('Circuit breaker created', {
+ *           subgraph: subgraphId,
+ *           config: {
+ *             failureThreshold: 10,
+ *             resetTimeoutMs: Duration.toMillis(Duration.minutes(2))
+ *           }
+ *         })
+ *       )
+ *     )
+ *   )
+ *
+ * const protectedSubgraphCall = (breaker: CircuitBreaker, operation: Effect.Effect<Data, Error>) =>
+ *   breaker.protect(operation).pipe(
+ *     Effect.catchTag('CircuitBreakerError', error =>
+ *       Match.value(error.state).pipe(
+ *         Match.when('open', () =>
+ *           Effect.succeed({ data: null, errors: ['Service temporarily unavailable'] })
+ *         ),
+ *         Match.when('half-open', () =>
+ *           Effect.retry(operation, { times: 1, delay: Duration.seconds(1) })
+ *         ),
+ *         Match.orElse(() => Effect.fail(error))
+ *       )
+ *     )
+ *   )
+ * ```
+ *
+ * @example Partial failure handling strategies
+ * ```typescript
+ * const handlePartialFailure = (results: SubgraphResults) =>
+ *   Effect.gen(function* () {
+ *     const boundary = yield* ErrorBoundary
+ *     const logger = yield* FederationLogger
+ *
+ *     // Separate successful and failed results
+ *     const successful = Object.entries(results)
+ *       .filter(([_, result]) => result.success)
+ *     const failed = Object.entries(results)
+ *       .filter(([_, result]) => !result.success)
+ *
+ *     if (failed.length > 0) {
+ *       yield* logger.warn('Partial subgraph failures detected', {
+ *         failedSubgraphs: failed.map(([id]) => id),
+ *         successfulSubgraphs: successful.map(([id]) => id)
+ *       })
+ *
+ *       // Check if any critical subgraphs failed
+ *       const criticalFailures = failed.filter(([id]) =>
+ *         config.partialFailureHandling.criticalSubgraphs?.includes(id)
+ *       )
+ *
+ *       if (criticalFailures.length > 0) {
+ *         return yield* Effect.fail(
+ *           ErrorFactory.federation(
+ *             'Critical subgraph failure',
+ *             criticalFailures[0][0],
+ *             'query'
+ *           )
+ *         )
+ *       }
+ *     }
+ *
+ *     // Process partial failure with fallback values
+ *     return yield* boundary.handlePartialFailure(results)
+ *   })
+ * ```
+ *
+ * @example Error transformation and sanitization
+ * ```typescript
+ * const createProductionErrorBoundary = () =>
+ *   FederationErrorBoundaries.create({
+ *     errorTransformation: {
+ *       sanitizeErrors: true,
+ *       includeStackTrace: false,
+ *       customTransformer: (error, context) => {
+ *         // Log full error details internally
+ *         Effect.runSync(
+ *           FederationLogger.flatMap(logger =>
+ *             logger.error('Subgraph error occurred', {
+ *               subgraph: context.subgraphId,
+ *               fieldPath: context.fieldPath,
+ *               error: error.message,
+ *               stack: error.stack,
+ *               operationType: context.operationType
+ *             })
+ *           )
+ *         )
+ *
+ *         // Return sanitized error for client
+ *         return {
+ *           message: Match.value(error).pipe(
+ *             Match.tag('TimeoutError', () => 'Request timeout'),
+ *             Match.tag('CircuitBreakerError', () => 'Service temporarily unavailable'),
+ *             Match.tag('ValidationError', err => `Invalid input: ${err.field}`),
+ *             Match.orElse(() => 'Internal server error')
+ *           ),
+ *           code: error._tag,
+ *           path: context.fieldPath,
+ *           timestamp: context.timestamp.toISOString()
+ *         }
+ *       }
+ *     }
+ *   })
+ * ```
+ *
+ * @example Timeout and retry strategies
+ * ```typescript
+ * const resilientSubgraphExecution = (subgraphId: string, operation: GraphQLOperation) =>
+ *   Effect.gen(function* () {
+ *     const config = yield* FederationConfigService
+ *     const timeout = config.errorBoundaries.subgraphTimeouts[subgraphId] ?? Duration.seconds(30)
+ *
+ *     return yield* executeSubgraphOperation(operation).pipe(
+ *       Effect.timeout(timeout),
+ *       Effect.retry({
+ *         times: 3,
+ *         delay: (attempt) => Duration.millis(100 * Math.pow(2, attempt)) // Exponential backoff
+ *       }),
+ *       Effect.catchAll(error =>
+ *         Match.value(error).pipe(
+ *           Match.tag('TimeoutError', () =>
+ *             Effect.succeed({
+ *               data: null,
+ *               errors: [{ message: 'Request timeout', path: operation.fieldPath }]
+ *             })
+ *           ),
+ *           Match.orElse(() => Effect.fail(error))
+ *         )
+ *       )
+ *     )
+ *   })
+ * ```
+ *
+ * @example Health-based circuit breaker
+ * ```typescript
+ * const healthAwareCircuitBreaker = (subgraphId: string) =>
+ *   Effect.gen(function* () {
+ *     const registry = yield* SubgraphRegistry
+ *     const breaker = yield* createCircuitBreaker(subgraphId)
+ *
+ *     // Monitor subgraph health and adjust circuit breaker
+ *     const healthCheck = yield* Effect.repeat(
+ *       registry.health(subgraphId).pipe(
+ *         Effect.tap(health =>
+ *           Match.value(health.status).pipe(
+ *             Match.when('unhealthy', () =>
+ *               // Force circuit open if health check fails
+ *               Effect.sync(() => breaker.forceOpen())
+ *             ),
+ *             Match.when('healthy', () =>
+ *               // Reset circuit if health improves
+ *               Effect.sync(() => breaker.reset())
+ *             ),
+ *             Match.orElse(() => Effect.void)
+ *           )
+ *         )
+ *       ),
+ *       {
+ *         schedule: Schedule.spaced(Duration.seconds(10))
+ *       }
+ *     ).pipe(Effect.fork)
+ *
+ *     return breaker
+ *   })
+ * ```
+ *
+ * @category Error Handling & Resilience
+ * @since 2.0.0
+ * @see {@link https://martinfowler.com/bliki/CircuitBreaker.html | Circuit Breaker Pattern}
+ * @see {@link https://www.apollographql.com/docs/federation/errors/ | Federation Error Handling}
+ */
+
 import { Effect, pipe, Duration } from 'effect'
 import type { GraphQLResolveInfo } from 'graphql'
 import type {

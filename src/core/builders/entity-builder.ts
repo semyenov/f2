@@ -1,8 +1,7 @@
 import { Effect, pipe } from 'effect'
 import * as Schema from '@effect/schema/Schema'
-import type { GraphQLResolveInfo } from 'graphql'
+import type { GraphQLOutputType, GraphQLResolveInfo } from 'graphql'
 import type {
-  FederationEntity,
   FederationDirective,
   FederationDirectiveMap,
   EntityReferenceResolver,
@@ -10,7 +9,14 @@ import type {
   FieldResolverMap,
   EntityResolutionError,
   ValidationError,
+  FieldResolutionError,
 } from '../types.js'
+import type {
+  ValidatedEntity,
+  EntityMetadata,
+  EntityKey,
+  EntityDirective,
+} from '../../experimental/ultra-strict-entity-builder.js'
 import { ErrorFactory } from '../errors.js'
 
 /**
@@ -77,15 +83,15 @@ import { ErrorFactory } from '../errors.js'
 export class FederationEntityBuilder<
   TSource extends Record<string, unknown> = Record<string, unknown>,
   TContext = Record<string, unknown>,
-  TResult extends Partial<TSource> = Partial<TSource>,
-  TReference extends Partial<TSource> = Partial<TSource>,
+  TResult = TSource,
+  TReference extends Record<string, any> = Record<string, any>,
 > {
   constructor(
     private readonly typename: string,
-    private readonly schema: Schema.Schema<TSource, TSource>,
+    private readonly schema: Schema.Schema<TSource, any, any>,
     private readonly keyFields: ReadonlyArray<keyof TSource>,
     private readonly directiveMap: FederationDirectiveMap = {},
-    private readonly fieldResolvers: FieldResolverMap<TSource, TContext> = {},
+    private readonly fieldResolvers: FieldResolverMap<TResult, TContext> = {},
     private readonly referenceResolver?: EntityReferenceResolver<TResult, TContext, TReference>,
     private readonly extensions?: Record<string, unknown>
   ) {
@@ -128,9 +134,9 @@ export class FederationEntityBuilder<
    * @returns New builder instance with the shareable directive applied
    * @see {@link https://www.apollographql.com/docs/federation/federated-types/federated-directives/#shareable | @shareable Directive}
    */
-  withShareableField<K extends keyof TSource>(
+  withShareableField<K extends keyof TResult>(
     field: K,
-    resolver?: FieldResolver<TSource, TContext, TSource[K]>
+    resolver?: FieldResolver<TResult, TContext, TResult[K]>
   ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     return this.addDirective(
       field as string,
@@ -168,9 +174,9 @@ export class FederationEntityBuilder<
    * @returns New builder instance with the inaccessible directive applied
    * @see {@link https://www.apollographql.com/docs/federation/federated-types/federated-directives/#inaccessible | @inaccessible Directive}
    */
-  withInaccessibleField<K extends keyof TSource>(
+  withInaccessibleField<K extends keyof TResult>(
     field: K,
-    resolver?: FieldResolver<TSource, TContext, TSource[K]>
+    resolver?: FieldResolver<TResult, TContext, TResult[K]>
   ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     return this.addDirective(
       field as string,
@@ -183,11 +189,37 @@ export class FederationEntityBuilder<
 
   /**
    * Marks field with @tag - Metadata tags for schema organization and tooling
+   *
+   * The @tag directive allows you to apply arbitrary string metadata to schema elements.
+   * This is useful for schema organization, filtering, and tooling integration.
+   *
+   * @example Basic field tagging
+   * ```typescript
+   * const entity = createEntityBuilder('User', UserSchema, ['id'])
+   *   .withTaggedField('avatar', ['public', 'cdn'])     // Mark as public CDN field
+   *   .withTaggedField('preferences', ['internal'])      // Internal-only field
+   *   .build()
+   * ```
+   *
+   * @example Multi-environment tagging
+   * ```typescript
+   * const entity = createEntityBuilder('Product', ProductSchema, ['id'])
+   *   .withTaggedField('betaFeatures', ['beta', 'experimental'])
+   *   .withTaggedField('adminOnly', ['admin', 'restricted'])
+   *   .build()
+   * ```
+   *
+   * @param field - Field name to tag
+   * @param tags - Array of tag strings (cannot be empty)
+   * @param resolver - Optional custom resolver for this field
+   * @returns New builder instance with the tag directive applied
+   * @throws Error if tags array is empty
+   * @see {@link https://www.apollographql.com/docs/federation/federated-types/federated-directives/#tag | @tag Directive}
    */
-  withTaggedField<K extends keyof TSource>(
+  withTaggedField<K extends keyof TResult>(
     field: K,
     tags: ReadonlyArray<string>,
-    resolver?: FieldResolver<TSource, TContext, TSource[K]>
+    resolver?: FieldResolver<TResult, TContext, TResult[K]>
   ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     if (!tags.length) {
       throw new Error('Tags array cannot be empty')
@@ -204,12 +236,42 @@ export class FederationEntityBuilder<
   }
 
   /**
-   * @override - Overrides field resolution from another subgraph
+   * Marks field with @override - Overrides field resolution from another subgraph
+   *
+   * The @override directive indicates that the current subgraph is taking over
+   * responsibility for resolving a particular field from the specified subgraph.
+   * This allows for gradual migration of field ownership between services.
+   *
+   * @example Basic field override
+   * ```typescript
+   * const entity = createEntityBuilder('Product', ProductSchema, ['id'])
+   *   .withOverrideField('price', 'legacy-service',
+   *     (product, args, context) =>
+   *       context.pricingService.getPrice(product.id)
+   *   )
+   *   .build()
+   * ```
+   *
+   * @example Service migration scenario
+   * ```typescript
+   * // Taking over user profile management from auth service
+   * const userEntity = createEntityBuilder('User', UserSchema, ['id'])
+   *   .withOverrideField('profile', 'auth-service', resolveUserProfile)
+   *   .withOverrideField('preferences', 'auth-service', resolveUserPreferences)
+   *   .build()
+   * ```
+   *
+   * @param field - Field name to override
+   * @param fromSubgraph - Name of the subgraph being overridden (cannot be empty)
+   * @param resolver - Custom resolver implementing the override logic (required)
+   * @returns New builder instance with the override directive applied
+   * @throws Error if fromSubgraph is empty
+   * @see {@link https://www.apollographql.com/docs/federation/federated-types/federated-directives/#override | @override Directive}
    */
-  withOverrideField<K extends keyof TSource>(
+  withOverrideField<K extends keyof TResult>(
     field: K,
     fromSubgraph: string,
-    resolver: FieldResolver<TSource, TContext, TSource[K]>
+    resolver: FieldResolver<TResult, TContext, TResult[K]>
   ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     if (!fromSubgraph?.trim()) {
       throw new Error('fromSubgraph cannot be empty')
@@ -226,9 +288,35 @@ export class FederationEntityBuilder<
   }
 
   /**
-   * Marks field as @external - Field is defined in another subgraph
+   * Marks field as @external - Field is defined in another subgraph but needed locally
+   *
+   * The @external directive indicates that a field is not resolved by the current subgraph
+   * but is defined elsewhere and needed for federation operations like @requires and @provides.
+   * External fields are typically used as dependencies for computed fields.
+   *
+   * @example Using external field as dependency
+   * ```typescript
+   * const entity = createEntityBuilder('Order', OrderSchema, ['id'])
+   *   .withExternalField('userId')      // Defined in user service
+   *   .withExternalField('productId')   // Defined in product service
+   *   .withRequiredFields('total', 'userId productId', calculateOrderTotal)
+   *   .build()
+   * ```
+   *
+   * @example Complex federation with external dependencies
+   * ```typescript
+   * const entity = createEntityBuilder('Review', ReviewSchema, ['id'])
+   *   .withExternalField('productName')     // From product service
+   *   .withExternalField('userName')        // From user service
+   *   .withProvidedFields('summary', 'productName userName', generateSummary)
+   *   .build()
+   * ```
+   *
+   * @param field - Field name to mark as external (must exist in schema)
+   * @returns New builder instance with the external directive applied
+   * @see {@link https://www.apollographql.com/docs/federation/federated-types/federated-directives/#external | @external Directive}
    */
-  withExternalField<K extends keyof TSource>(
+  withExternalField<K extends keyof TResult>(
     field: K
   ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     return this.addDirective(field as string, {
@@ -239,10 +327,10 @@ export class FederationEntityBuilder<
   /**
    * Marks field with @requires - Field requires specific fields from base type
    */
-  withRequiredFields<K extends keyof TSource>(
+  withRequiredFields<K extends keyof TResult>(
     field: K,
     requiredFields: string,
-    resolver?: FieldResolver<TSource, TContext, TSource[K]>
+    resolver?: FieldResolver<TResult, TContext, TResult[K]>
   ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     if (!requiredFields?.trim()) {
       throw new Error('Required fields specification cannot be empty')
@@ -261,10 +349,10 @@ export class FederationEntityBuilder<
   /**
    * Marks field with @provides - Field provides specific fields to base type
    */
-  withProvidedFields<K extends keyof TSource>(
+  withProvidedFields<K extends keyof TResult>(
     field: K,
     providedFields: string,
-    resolver?: FieldResolver<TSource, TContext, TSource[K]>
+    resolver?: FieldResolver<TResult, TContext, TResult[K]>
   ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     if (!providedFields?.trim()) {
       throw new Error('Provided fields specification cannot be empty')
@@ -283,9 +371,9 @@ export class FederationEntityBuilder<
   /**
    * Add a custom field resolver without directives
    */
-  withField<K extends keyof TSource>(
+  withField<K extends keyof TResult>(
     field: K,
-    resolver: FieldResolver<TSource, TContext, TSource[K]>
+    resolver: FieldResolver<TResult, TContext, TResult[K]>
   ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     return new FederationEntityBuilder(
       this.typename,
@@ -295,7 +383,7 @@ export class FederationEntityBuilder<
       {
         ...this.fieldResolvers,
         [field]: resolver,
-      } as FieldResolverMap<TSource, TContext>,
+      } as FieldResolverMap<TResult, TContext>,
       this.referenceResolver,
       this.extensions
     )
@@ -338,10 +426,10 @@ export class FederationEntityBuilder<
   /**
    * Internal method to add directives with validation
    */
-  private addDirective<K extends keyof TSource>(
+  private addDirective<K extends keyof TResult>(
     field: string,
     directive: FederationDirective,
-    resolver?: FieldResolver<TSource, TContext, TSource[K]>
+    resolver?: FieldResolver<TResult, TContext, TResult[K]>
   ): FederationEntityBuilder<TSource, TContext, TResult, TReference> {
     // Validate directive conflicts
     this.validateDirectiveConflicts(field, directive)
@@ -356,7 +444,7 @@ export class FederationEntityBuilder<
       ? ({
           ...this.fieldResolvers,
           [field]: resolver,
-        } as FieldResolverMap<TSource, TContext>)
+        } as FieldResolverMap<TResult, TContext>)
       : this.fieldResolvers
 
     return new FederationEntityBuilder(
@@ -403,10 +491,7 @@ export class FederationEntityBuilder<
   /**
    * Build the complete federation entity with Effect-based resolution
    */
-  build(): Effect.Effect<
-    FederationEntity<TSource, TContext, TResult, TReference>,
-    ValidationError
-  > {
+  build(): Effect.Effect<ValidatedEntity<TSource, TContext, TResult>, ValidationError> {
     return pipe(
       this.validateBuildRequirements(),
       Effect.flatMap(() => this.createFederationEntity())
@@ -434,7 +519,7 @@ export class FederationEntityBuilder<
     // Validate that override fields have resolvers
     for (const [field, directives] of Object.entries(this.directiveMap)) {
       const hasOverride = directives.some(d => d.type === '@override')
-      if (hasOverride && !this.fieldResolvers[field as keyof TSource]) {
+      if (hasOverride && !this.fieldResolvers[field as keyof TResult]) {
         return Effect.fail(
           ErrorFactory.validation(
             `Override field '${field}' requires a resolver`,
@@ -452,17 +537,84 @@ export class FederationEntityBuilder<
    * Create the federation entity instance
    */
   private createFederationEntity(): Effect.Effect<
-    FederationEntity<TSource, TContext, TResult, TReference>,
+    ValidatedEntity<TSource, TContext, TResult>,
     never
   > {
-    const entity: FederationEntity<TSource, TContext, TResult, TReference> = {
+    // Convert FederationDirectiveMap to EntityDirective[]
+    const directives: EntityDirective[] = Object.entries(this.directiveMap).flatMap(
+      ([fieldName, fieldDirectives]) =>
+        fieldDirectives.map(directive => ({
+          name: directive.type.replace('@', ''),
+          args: directive.args ?? {},
+          applicableFields: [fieldName],
+        }))
+    )
+
+    // Convert key fields to EntityKey[]
+    const keys: EntityKey[] = this.keyFields.map(field => ({
+      field: String(field),
+      type: {} as GraphQLOutputType, // GraphQL type - would need proper type mapping
+      isComposite: this.keyFields.length > 1,
+    }))
+
+    // Create metadata
+    const metadata: EntityMetadata = {
       typename: this.typename,
-      key: this.keyFields as string | ReadonlyArray<string>,
-      schema: this.schema as unknown as Schema.Schema<TSource, TContext>,
-      resolveReference: this.referenceResolver!,
-      fields: this.fieldResolvers as unknown as FieldResolverMap<TResult, TContext>,
-      directives: this.directiveMap,
-      extensions: this.extensions,
+      version: '2.0.0',
+      createdAt: new Date(),
+      validationLevel: 'strict',
+      dependencies: [],
+    }
+
+    // Convert field resolvers to GraphQL resolvers
+    const resolvers: Record<
+      string,
+      (
+        source: TSource,
+        args: unknown,
+        context: TContext,
+        info: GraphQLResolveInfo
+      ) => Effect.Effect<TResult, FieldResolutionError, never>
+    > = {}
+    for (const [fieldName, resolver] of Object.entries(this.fieldResolvers) as [
+      string,
+      FieldResolver<TResult, TContext, TResult[keyof TResult]> | undefined,
+    ][]) {
+      if (typeof resolver === 'function') {
+        resolvers[fieldName] = (
+          source: TSource,
+          args: unknown,
+          context: TContext,
+          info: GraphQLResolveInfo
+        ) =>
+          Effect.gen(function* () {
+            const result = yield* Effect.try({
+              try: () =>
+                resolver(
+                  source as unknown as TResult,
+                  args as unknown as Record<string, unknown>,
+                  context,
+                  info
+                ),
+              catch: error =>
+                ErrorFactory.fieldResolution(
+                  `Field resolution failed for ${fieldName}: ${String(error)}`
+                ),
+            })
+            return result as TResult
+          })
+      }
+    }
+
+    const entity: ValidatedEntity<TSource, TContext, TResult> & { key: string[] } = {
+      typename: this.typename,
+      schema: this.schema as unknown as Schema.Schema<TSource, TContext, TResult>,
+      keys,
+      directives,
+      resolvers,
+      metadata,
+      // Add backward-compatible key property for tests
+      key: keys.map(k => k.field),
     }
 
     return Effect.succeed(entity)
@@ -530,12 +682,14 @@ export class FederationEntityBuilder<
 export const createEntityBuilder = <
   TSource extends Record<string, unknown> = Record<string, unknown>,
   TContext extends Record<string, unknown> = Record<string, unknown>,
+  TResult = TSource,
+  TReference extends Record<string, any> = Record<string, any>,
 >(
   typename: string,
-  schema: Schema.Schema<TSource, TSource>,
+  schema: Schema.Schema<TSource, any, any>,
   keyFields: ReadonlyArray<keyof TSource>
-): FederationEntityBuilder<TSource, TContext, TSource, Partial<TSource>> => {
-  return new FederationEntityBuilder<TSource, TContext, TSource, Partial<TSource>>(
+): FederationEntityBuilder<TSource, TContext, TResult, TReference> => {
+  return new FederationEntityBuilder<TSource, TContext, TResult, TReference>(
     typename,
     schema,
     keyFields

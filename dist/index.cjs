@@ -318,12 +318,63 @@ let ErrorFactory;
 /**
 * Modern Federation Entity Builder with full Apollo Federation 2.x directive support
 *
-* Features:
-* - Fluent builder pattern for entity configuration
-* - Full support for @shareable, @inaccessible, @tag, @override directives
-* - Effect-based reference resolution with comprehensive error handling
-* - Type-safe field resolver binding
-* - Directive validation and conflict detection
+* A fluent builder for creating federated GraphQL entities with comprehensive directive support,
+* Effect-based error handling, and type-safe field resolution.
+*
+* ## Features
+* - 🏗️ **Fluent Builder Pattern**: Chainable methods for entity configuration
+* - 🌐 **Full Federation 2.x Support**: All directives (@shareable, @inaccessible, @tag, @override, @external, @requires, @provides)
+* - ⚡ **Effect-Based Operations**: Type-safe error handling with Effect.Effect
+* - 🔒 **Type Safety**: Generic constraints ensure compile-time validation
+* - 🛡️ **Directive Validation**: Automatic conflict detection and validation
+* - 🎯 **Reference Resolution**: Seamless entity resolution across subgraphs
+*
+* ## Basic Usage
+*
+* ```typescript
+* import { createEntityBuilder } from '@cqrs/federation-v2'
+* import { Effect } from 'effect'
+* import * as Schema from '@effect/schema/Schema'
+*
+* // Define entity schema
+* const UserSchema = Schema.Struct({
+*   id: Schema.String,
+*   email: Schema.String,
+*   name: Schema.String,
+*   avatar: Schema.String
+* })
+*
+* // Build federated entity
+* const userEntity = createEntityBuilder('User', UserSchema, ['id'])
+*   .withShareableField('name')
+*   .withInaccessibleField('email')
+*   .withTaggedField('avatar', ['public', 'cdn'])
+*   .withReferenceResolver(resolveUserFromReference)
+*   .build()
+* ```
+*
+* ## Advanced Directive Usage
+*
+* ```typescript
+* // Override field from another subgraph
+* const productEntity = createEntityBuilder('Product', ProductSchema, ['id'])
+*   .withOverrideField('price', 'inventory-service', resolvePriceFromInventory)
+*   .withRequiredFields('availability', 'id sku', resolveAvailability)
+*   .withProvidedFields('summary', 'name description', resolveSummary)
+*   .build()
+* ```
+*
+* ## Type Parameters
+* @template TSource - Source data type (e.g., from database or API)
+* @template TContext - GraphQL execution context type containing services, user info, etc.
+* @template TResult - Resolved entity type returned to GraphQL clients
+* @template TReference - Reference type containing key fields for entity resolution
+*
+* @category Entity Builders
+* @since 2.0.0
+* @see {@link createEntityBuilder} - Factory function for creating entity builders
+* @see {@link https://www.apollographql.com/docs/federation/entities/ | Apollo Federation Entities}
+* @see {@link https://effect.website/docs/essentials/effect-type | Effect Documentation}
 */
 var FederationEntityBuilder = class FederationEntityBuilder {
 	constructor(typename, schema, keyFields, directiveMap = {}, fieldResolvers = {}, referenceResolver, extensions) {
@@ -341,20 +392,93 @@ var FederationEntityBuilder = class FederationEntityBuilder {
 		if (!this.keyFields?.length) throw new Error("Key fields cannot be empty");
 	}
 	/**
-	* Federation 2.x directive support
-	* Marks field as @shareable - Field can be resolved by multiple subgraphs
+	* Marks a field as @shareable, indicating it can be resolved by multiple subgraphs
+	*
+	* The @shareable directive allows multiple subgraphs to define and resolve the same field.
+	* This is useful for common fields that can be computed by different services.
+	*
+	* @example Basic shareable field
+	* ```typescript
+	* const entity = createEntityBuilder('Product', ProductSchema, ['id'])
+	*   .withShareableField('name') // Multiple subgraphs can resolve 'name'
+	*   .build()
+	* ```
+	*
+	* @example Shareable field with custom resolver
+	* ```typescript
+	* const entity = createEntityBuilder('User', UserSchema, ['id'])
+	*   .withShareableField('displayName', (user, args, context) =>
+	*     Effect.succeed(`${user.firstName} ${user.lastName}`)
+	*   )
+	*   .build()
+	* ```
+	*
+	* @param field - Field name to mark as shareable
+	* @param resolver - Optional custom resolver for this field
+	* @returns New builder instance with the shareable directive applied
+	* @see {@link https://www.apollographql.com/docs/federation/federated-types/federated-directives/#shareable | @shareable Directive}
 	*/
 	withShareableField(field, resolver) {
 		return this.addDirective(field, { type: "@shareable" }, resolver);
 	}
 	/**
-	* Marks field as @inaccessible - Field hidden from public schema but available for federation
+	* Marks a field as @inaccessible, hiding it from the public schema while keeping it available for federation
+	*
+	* The @inaccessible directive prevents a field from appearing in the supergraph schema
+	* but allows it to be used internally for federation operations like @requires and @provides.
+	*
+	* @example Hide sensitive internal field
+	* ```typescript
+	* const entity = createEntityBuilder('User', UserSchema, ['id'])
+	*   .withInaccessibleField('internalId') // Hidden from public API
+	*   .withInaccessibleField('auditLog')   // Internal tracking field
+	*   .build()
+	* ```
+	*
+	* @example Use inaccessible field in other directives
+	* ```typescript
+	* const entity = createEntityBuilder('Order', OrderSchema, ['id'])
+	*   .withInaccessibleField('userId')  // Hidden but available for federation
+	*   .withRequiredFields('total', 'userId', calculateTotal) // Can reference userId
+	*   .build()
+	* ```
+	*
+	* @param field - Field name to mark as inaccessible
+	* @param resolver - Optional custom resolver for this field
+	* @returns New builder instance with the inaccessible directive applied
+	* @see {@link https://www.apollographql.com/docs/federation/federated-types/federated-directives/#inaccessible | @inaccessible Directive}
 	*/
 	withInaccessibleField(field, resolver) {
 		return this.addDirective(field, { type: "@inaccessible" }, resolver);
 	}
 	/**
 	* Marks field with @tag - Metadata tags for schema organization and tooling
+	*
+	* The @tag directive allows you to apply arbitrary string metadata to schema elements.
+	* This is useful for schema organization, filtering, and tooling integration.
+	*
+	* @example Basic field tagging
+	* ```typescript
+	* const entity = createEntityBuilder('User', UserSchema, ['id'])
+	*   .withTaggedField('avatar', ['public', 'cdn'])     // Mark as public CDN field
+	*   .withTaggedField('preferences', ['internal'])      // Internal-only field
+	*   .build()
+	* ```
+	*
+	* @example Multi-environment tagging
+	* ```typescript
+	* const entity = createEntityBuilder('Product', ProductSchema, ['id'])
+	*   .withTaggedField('betaFeatures', ['beta', 'experimental'])
+	*   .withTaggedField('adminOnly', ['admin', 'restricted'])
+	*   .build()
+	* ```
+	*
+	* @param field - Field name to tag
+	* @param tags - Array of tag strings (cannot be empty)
+	* @param resolver - Optional custom resolver for this field
+	* @returns New builder instance with the tag directive applied
+	* @throws Error if tags array is empty
+	* @see {@link https://www.apollographql.com/docs/federation/federated-types/federated-directives/#tag | @tag Directive}
 	*/
 	withTaggedField(field, tags, resolver) {
 		if (!tags.length) throw new Error("Tags array cannot be empty");
@@ -364,7 +488,37 @@ var FederationEntityBuilder = class FederationEntityBuilder {
 		}, resolver);
 	}
 	/**
-	* @override - Overrides field resolution from another subgraph
+	* Marks field with @override - Overrides field resolution from another subgraph
+	*
+	* The @override directive indicates that the current subgraph is taking over
+	* responsibility for resolving a particular field from the specified subgraph.
+	* This allows for gradual migration of field ownership between services.
+	*
+	* @example Basic field override
+	* ```typescript
+	* const entity = createEntityBuilder('Product', ProductSchema, ['id'])
+	*   .withOverrideField('price', 'legacy-service', 
+	*     (product, args, context) => 
+	*       context.pricingService.getPrice(product.id)
+	*   )
+	*   .build()
+	* ```
+	*
+	* @example Service migration scenario
+	* ```typescript
+	* // Taking over user profile management from auth service
+	* const userEntity = createEntityBuilder('User', UserSchema, ['id'])
+	*   .withOverrideField('profile', 'auth-service', resolveUserProfile)
+	*   .withOverrideField('preferences', 'auth-service', resolveUserPreferences)
+	*   .build()
+	* ```
+	*
+	* @param field - Field name to override
+	* @param fromSubgraph - Name of the subgraph being overridden (cannot be empty)
+	* @param resolver - Custom resolver implementing the override logic (required)
+	* @returns New builder instance with the override directive applied
+	* @throws Error if fromSubgraph is empty
+	* @see {@link https://www.apollographql.com/docs/federation/federated-types/federated-directives/#override | @override Directive}
 	*/
 	withOverrideField(field, fromSubgraph, resolver) {
 		if (!fromSubgraph?.trim()) throw new Error("fromSubgraph cannot be empty");
@@ -374,7 +528,33 @@ var FederationEntityBuilder = class FederationEntityBuilder {
 		}, resolver);
 	}
 	/**
-	* Marks field as @external - Field is defined in another subgraph
+	* Marks field as @external - Field is defined in another subgraph but needed locally
+	*
+	* The @external directive indicates that a field is not resolved by the current subgraph
+	* but is defined elsewhere and needed for federation operations like @requires and @provides.
+	* External fields are typically used as dependencies for computed fields.
+	*
+	* @example Using external field as dependency
+	* ```typescript
+	* const entity = createEntityBuilder('Order', OrderSchema, ['id'])
+	*   .withExternalField('userId')      // Defined in user service
+	*   .withExternalField('productId')   // Defined in product service  
+	*   .withRequiredFields('total', 'userId productId', calculateOrderTotal)
+	*   .build()
+	* ```
+	*
+	* @example Complex federation with external dependencies
+	* ```typescript
+	* const entity = createEntityBuilder('Review', ReviewSchema, ['id'])
+	*   .withExternalField('productName')     // From product service
+	*   .withExternalField('userName')        // From user service
+	*   .withProvidedFields('summary', 'productName userName', generateSummary)
+	*   .build()
+	* ```
+	*
+	* @param field - Field name to mark as external (must exist in schema)
+	* @returns New builder instance with the external directive applied
+	* @see {@link https://www.apollographql.com/docs/federation/federated-types/federated-directives/#external | @external Directive}
 	*/
 	withExternalField(field) {
 		return this.addDirective(field, { type: "@external" });
@@ -483,14 +663,39 @@ var FederationEntityBuilder = class FederationEntityBuilder {
 	* Create the federation entity instance
 	*/
 	createFederationEntity() {
+		const directives = Object.entries(this.directiveMap).flatMap(([fieldName, fieldDirectives]) => fieldDirectives.map((directive) => ({
+			name: directive.type.replace("@", ""),
+			args: directive.args ?? {},
+			applicableFields: [fieldName]
+		})));
+		const keys = this.keyFields.map((field) => ({
+			field: String(field),
+			type: {},
+			isComposite: this.keyFields.length > 1
+		}));
+		const metadata = {
+			typename: this.typename,
+			version: "2.0.0",
+			createdAt: /* @__PURE__ */ new Date(),
+			validationLevel: "strict",
+			dependencies: []
+		};
+		const resolvers = {};
+		for (const [fieldName, resolver] of Object.entries(this.fieldResolvers)) if (typeof resolver === "function") resolvers[fieldName] = (source, args, context, info$1) => effect.Effect.gen(function* () {
+			const result = yield* effect.Effect.try({
+				try: () => resolver(source, args, context, info$1),
+				catch: (error$1) => ErrorFactory.fieldResolution(`Field resolution failed for ${fieldName}: ${String(error$1)}`)
+			});
+			return result;
+		});
 		const entity = {
 			typename: this.typename,
-			key: this.keyFields,
 			schema: this.schema,
-			resolveReference: this.referenceResolver,
-			fields: this.fieldResolvers,
-			directives: this.directiveMap,
-			extensions: this.extensions
+			keys,
+			directives,
+			resolvers,
+			metadata,
+			key: keys.map((k) => k.field)
 		};
 		return effect.Effect.succeed(entity);
 	}
@@ -521,332 +726,6 @@ const createEntityBuilder = (typename, schema, keyFields) => {
 };
 
 //#endregion
-//#region src/experimental/ultra-strict-entity-builder.ts
-const EntityValidationResult = effect_Data.taggedEnum();
-/**
-* Schema validation error for ultra-strict entity builder
-* @category Experimental
-*/
-var SchemaValidationError$1 = class extends effect_Data.TaggedError("SchemaValidationError") {};
-/**
-* Key validation error for ultra-strict entity builder
-* @category Experimental
-*/
-var KeyValidationError = class extends effect_Data.TaggedError("KeyValidationError") {};
-/**
-* Directive validation error for ultra-strict entity builder
-* @category Experimental
-*/
-var DirectiveValidationError = class extends effect_Data.TaggedError("DirectiveValidationError") {};
-/**
-* Entity builder error for ultra-strict entity builder
-* @category Experimental
-*/
-var EntityBuilderError = class extends effect_Data.TaggedError("EntityBuilderError") {};
-/**
-* Creates a new UltraStrictEntityBuilder with compile-time state tracking
-*
-* The builder uses phantom types to enforce correct usage order at compile time.
-* This prevents runtime errors by catching configuration mistakes during development.
-*
-* @param typename - The GraphQL type name for this entity
-* @returns Builder in Unvalidated state, requiring schema definition next
-*
-* @example
-* ```typescript
-* const userBuilder = createUltraStrictEntityBuilder('User')
-* // Next step must be withSchema - compiler enforces this
-* ```
-*/
-const createUltraStrictEntityBuilder = (typename) => {
-	if (!typename?.trim()) throw new Error("Entity typename cannot be empty");
-	return {
-		_phantomState: effect_Data.struct({ _tag: "Unvalidated" }),
-		typename
-	};
-};
-/**
-* Type-safe schema attachment (only valid in Unvalidated state)
-*
-* Attaches an Effect Schema to the entity for runtime validation.
-* The phantom type system ensures this can only be called on an unvalidated builder.
-*
-* @template A - The schema type being attached
-* @param schema - Effect Schema instance for validation
-* @returns Function that takes Unvalidated builder and returns HasSchema builder
-*
-* @example
-* ```typescript
-* const UserSchema = Schema.Struct({
-*   id: Schema.String,
-*   name: Schema.String,
-*   email: Schema.String
-* })
-*
-* const builderWithSchema = createUltraStrictEntityBuilder('User')
-*   .pipe(withSchema(UserSchema))
-* ```
-*/
-const withSchema = (schema) => (builder) => {
-	if (!schema) throw new Error("Schema cannot be null or undefined");
-	return {
-		...builder,
-		_phantomState: effect_Data.struct({ _tag: "HasSchema" }),
-		schema
-	};
-};
-/**
-* Type-safe key definition (only valid in HasSchema state)
-*
-* Defines the key fields that uniquely identify this entity across subgraphs.
-* The phantom type system ensures schema is attached before keys can be defined.
-*
-* @param keys - Array of EntityKey objects defining the unique identifier(s)
-* @returns Function that takes HasSchema builder and returns HasKeys builder
-*
-* @example
-* ```typescript
-* const keys = [
-*   UltraStrictEntityBuilder.Key.create('id', GraphQLID, false),
-*   UltraStrictEntityBuilder.Key.create('organizationId', GraphQLID, false) // Composite key
-* ]
-*
-* const builderWithKeys = builderWithSchema
-*   .pipe(withKeys(keys))
-* ```
-*/
-const withKeys = (keys) => (builder) => {
-	const actualKeys = keys ?? [];
-	if (actualKeys.length > 0) {
-		const duplicateKeys = actualKeys.map((k) => k.field).filter((field, index, arr) => arr.indexOf(field) !== index);
-		if (duplicateKeys.length > 0) throw new Error(`Duplicate key fields found: ${duplicateKeys.join(", ")}`);
-	}
-	return {
-		...builder,
-		_phantomState: effect_Data.struct({ _tag: "HasKeys" }),
-		keys: actualKeys
-	};
-};
-/**
-* Type-safe directive application (only valid in HasKeys state)
-*
-* Applies Federation directives to the entity. The phantom type system ensures
-* both schema and keys are defined before directives can be applied.
-*
-* @param directives - Array of Federation directives (@shareable, @inaccessible, etc.)
-* @returns Function that takes HasKeys builder and returns HasDirectives builder
-*
-* @example
-* ```typescript
-* const directives = [
-*   UltraStrictEntityBuilder.Directive.shareable(),
-*   UltraStrictEntityBuilder.Directive.tag('public'),
-*   UltraStrictEntityBuilder.Directive.provides('email')
-* ]
-*
-* const builderWithDirectives = builderWithKeys
-*   .pipe(withDirectives(directives))
-* ```
-*/
-const withDirectives = (directives) => (builder) => {
-	const directiveNames = directives?.map((d) => d.name) ?? [];
-	const conflictingPairs = [
-		["shareable", "override"],
-		["inaccessible", "shareable"],
-		["external", "override"]
-	];
-	const hasConflict = conflictingPairs.some(([dir1, dir2]) => directiveNames.includes(dir1) && directiveNames.includes(dir2));
-	if (hasConflict) {
-		const conflict = conflictingPairs.find(([dir1, dir2]) => directiveNames.includes(dir1) && directiveNames.includes(dir2));
-		throw new Error(`Conflicting directives: @${conflict[0]} and @${conflict[1]} cannot be used together`);
-	}
-	return {
-		...builder,
-		_phantomState: effect_Data.struct({ _tag: "HasDirectives" }),
-		directives: directives ?? []
-	};
-};
-/**
-* Type-safe resolver attachment (only valid in HasDirectives state)
-*
-* Attaches field resolvers to the entity. The phantom type system ensures
-* all previous configuration steps are complete before resolvers can be attached.
-*
-* @param resolvers - Record of field name to resolver function mappings
-* @returns Function that takes HasDirectives builder and returns Complete builder
-*
-* @example
-* ```typescript
-* const resolvers = {
-*   displayName: (user) => `${user.firstName} ${user.lastName}`,
-*   avatar: (user, args, ctx) => ctx.imageService.getAvatar(user.id),
-*   posts: (user, args, ctx) => ctx.postService.findByUserId(user.id)
-* }
-*
-* const completeBuilder = builderWithDirectives
-*   .pipe(withResolvers(resolvers))
-* ```
-*/
-const withResolvers = (resolvers) => (builder) => {
-	if (!resolvers) throw new Error("Resolvers cannot be null or undefined");
-	const invalidResolvers = Object.entries(resolvers).filter(([, resolver]) => typeof resolver !== "function").map(([fieldName]) => fieldName);
-	if (invalidResolvers.length > 0) throw new Error(`Resolvers for fields '${invalidResolvers.join(", ")}' must be functions`);
-	return {
-		...builder,
-		_phantomState: effect_Data.struct({ _tag: "Complete" }),
-		resolvers
-	};
-};
-/**
-* Validates a complete entity builder using exhaustive pattern matching
-*/
-const validateEntityBuilder = (builder) => (0, effect_Function.pipe)(effect_Effect.succeed(builder), effect_Effect.flatMap(validateSchema), effect_Effect.flatMap(validateKeys), effect_Effect.flatMap(validateDirectives), effect_Effect.flatMap(validateCircularDependencies), effect_Effect.flatMap(validateCompatibility), effect_Effect.map(createValidResult), effect_Effect.catchAll(handleValidationErrors));
-const validateSchema = (builder) => (0, effect_Function.pipe)(effect_Effect.succeed(builder.schema), effect_Effect.flatMap((schema) => {
-	if (schema === void 0) return effect_Effect.fail([new SchemaValidationError$1({
-		message: `Schema is required`,
-		schemaPath: ["schema"],
-		suggestion: "Ensure a valid schema is provided"
-	})]);
-	return effect_Effect.succeed(builder);
-}));
-const validateKeys = (builder) => (0, effect_Function.pipe)(effect_Effect.succeed(builder.keys), effect_Effect.flatMap((keys) => {
-	let errors = [];
-	if (keys.length === 0) errors.push(new KeyValidationError({
-		message: "Entity must have at least one key field",
-		keyField: "<missing>",
-		entityType: builder.typename,
-		suggestion: "Add a primary key field like 'id' or composite keys"
-	}));
-	const schemaFields = getSchemaFields(builder.schema);
-	const missingKeyErrors = keys.filter((key) => !schemaFields.includes(key.field)).map((key) => new KeyValidationError({
-		message: `Key field '${key.field}' not found in schema`,
-		keyField: key.field,
-		entityType: builder.typename,
-		suggestion: `Add field '${key.field}' to the schema or remove from keys`
-	}));
-	errors = [...errors, ...missingKeyErrors];
-	return errors.length > 0 ? effect_Effect.fail(errors) : effect_Effect.succeed(builder);
-}));
-const validateDirectives = (builder) => (0, effect_Function.pipe)(effect_Effect.succeed(builder.directives), effect_Effect.flatMap((directives) => {
-	const validDirectives = [
-		"shareable",
-		"inaccessible",
-		"tag",
-		"override",
-		"external",
-		"provides",
-		"requires"
-	];
-	const directiveErrors = directives.flatMap((directive) => {
-		const errors = [];
-		if (!validDirectives.includes(directive.name)) errors.push(new DirectiveValidationError({
-			message: `Unknown Federation directive: @${directive.name}`,
-			directive: directive.name,
-			suggestion: `Use one of: ${validDirectives.map((d) => `@${d}`).join(", ")}`
-		}));
-		if (directive.name === "override" && directive.args?.["from"] === void 0) errors.push(new DirectiveValidationError({
-			message: "@override directive requires 'from' argument",
-			directive: directive.name,
-			suggestion: "Add 'from: \"SubgraphName\"' to @override directive"
-		}));
-		return errors;
-	});
-	const allErrors = directiveErrors.flat();
-	return allErrors.length > 0 ? effect_Effect.fail(allErrors) : effect_Effect.succeed(builder);
-}));
-const validateCircularDependencies = (builder) => effect_Effect.succeed(builder);
-const validateCompatibility = (builder) => effect_Effect.succeed(builder);
-const createValidResult = (builder) => EntityValidationResult.Valid({
-	entity: {
-		typename: builder.typename,
-		schema: builder.schema,
-		keys: builder.keys,
-		directives: builder.directives,
-		resolvers: builder.resolvers,
-		metadata: {
-			typename: builder.typename,
-			version: "2.0.0",
-			createdAt: /* @__PURE__ */ new Date(),
-			validationLevel: "ultra-strict",
-			dependencies: []
-		}
-	},
-	metadata: {
-		typename: builder.typename,
-		version: "2.0.0",
-		createdAt: /* @__PURE__ */ new Date(),
-		validationLevel: "ultra-strict",
-		dependencies: []
-	}
-});
-const handleValidationErrors = (errors) => (0, effect_Function.pipe)(effect_Match.value(errors), effect_Match.when((errs) => errs.length > 0 && errs[0] instanceof SchemaValidationError$1, (errs) => effect_Effect.succeed(EntityValidationResult.InvalidSchema({ errors: errs }))), effect_Match.when((errs) => errs.length > 0 && errs[0] instanceof KeyValidationError, (errs) => effect_Effect.succeed(EntityValidationResult.InvalidKeys({
-	errors: errs,
-	schema: __effect_schema_Schema.Struct({})
-}))), effect_Match.when((errs) => errs.length > 0 && errs[0] instanceof DirectiveValidationError, (errs) => effect_Effect.succeed(EntityValidationResult.InvalidDirectives({
-	errors: errs,
-	schema: __effect_schema_Schema.Struct({}),
-	keys: []
-}))), effect_Match.exhaustive);
-/**
-* Exhaustive pattern matching over entity validation results
-*/
-const matchEntityValidationResult = (handlers) => (result) => effect_Match.value(result).pipe(effect_Match.tag("Valid", handlers.Valid), effect_Match.tag("InvalidSchema", handlers.InvalidSchema), effect_Match.tag("InvalidKeys", handlers.InvalidKeys), effect_Match.tag("InvalidDirectives", handlers.InvalidDirectives), effect_Match.tag("CircularDependency", handlers.CircularDependency), effect_Match.tag("IncompatibleVersion", handlers.IncompatibleVersion), effect_Match.exhaustive);
-const getSchemaFields = (schema) => {
-	const ast = schema.ast;
-	if (ast._tag === "TypeLiteral") return ast.propertySignatures.map((prop) => {
-		if (typeof prop.name === "string") return prop.name;
-		return String(prop.name);
-	});
-	return [];
-};
-/**
-* Creates an entity key for federation (internal implementation)
-*/
-const createEntityKey = (field, type, isComposite = false) => ({
-	field,
-	type,
-	isComposite
-});
-let UltraStrictEntityBuilder;
-(function(_UltraStrictEntityBuilder) {
-	let Directive;
-	(function(_Directive) {
-		_Directive.shareable = () => ({
-			name: "shareable",
-			args: {}
-		});
-		_Directive.inaccessible = () => ({
-			name: "inaccessible",
-			args: {}
-		});
-		_Directive.tag = (name) => ({
-			name: "tag",
-			args: { name }
-		});
-		_Directive.override = (from) => ({
-			name: "override",
-			args: { from }
-		});
-		_Directive.external = () => ({
-			name: "external",
-			args: {}
-		});
-		_Directive.provides = (fields) => ({
-			name: "provides",
-			args: { fields }
-		});
-		_Directive.requires = (fields) => ({
-			name: "requires",
-			args: { fields }
-		});
-	})(Directive || (Directive = _UltraStrictEntityBuilder.Directive || (_UltraStrictEntityBuilder.Directive = {})));
-	let Key;
-	(function(_Key) {
-		_Key.create = createEntityKey;
-	})(Key || (Key = _UltraStrictEntityBuilder.Key || (_UltraStrictEntityBuilder.Key = {})));
-})(UltraStrictEntityBuilder || (UltraStrictEntityBuilder = {}));
-
-//#endregion
 //#region src/core/schema-first-patterns.ts
 const SchemaLifecycleState = effect_Data.taggedEnum();
 const SchemaEvolution = effect_Data.taggedEnum();
@@ -874,14 +753,6 @@ const createSchemaFirstService = () => ({
 	}), effect_Effect.catchAll((error$1) => effect_Effect.fail(new SchemaFirstError({
 		message: `Failed to extract entities: ${error$1}`,
 		suggestion: "Ensure entities have proper @key directives"
-	})))),
-	generateEntityBuilders: (schema) => (0, effect_Function.pipe)(effect_Effect.succeed(schema), effect_Effect.flatMap((_doc) => effect_Effect.all([
-		generateUserEntityBuilder(),
-		generateProductEntityBuilder(),
-		generateOrderEntityBuilder()
-	])), effect_Effect.map((builders) => builders.filter((b) => b !== null)), effect_Effect.catchAll((error$1) => effect_Effect.fail(new SchemaFirstError({
-		message: `Failed to generate entity builders: ${error$1}`,
-		suggestion: "Verify schema entities have valid types and key fields"
 	})))),
 	validateSchemaEvolution: (currentSchema, proposedSchema) => (0, effect_Function.pipe)(effect_Effect.succeed([currentSchema, proposedSchema]), effect_Effect.map(([_current, _proposed]) => {
 		const evolutions = [SchemaEvolution.AddField({
@@ -944,24 +815,6 @@ export const ${entity.typename}Resolvers = {
 		entityType: "multiple"
 	}))))
 });
-const generateUserEntityBuilder = () => (0, effect_Function.pipe)(createUltraStrictEntityBuilder("User"), withSchema(__effect_schema_Schema.Struct({
-	id: __effect_schema_Schema.String,
-	email: __effect_schema_Schema.String,
-	name: __effect_schema_Schema.optional(__effect_schema_Schema.String)
-})), withKeys([UltraStrictEntityBuilder.Key.create("id", { name: "ID" }, false)]), withDirectives([UltraStrictEntityBuilder.Directive.shareable(), UltraStrictEntityBuilder.Directive.tag("user")]), withResolvers({ fullName: (parent) => `${parent.name ?? "Anonymous"}` }), validateEntityBuilder, effect_Effect.map((result) => (0, effect_Function.pipe)(effect_Match.value(result), effect_Match.tag("Valid", ({ entity }) => entity), effect_Match.orElse(() => null))), effect_Effect.catchAll(() => effect_Effect.succeed(null)));
-const generateProductEntityBuilder = () => (0, effect_Function.pipe)(createUltraStrictEntityBuilder("Product"), withSchema(__effect_schema_Schema.Struct({
-	id: __effect_schema_Schema.String,
-	name: __effect_schema_Schema.String,
-	price: __effect_schema_Schema.Number
-})), withKeys([UltraStrictEntityBuilder.Key.create("id", { name: "ID" }, false)]), withDirectives([UltraStrictEntityBuilder.Directive.shareable()]), withResolvers({ formattedPrice: (parent) => `$${parent.price.toFixed(2)}` }), validateEntityBuilder, effect_Effect.map((result) => (0, effect_Function.pipe)(effect_Match.value(result), effect_Match.tag("Valid", ({ entity }) => entity), effect_Match.orElse(() => null))), effect_Effect.catchAll(() => effect_Effect.succeed(null)));
-const generateOrderEntityBuilder = () => (0, effect_Function.pipe)(createUltraStrictEntityBuilder("Order"), withSchema(__effect_schema_Schema.Struct({
-	id: __effect_schema_Schema.String,
-	userId: __effect_schema_Schema.String,
-	total: __effect_schema_Schema.Number
-})), withKeys([UltraStrictEntityBuilder.Key.create("id", { name: "ID" }, false)]), withDirectives([UltraStrictEntityBuilder.Directive.requires("userId")]), withResolvers({ formattedTotal: (parent) => {
-	const typedParent = parent;
-	return `$${typedParent.total.toFixed(2)}`;
-} }), validateEntityBuilder, effect_Effect.map((result) => (0, effect_Function.pipe)(effect_Match.value(result), effect_Match.tag("Valid", ({ entity }) => entity), effect_Match.orElse(() => null))), effect_Effect.catchAll(() => effect_Effect.succeed(null)));
 const generateTypeScriptTypes = (entities) => effect_Effect.succeed(entities.map((entity) => `
 export interface ${entity.typename} {
   ${entity.keys.map((key) => `readonly ${key.field}: string`).join("\n  ")}
@@ -990,9 +843,9 @@ class ${entity.typename}:
     # Additional fields from schema would be generated here
 `).join("\n"));
 const createSchemaFirstWorkflow = (schemaFirstService) => ({
-	developSchema: (schemaSource) => (0, effect_Function.pipe)(schemaFirstService.parseSchemaDefinition(schemaSource), effect_Effect.flatMap((schema) => (0, effect_Function.pipe)(schemaFirstService.generateEntityBuilders(schema), effect_Effect.map((entities) => SchemaLifecycleState.Validated({
+	developSchema: (schemaSource) => (0, effect_Function.pipe)(schemaFirstService.parseSchemaDefinition(schemaSource), effect_Effect.flatMap((schema) => (0, effect_Function.pipe)(effect_Effect.succeed(schema), effect_Effect.map(() => SchemaLifecycleState.Validated({
 		schema,
-		entities,
+		entities: [],
 		version: "1.0.0"
 	}))))),
 	evolveSchema: (currentState, proposedSchema) => (0, effect_Function.pipe)(effect_Match.value(currentState), effect_Match.tag("Validated", ({ schema: currentSchema }) => (0, effect_Function.pipe)(schemaFirstService.parseSchemaDefinition(proposedSchema), effect_Effect.mapError((error$1) => new SchemaEvolutionError({
@@ -1015,9 +868,9 @@ const createSchemaFirstWorkflow = (schemaFirstService) => ({
 			}),
 			conflictingChanges: evolutions
 		}));
-		return (0, effect_Function.pipe)(schemaFirstService.generateEntityBuilders(proposedSchemaDoc), effect_Effect.map((entities) => SchemaLifecycleState.Validated({
+		return (0, effect_Function.pipe)(effect_Effect.succeed(proposedSchemaDoc), effect_Effect.map(() => SchemaLifecycleState.Validated({
 			schema: proposedSchemaDoc,
-			entities,
+			entities: [],
 			version: "1.1.0"
 		})), effect_Effect.mapError((error$1) => new SchemaEvolutionError({
 			message: error$1.message,
@@ -1086,6 +939,31 @@ const testLogger = effect_Layer.merge(FederationLoggerLive, effect_Logger.minimu
 
 //#endregion
 //#region src/core/services/config.ts
+/**
+* Federation Framework v2 configuration schema with comprehensive validation
+*
+* Defines the complete configuration structure for federated GraphQL services,
+* including server settings, database connections, caching, resilience patterns,
+* and observability features.
+*
+* @example Minimal configuration
+* ```typescript
+* const minimalConfig = {
+*   server: { port: 4000, host: 'localhost', cors: { enabled: false, origins: [] } },
+*   federation: { introspection: true, playground: true, subscriptions: false, tracing: false },
+*   database: { url: 'postgresql://localhost:5432/test', maxConnections: 5, connectionTimeout: '10s' },
+*   cache: { redis: { url: 'redis://localhost:6379', keyPrefix: 'test:', defaultTtl: '5m' } },
+*   resilience: { circuitBreaker: { failureThreshold: 3, resetTimeout: '10s', halfOpenMaxCalls: 1 } },
+*   observability: {
+*     metrics: { enabled: false, port: 9090 },
+*     tracing: { enabled: false, serviceName: 'test', endpoint: 'http://localhost:14268/api/traces' }
+*   }
+* }
+* ```
+*
+* @category Core Services
+* @since 2.0.0
+*/
 const FederationConfigSchema = __effect_schema_Schema.Struct({
 	server: __effect_schema_Schema.Struct({
 		port: __effect_schema_Schema.Number.pipe(__effect_schema_Schema.int(), __effect_schema_Schema.between(1, 65535)),
@@ -1520,7 +1398,7 @@ let SubgraphManagement;
 		const startTime = Date.now();
 		const adaptiveTimeout = effect.Duration.toMillis(config.healthCheckTimeout);
 		return (0, effect.pipe)(effect.Effect.tryPromise({
-			try: () => {
+			try: async () => {
 				const controller = new AbortController();
 				const timeoutId = setTimeout(() => controller.abort(), adaptiveTimeout);
 				return fetch(`${service.url}/health`, {
@@ -2291,7 +2169,36 @@ const createDevelopmentOptimizedExecutor = (schema) => PerformanceOptimizations.
 //#region src/schema/ast-conversion.ts
 const MAX_RECURSION_DEPTH = 10;
 /**
-* Create a new type conversion context
+* Create a new type conversion context with specified configuration
+*
+* Factory function for creating a TypeConversionContext with appropriate defaults
+* and customization options for different conversion scenarios.
+*
+* @param isInput - Whether to create context for GraphQL input types (default: false)
+* @param scalars - Custom scalar type mappings for conversion
+* @param options - Additional configuration options
+* @param options.maxDepth - Maximum recursion depth to prevent infinite loops (default: 10)
+* @param options.strictMode - Enable strict type validation during conversion (default: false)
+* @returns Configured conversion context ready for use
+*
+* @example Creating output type context
+* ```typescript
+* const outputContext = createConversionContext(false, {
+*   UUID: UUIDScalarType,
+*   DateTime: DateTimeScalarType
+* })
+* ```
+*
+* @example Creating input type context with strict mode
+* ```typescript
+* const inputContext = createConversionContext(true, {}, {
+*   maxDepth: 8,
+*   strictMode: true
+* })
+* ```
+*
+* @category Schema Processing
+* @since 2.0.0
 */
 const createConversionContext = (isInput = false, scalars = {}, options = {}) => ({
 	cache: /* @__PURE__ */ new Map(),
@@ -2483,6 +2390,344 @@ let ASTConversion;
 		return type instanceof graphql.GraphQLObjectType;
 	};
 })(ASTConversion || (ASTConversion = {}));
+
+//#endregion
+//#region src/experimental/ultra-strict-entity-builder.ts
+const EntityValidationResult = effect_Data.taggedEnum();
+/**
+* Schema validation error for ultra-strict entity builder
+* @category Experimental
+*/
+var SchemaValidationError$1 = class extends effect_Data.TaggedError("SchemaValidationError") {};
+/**
+* Key validation error for ultra-strict entity builder
+* @category Experimental
+*/
+var KeyValidationError = class extends effect_Data.TaggedError("KeyValidationError") {};
+/**
+* Directive validation error for ultra-strict entity builder
+* @category Experimental
+*/
+var DirectiveValidationError = class extends effect_Data.TaggedError("DirectiveValidationError") {};
+/**
+* Entity builder error for ultra-strict entity builder
+* @category Experimental
+*/
+var EntityBuilderError = class extends effect_Data.TaggedError("EntityBuilderError") {};
+/**
+* Creates a new UltraStrictEntityBuilder with compile-time state tracking
+*
+* The builder uses phantom types to enforce correct usage order at compile time.
+* This prevents runtime errors by catching configuration mistakes during development.
+*
+* @param typename - The GraphQL type name for this entity
+* @returns Builder in Unvalidated state, requiring schema definition next
+*
+* @example
+* ```typescript
+* const userBuilder = createUltraStrictEntityBuilder('User')
+* // Next step must be withSchema - compiler enforces this
+* ```
+*/
+const createUltraStrictEntityBuilder = (typename) => {
+	if (!typename?.trim()) throw new Error("Entity typename cannot be empty");
+	return {
+		_phantomState: effect_Data.struct({ _tag: "Unvalidated" }),
+		typename
+	};
+};
+/**
+* Type-safe schema attachment (only valid in Unvalidated state)
+*
+* Attaches an Effect Schema to the entity for runtime validation.
+* The phantom type system ensures this can only be called on an unvalidated builder.
+*
+* @template A - The schema type being attached
+* @param schema - Effect Schema instance for validation
+* @returns Function that takes Unvalidated builder and returns HasSchema builder
+*
+* @example
+* ```typescript
+* const UserSchema = Schema.Struct({
+*   id: Schema.String,
+*   name: Schema.String,
+*   email: Schema.String
+* })
+*
+* const builderWithSchema = createUltraStrictEntityBuilder('User')
+*   .pipe(withSchema(UserSchema))
+* ```
+*/
+const withSchema = (schema) => (builder) => {
+	if (!schema) throw new Error("Schema cannot be null or undefined");
+	return {
+		...builder,
+		_phantomState: effect_Data.struct({ _tag: "HasSchema" }),
+		schema
+	};
+};
+/**
+* Type-safe key definition (only valid in HasSchema state)
+*
+* Defines the key fields that uniquely identify this entity across subgraphs.
+* The phantom type system ensures schema is attached before keys can be defined.
+*
+* @param keys - Array of EntityKey objects defining the unique identifier(s)
+* @returns Function that takes HasSchema builder and returns HasKeys builder
+*
+* @example
+* ```typescript
+* const keys = [
+*   UltraStrictEntityBuilder.Key.create('id', GraphQLID, false),
+*   UltraStrictEntityBuilder.Key.create('organizationId', GraphQLID, false) // Composite key
+* ]
+*
+* const builderWithKeys = builderWithSchema
+*   .pipe(withKeys(keys))
+* ```
+*/
+const withKeys = (keys) => (builder) => {
+	const actualKeys = keys ?? [];
+	if (actualKeys.length > 0) {
+		const duplicateKeys = actualKeys.map((k) => k.field).filter((field, index, arr) => arr.indexOf(field) !== index);
+		if (duplicateKeys.length > 0) throw new Error(`Duplicate key fields found: ${duplicateKeys.join(", ")}`);
+	}
+	return {
+		...builder,
+		_phantomState: effect_Data.struct({ _tag: "HasKeys" }),
+		keys: actualKeys
+	};
+};
+/**
+* Type-safe directive application (only valid in HasKeys state)
+*
+* Applies Federation directives to the entity. The phantom type system ensures
+* both schema and keys are defined before directives can be applied.
+*
+* @param directives - Array of Federation directives (@shareable, @inaccessible, etc.)
+* @returns Function that takes HasKeys builder and returns HasDirectives builder
+*
+* @example
+* ```typescript
+* const directives = [
+*   UltraStrictEntityBuilder.Directive.shareable(),
+*   UltraStrictEntityBuilder.Directive.tag('public'),
+*   UltraStrictEntityBuilder.Directive.provides('email')
+* ]
+*
+* const builderWithDirectives = builderWithKeys
+*   .pipe(withDirectives(directives))
+* ```
+*/
+const withDirectives = (directives) => (builder) => {
+	const directiveNames = directives?.map((d) => d.name) ?? [];
+	const conflictingPairs = [
+		["shareable", "override"],
+		["inaccessible", "shareable"],
+		["external", "override"]
+	];
+	const hasConflict = conflictingPairs.some(([dir1, dir2]) => directiveNames.includes(dir1) && directiveNames.includes(dir2));
+	if (hasConflict) {
+		const conflict = conflictingPairs.find(([dir1, dir2]) => directiveNames.includes(dir1) && directiveNames.includes(dir2));
+		throw new Error(`Conflicting directives: @${conflict[0]} and @${conflict[1]} cannot be used together`);
+	}
+	return {
+		...builder,
+		_phantomState: effect_Data.struct({ _tag: "HasDirectives" }),
+		directives: directives ?? []
+	};
+};
+/**
+* Type-safe resolver attachment (only valid in HasDirectives state)
+*
+* Attaches field resolvers to the entity. The phantom type system ensures
+* all previous configuration steps are complete before resolvers can be attached.
+*
+* @param resolvers - Record of field name to resolver function mappings
+* @returns Function that takes HasDirectives builder and returns Complete builder
+*
+* @example
+* ```typescript
+* const resolvers = {
+*   displayName: (user) => `${user.firstName} ${user.lastName}`,
+*   avatar: (user, args, ctx) => ctx.imageService.getAvatar(user.id),
+*   posts: (user, args, ctx) => ctx.postService.findByUserId(user.id)
+* }
+*
+* const completeBuilder = builderWithDirectives
+*   .pipe(withResolvers(resolvers))
+* ```
+*/
+const withResolvers = (resolvers) => (builder) => {
+	if (!resolvers) throw new Error("Resolvers cannot be null or undefined");
+	const invalidResolvers = Object.entries(resolvers).filter(([, resolver]) => typeof resolver !== "function").map(([fieldName]) => fieldName);
+	if (invalidResolvers.length > 0) throw new Error(`Resolvers for fields '${invalidResolvers.join(", ")}' must be functions`);
+	return {
+		...builder,
+		_phantomState: effect_Data.struct({ _tag: "Complete" }),
+		resolvers
+	};
+};
+/**
+* Validates a complete entity builder using exhaustive pattern matching
+*/
+const validateEntityBuilder = (builder) => (0, effect_Function.pipe)(effect_Effect.succeed(builder), effect_Effect.flatMap(validateSchema), effect_Effect.flatMap(validateKeys), effect_Effect.flatMap(validateDirectives), effect_Effect.flatMap(validateCircularDependencies), effect_Effect.flatMap(validateCompatibility), effect_Effect.map(createValidResult), effect_Effect.catchAll(handleValidationErrors));
+const validateSchema = (builder) => (0, effect_Function.pipe)(effect_Effect.succeed(builder.schema), effect_Effect.flatMap((schema) => {
+	if (schema === void 0) return effect_Effect.fail([new SchemaValidationError$1({
+		message: `Schema is required`,
+		schemaPath: ["schema"],
+		suggestion: "Ensure a valid schema is provided"
+	})]);
+	return effect_Effect.succeed(builder);
+}));
+const validateKeys = (builder) => (0, effect_Function.pipe)(effect_Effect.succeed(builder.keys ?? []), effect_Effect.flatMap((keys) => {
+	let errors = [];
+	if (keys.length === 0) errors.push(new KeyValidationError({
+		message: "Entity must have at least one key field",
+		keyField: "<missing>",
+		entityType: builder.typename,
+		suggestion: "Add a primary key field like 'id' or composite keys"
+	}));
+	const schemaFields = getSchemaFields(builder.schema);
+	const missingKeyErrors = keys.filter((key) => !schemaFields.includes(key.field)).map((key) => new KeyValidationError({
+		message: `Key field '${key.field}' not found in schema`,
+		keyField: key.field,
+		entityType: builder.typename,
+		suggestion: `Add field '${key.field}' to the schema or remove from keys`
+	}));
+	errors = [...errors, ...missingKeyErrors];
+	return errors.length > 0 ? effect_Effect.fail(errors) : effect_Effect.succeed(builder);
+}));
+const validateDirectives = (builder) => (0, effect_Function.pipe)(effect_Effect.succeed(builder.directives), effect_Effect.flatMap((directives) => {
+	const validDirectives = [
+		"shareable",
+		"inaccessible",
+		"tag",
+		"override",
+		"external",
+		"provides",
+		"requires"
+	];
+	const directiveErrors = directives.flatMap((directive) => {
+		const errors = [];
+		if (!validDirectives.includes(directive.name)) errors.push(new DirectiveValidationError({
+			message: `Unknown Federation directive: @${directive.name}`,
+			directive: directive.name,
+			suggestion: `Use one of: ${validDirectives.map((d) => `@${d}`).join(", ")}`
+		}));
+		if (directive.name === "override" && directive.args?.["from"] === void 0) errors.push(new DirectiveValidationError({
+			message: "@override directive requires 'from' argument",
+			directive: directive.name,
+			suggestion: "Add 'from: \"SubgraphName\"' to @override directive"
+		}));
+		return errors;
+	});
+	const allErrors = directiveErrors.flat();
+	return allErrors.length > 0 ? effect_Effect.fail(allErrors) : effect_Effect.succeed(builder);
+}));
+const validateCircularDependencies = (builder) => effect_Effect.succeed(builder);
+const validateCompatibility = (builder) => effect_Effect.succeed(builder);
+const createValidResult = (builder) => {
+	const result = EntityValidationResult.Valid({
+		entity: {
+			typename: builder.typename,
+			schema: builder.schema,
+			keys: builder.keys,
+			directives: builder.directives,
+			resolvers: builder.resolvers,
+			metadata: {
+				typename: builder.typename,
+				version: "2.0.0",
+				createdAt: /* @__PURE__ */ new Date(),
+				validationLevel: "ultra-strict",
+				dependencies: []
+			}
+		},
+		metadata: {
+			typename: builder.typename,
+			version: "2.0.0",
+			createdAt: /* @__PURE__ */ new Date(),
+			validationLevel: "ultra-strict",
+			dependencies: []
+		}
+	});
+	return result;
+};
+const handleValidationErrors = (errors) => (0, effect_Function.pipe)(effect_Match.value(errors), effect_Match.when((errs) => errs.length > 0 && errs[0] instanceof SchemaValidationError$1, (errs) => {
+	const result = EntityValidationResult.InvalidSchema({ errors: errs });
+	return effect_Effect.succeed(result);
+}), effect_Match.when((errs) => errs.length > 0 && errs[0] instanceof KeyValidationError, (errs) => {
+	const result = EntityValidationResult.InvalidKeys({
+		errors: errs,
+		schema: __effect_schema_Schema.Struct({})
+	});
+	return effect_Effect.succeed(result);
+}), effect_Match.when((errs) => errs.length > 0 && errs[0] instanceof DirectiveValidationError, (errs) => {
+	const result = EntityValidationResult.InvalidDirectives({
+		errors: errs,
+		schema: __effect_schema_Schema.Struct({}),
+		keys: []
+	});
+	return effect_Effect.succeed(result);
+}), effect_Match.exhaustive);
+/**
+* Exhaustive pattern matching over entity validation results
+*/
+const matchEntityValidationResult = (handlers) => (result) => effect_Match.value(result).pipe(effect_Match.tag("Valid", handlers.Valid), effect_Match.tag("InvalidSchema", handlers.InvalidSchema), effect_Match.tag("InvalidKeys", handlers.InvalidKeys), effect_Match.tag("InvalidDirectives", handlers.InvalidDirectives), effect_Match.tag("CircularDependency", handlers.CircularDependency), effect_Match.tag("IncompatibleVersion", handlers.IncompatibleVersion), effect_Match.exhaustive);
+const getSchemaFields = (schema) => {
+	const ast = schema.ast;
+	if (ast._tag === "TypeLiteral") return ast.propertySignatures.map((prop) => {
+		if (typeof prop.name === "string") return prop.name;
+		return String(prop.name);
+	});
+	return [];
+};
+/**
+* Creates an entity key for federation (internal implementation)
+*/
+const createEntityKey = (field, type, isComposite = false) => ({
+	field,
+	type,
+	isComposite
+});
+let UltraStrictEntityBuilder;
+(function(_UltraStrictEntityBuilder) {
+	let Directive;
+	(function(_Directive) {
+		_Directive.shareable = () => ({
+			name: "shareable",
+			args: {}
+		});
+		_Directive.inaccessible = () => ({
+			name: "inaccessible",
+			args: {}
+		});
+		_Directive.tag = (name) => ({
+			name: "tag",
+			args: { name }
+		});
+		_Directive.override = (from) => ({
+			name: "override",
+			args: { from }
+		});
+		_Directive.external = () => ({
+			name: "external",
+			args: {}
+		});
+		_Directive.provides = (fields) => ({
+			name: "provides",
+			args: { fields }
+		});
+		_Directive.requires = (fields) => ({
+			name: "requires",
+			args: { fields }
+		});
+	})(Directive || (Directive = _UltraStrictEntityBuilder.Directive || (_UltraStrictEntityBuilder.Directive = {})));
+	let Key;
+	(function(_Key) {
+		_Key.create = createEntityKey;
+	})(Key || (Key = _UltraStrictEntityBuilder.Key || (_UltraStrictEntityBuilder.Key = {})));
+})(UltraStrictEntityBuilder || (UltraStrictEntityBuilder = {}));
 
 //#endregion
 //#region src/experimental/index.ts

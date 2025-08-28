@@ -32,7 +32,8 @@
     "allowSyntheticDefaultImports": true,
     "isolatedModules": true,
     "types": ["bun-types", "node"],
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "downlevelIteration": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "src/examples/**/*"]

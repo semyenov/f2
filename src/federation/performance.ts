@@ -14,8 +14,35 @@ import type {
 import { ErrorFactory } from '../core/errors.js'
 
 /**
- * Query plan representation
- * @category Performance Optimizations
+ * Query plan representation for federation query execution
+ *
+ * Represents a complete execution plan for a federated GraphQL query,
+ * including the sequence of operations across subgraphs and associated
+ * performance metadata for optimization decisions.
+ *
+ * @example Query plan structure
+ * ```typescript
+ * const plan: QueryPlan = {
+ *   id: 'query-hash-abc123',
+ *   steps: [
+ *     {
+ *       subgraphId: 'users',
+ *       operation: 'query Users($ids: [ID!]!) { users(ids: $ids) { id name email } }',
+ *       dependencies: []
+ *     },
+ *     {
+ *       subgraphId: 'orders',
+ *       operation: 'query Orders($userIds: [ID!]!) { orders(userIds: $userIds) { id total } }',
+ *       dependencies: ['users']
+ *     }
+ *   ],
+ *   complexity: 25,
+ *   estimatedCost: 150
+ * }
+ * ```
+ *
+ * @category Performance & Caching
+ * @since 2.0.0
  */
 export interface QueryPlan {
   readonly id: string
@@ -46,8 +73,41 @@ export interface CachedQueryPlan {
 }
 
 /**
- * Query plan cache interface
- * @category Performance Optimizations
+ * Query plan cache interface with intelligent caching strategies
+ *
+ * High-performance cache implementation for federated query plans with LRU eviction,
+ * pattern-based invalidation, and comprehensive statistics tracking.
+ *
+ * @example Basic cache usage
+ * ```typescript
+ * import { PerformanceOptimizations } from '@cqrs/federation-v2'
+ *
+ * const cache = yield* PerformanceOptimizations.createQueryPlanCache({
+ *   maxSize: 1000,
+ *   ttl: Duration.hours(1)
+ * })
+ *
+ * // Check cache for existing plan
+ * const cachedPlan = yield* cache.get('query-hash-abc123')
+ * if (Option.isSome(cachedPlan)) {
+ *   return cachedPlan.value.plan
+ * }
+ *
+ * // Store new plan
+ * yield* cache.set('query-hash-abc123', queryPlan)
+ * ```
+ *
+ * @example Pattern-based invalidation
+ * ```typescript
+ * // Invalidate all plans involving specific subgraph
+ * yield* cache.invalidate('users-*')
+ *
+ * // Invalidate all cached plans
+ * yield* cache.invalidate()
+ * ```
+ *
+ * @category Performance & Caching
+ * @since 2.0.0
  */
 export interface QueryPlanCache {
   readonly get: (queryHash: string) => Effect.Effect<CachedQueryPlan | undefined, never>
@@ -68,8 +128,45 @@ export interface CacheStats {
 }
 
 /**
- * Federated DataLoader interface
- * @category Performance Optimizations
+ * Federated DataLoader interface for efficient batch loading across subgraphs
+ *
+ * Provides intelligent batching and caching capabilities for data fetching
+ * across multiple federated subgraphs, with per-subgraph DataLoader instances
+ * and comprehensive performance monitoring.
+ *
+ * @example Basic DataLoader usage
+ * ```typescript
+ * import { PerformanceOptimizations } from '@cqrs/federation-v2'
+ *
+ * const dataLoader = yield* PerformanceOptimizations.createFederatedDataLoader({
+ *   maxBatchSize: 100,
+ *   batchWindowMs: 10,
+ *   enableBatchLogging: true
+ * })
+ *
+ * // Get loader for specific subgraph
+ * const userLoader = yield* dataLoader.getLoader('users', async (userIds) => {
+ *   return await fetchUsersByIds(userIds)
+ * })
+ *
+ * // Load data with automatic batching
+ * const user = yield* Effect.fromPromise(() => userLoader.load('user-123'))
+ * ```
+ *
+ * @example Advanced batching with custom key function
+ * ```typescript
+ * const productLoader = yield* dataLoader.getLoader(
+ *   'products',
+ *   async (keys) => fetchProductsByKeys(keys),
+ *   {
+ *     cacheKeyFn: (key) => `product:${key.id}:${key.version}`,
+ *     maxBatchSize: 50
+ *   }
+ * )
+ * ```
+ *
+ * @category Performance & Caching
+ * @since 2.0.0
  */
 export interface FederatedDataLoader {
   readonly getLoader: <K, V>(
