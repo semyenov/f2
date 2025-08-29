@@ -21,17 +21,39 @@
 
 ## ✨ **Core Features**
 
+### Foundation
+
 - 🎯 **Ultra-Strict Entity Builder** - Phantom types and compile-time validation
 - 📝 **Schema-First Development** - Safe evolution with breaking change detection
 - 🔄 **AST-Based Conversion** - Effect Schema to GraphQL type mapping
-- ⚡ **Circuit Breakers & Resilience** - Enterprise-grade fault tolerance with pre-calculated timeouts
-- 🚀 **Performance Optimizations** - LRU cache with 10% batch eviction (40% faster), adaptive DataLoader batching
 - 🏗️ **Effect-First Architecture** - Pure functional patterns throughout with Layer-based dependency injection
 - 🔒 **Pattern Matching** - Exhaustive error handling and validation
-- 📊 **Service Discovery & Health Monitoring** - Production-ready orchestration with connection pooling
 - 🛡️ **Enhanced Type Safety** - Advanced TypeScript utility types, zero 'any' usage
+
+### Production Features
+
+- ⚡ **Circuit Breakers & Resilience** - Enterprise-grade fault tolerance with pre-calculated timeouts
+- 🚀 **Performance Optimizations** - LRU cache with 10% batch eviction (40% faster), adaptive DataLoader batching
+- 📊 **Service Discovery & Health Monitoring** - Production-ready orchestration with connection pooling
 - **Apollo Federation 2.x Support**: Full directive support (@shareable, @inaccessible, @tag, @override, @external, @provides, @requires)
 - **Hot Reload**: Development-friendly schema updates
+
+### Developer Experience
+
+- 🎮 **GraphQL Playground** - Federation-aware interactive environment
+- 🛠️ **CLI Tool** - Project scaffolding, entity generation, validation
+- 🧪 **Testing Framework** - TestHarness with fluent API and mock generators
+- 📈 **Performance Profiler** - Bottleneck detection and optimization recommendations
+- 🔄 **Schema Migration Tools** - Safe evolution with breaking change detection
+- 🎯 **Simplified API Facade** - Quick setup without Effect-TS complexity
+
+### Cloud & DevOps
+
+- ☸️ **Kubernetes Operator** - Native K8s deployment with CRDs
+- ☁️ **Multi-Cloud Support** - AWS, GCP, Azure deployment strategies
+- 🌐 **Edge Deployment** - CloudFlare Workers, Lambda@Edge
+- 🐳 **Container Ready** - Optimized Docker images with health checks
+- 📊 **Observability** - Built-in metrics, tracing, and logging
 
 ### 🚀 **Performance Highlights**
 
@@ -51,7 +73,42 @@ yarn add @cqrs/federation
 bun add @cqrs/federation
 ```
 
-## 🎯 **Quick Start**
+## 🚀 **Getting Started**
+
+### Quick Setup with CLI
+
+```bash
+# Create a new federation project
+npx @cqrs/federation init my-federation
+cd my-federation
+
+# Install dependencies
+bun install
+
+# Generate an entity
+npx @cqrs/federation entity Product
+
+# Start development server
+bun run dev
+
+# Open GraphQL Playground (in another terminal)
+npx @cqrs/federation devtools
+```
+
+### Quick Setup with Facade API
+
+```typescript
+import { Federation, Presets } from '@cqrs/federation'
+
+// One-line federation setup
+const federation = await Federation.create(
+  Presets.development([userEntity, productEntity], ['http://users:4001', 'http://products:4002'])
+)
+
+await federation.start()
+```
+
+## 🎯 **Quick Start Examples**
 
 ### Basic Entity Creation
 
@@ -276,24 +333,38 @@ const developSchema = Effect.gen(function* () {
 Federation Framework follows a layered architecture with strict separation of concerns:
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│               GraphQL Federation Layer                  │
-│         (Schema, Resolvers, Entities, Directives)      │
-└────────────────┬────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    Application Layer                            │
+│              (Your GraphQL Services & Entities)                 │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+┌──────────────────────────┴──────────────────────────────────────┐
+│                      Facade Layer                               │
+│         (Simplified API, Presets, Quick Builders)               │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+┌──────────────────────────┴──────────────────────────────────────┐
+│                   GraphQL Federation Layer                      │
+│         (Schema, Resolvers, Entities, Directives)               │
+└────────────────┬─────────────────────────────────────────────────┘
                  │
-    ┌────────────┼─────────────┬─────────────┬─────────────┐
-    ▼            ▼             ▼             ▼             ▼
-┌──────────┐ ┌─────────┐ ┌────────────┐ ┌──────────┐ ┌─────────────┐
-│ Schema   │ │ Ultra-  │ │ Error      │ │Performance│ │ Subgraph    │
-│ First    │ │ Strict  │ │ Boundaries │ │ Optimiz.  │ │ Management  │
-│ Patterns │ │ Builder │ │ & Circuit  │ │ & Caching │ │ & Discovery │
-│          │ │         │ │ Breakers   │ │           │ │             │
-└──────────┘ └─────────┘ └────────────┘ └──────────┘ └─────────────┘
-    │            │             │              │              │
-    ├─Evolution  ├─Phantom     ├─Resilience   ├─DataLoader   ├─Health Chks
-    ├─Code Gen   ├─Types       ├─Fallbacks    ├─Query Cache  ├─Service Reg
-    ├─Breaking   ├─Pattern     ├─Timeouts     ├─Batching     ├─Auto Discovery
-    └─Change Det └─Matching    └─Monitoring   └─Metrics      └─Load Balancing
+    ┌────────────┼─────────────┬─────────────┬─────────────┬─────────────┐
+    ▼            ▼             ▼             ▼             ▼             ▼
+┌──────────┐ ┌─────────┐ ┌────────────┐ ┌──────────┐ ┌─────────────┐ ┌──────────┐
+│ Schema   │ │ Ultra-  │ │ Error      │ │Performance│ │ Subgraph    │ │ DevTools │
+│ First    │ │ Strict  │ │ Boundaries │ │ Optimiz.  │ │ Management  │ │ & Testing│
+│ Patterns │ │ Builder │ │ & Circuit  │ │ & Caching │ │ & Discovery │ │          │
+└──────────┘ └─────────┘ └────────────┘ └──────────┘ └─────────────┘ └──────────┘
+    │            │             │              │              │              │
+    ├─Evolution  ├─Phantom     ├─Resilience   ├─DataLoader   ├─Health       ├─Playground
+    ├─Migration  ├─Types       ├─Fallbacks    ├─Query Cache  ├─Registry     ├─Profiler
+    ├─Breaking   ├─Pattern     ├─Timeouts     ├─Batching     ├─Discovery    ├─TestHarness
+    └─Detection  └─Matching    └─Monitoring   └─Metrics      └─Balancing    └─Mocks
+                 │
+┌────────────────┴─────────────────────────────────────────────────┐
+│                     Cloud & Infrastructure                       │
+│        (Kubernetes, Multi-Cloud, Edge, Deployment)               │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ## 📖 **Core Concepts**
@@ -329,7 +400,44 @@ const handleError = (error: DomainError) =>
   )
 ```
 
-## 🧪 **Testing & Validation**
+## 🧪 **Testing**
+
+### Test Harness
+
+The framework includes a comprehensive testing harness for federation testing:
+
+```typescript
+import { TestHarness, Assertions, MockGenerators } from '@cqrs/federation/testing'
+
+const harness = await TestHarness.create()
+  .withEntity(userEntity)
+  .withMockService('users', {
+    mockData: MockGenerators.users(100),
+    delay: Duration.millis(50),
+  })
+  .build()
+
+// Test entity resolution
+const result = await harness.query(`
+  query GetUser {
+    user(id: "123") {
+      id
+      name
+      email
+    }
+  }
+`)
+
+// Use built-in assertions
+await Assertions.assertSchemaComposition([userEntity, productEntity])
+await Assertions.assertEntityResolution(harness, 'User', 'test-id')
+await Assertions.assertPerformance(harness, {
+  maxLatency: Duration.millis(100),
+  minThroughput: 1000,
+})
+```
+
+### Testing Commands
 
 ```bash
 # Run comprehensive tests with all features
@@ -354,11 +462,16 @@ bun run audit                   # NPM security audit
 bun run audit:fix               # Fix security vulnerabilities automatically
 
 # Demo specific features
-bun run demo                    # Run basic entity example (simple-entity.ts)
-bun run demo:ultra-strict       # Ultra-strict entity patterns
-bun run demo:schema-first       # Schema-first development
-bun run demo:complete           # Complete feature demonstration
-bun run demo:advanced           # Advanced federation features
+bun run demo                    # Run complete framework test
+bun run demo:functional         # Demo functional programming patterns
+bun run demo:comprehensive      # Comprehensive functional demo
+
+# CLI tools
+npx @cqrs/federation init       # Initialize new project
+npx @cqrs/federation entity     # Generate entity template
+npx @cqrs/federation validate   # Validate schemas
+npx @cqrs/federation compose    # Test composition
+npx @cqrs/federation devtools   # Start GraphQL playground
 
 # Development workflow
 bun run build                   # Build the project using tsdown
@@ -424,13 +537,25 @@ bun run docs:generate           # Generate API documentation with TypeDoc
 
 The framework follows a modular architecture with clear separation of concerns:
 
-- **Core**: Types, builders, and error system with Effect-TS integration
-- **Federation**: Composition, subgraph management, error boundaries
-- **Schema**: AST conversion, schema-first development workflows
-- **Patterns**: Reusable patterns for error handling and validation
-- **Examples**: Working demonstrations and tutorials
-- **Tests**: Comprehensive unit, integration, and property-based test suites
-- **Security**: Built-in security patterns and audit capabilities
+### Core Modules
+
+- **Core** (`src/core/`): Types, builders, and error system with Effect-TS integration
+- **Federation** (`src/federation/`): Composition, subgraph management, error boundaries
+- **Schema** (`src/schema/`): AST conversion, schema-first development workflows
+- **Experimental** (`src/experimental/`): Ultra-strict patterns with phantom types
+
+### Developer Experience Modules
+
+- **Facade** (`src/facade.ts`): Simplified API for quick setup without Effect-TS complexity
+- **Testing** (`src/testing/`): TestHarness, mock generators, assertion helpers
+- **DevTools** (`src/devtools/`): GraphQL Playground, profiler, schema visualization
+- **CLI** (`src/cli/`): Project scaffolding, entity generation, validation tools
+
+### Infrastructure Modules
+
+- **Cloud** (`src/cloud/`): Kubernetes operator, multi-cloud deployment, edge computing
+- **Performance**: Query plan caching, DataLoader batching, connection pooling
+- **Security**: Built-in security patterns, audit capabilities, error sanitization
 
 ## 📚 Documentation & Resources
 
@@ -489,6 +614,112 @@ type DomainError = ValidationError | FederationError | CompositionError
 return Effect.fail(
   ErrorFactory.validation('Invalid entity configuration', 'entityBuilder', fieldName)
 )
+```
+
+## 🛠️ **DevTools & Debugging**
+
+### GraphQL Playground
+
+```bash
+# Start the federation-aware playground
+npx @cqrs/federation devtools --port 4000
+```
+
+Features:
+
+- Federation-specific tabs
+- Query history tracking
+- Performance metrics
+- Schema exploration
+- Mock data generation
+
+### Performance Profiler
+
+```typescript
+import { Profiler, ProfilerPresets } from '@cqrs/federation/devtools'
+
+const profiler = new Profiler(ProfilerPresets.development())
+
+// Profile an operation
+const span = profiler.startSpan('entity-resolution')
+// ... operation code ...
+span.end()
+
+// Get performance report
+const report = profiler.generateReport()
+console.log(report.bottlenecks) // Identified performance issues
+console.log(report.recommendations) // Optimization suggestions
+```
+
+### Schema Tools
+
+```typescript
+import { SchemaVisualizer, SchemaMigration } from '@cqrs/federation/devtools'
+
+// Visualize schema relationships
+const visualizer = new SchemaVisualizer(schema)
+const svg = visualizer.toSVG()
+const mermaid = visualizer.toMermaid()
+
+// Analyze migration safety
+const analysis = await SchemaMigration.analyze(oldSchema, newSchema)
+if (analysis.hasBreakingChanges) {
+  console.log('Breaking changes:', analysis.breakingChanges)
+}
+```
+
+## ☁️ **Cloud Deployment**
+
+### Kubernetes Deployment
+
+```typescript
+import { KubernetesOperator } from '@cqrs/federation/cloud'
+
+const operator = await KubernetesOperator.create({
+  namespace: 'federation',
+  federation: {
+    gateway: {
+      image: 'my-gateway:latest',
+      replicas: 3,
+      resources: { cpu: '1000m', memory: '1Gi' },
+    },
+    subgraphs: [
+      { name: 'users', image: 'users:latest', replicas: 2 },
+      { name: 'products', image: 'products:latest', replicas: 2 },
+    ],
+  },
+})
+
+await operator.deploy()
+```
+
+### Multi-Cloud Deployment
+
+```typescript
+import { CloudDeployment, CloudPresets } from '@cqrs/federation/cloud'
+
+const deployment = await CloudDeployment.create(
+  CloudPresets.multiRegion('my-gateway:latest', [
+    { name: 'users', image: 'users:latest' },
+    { name: 'products', image: 'products:latest' },
+  ])
+)
+
+await deployment.deploy() // Deploys to AWS, GCP, and Azure
+```
+
+### Edge Deployment
+
+```typescript
+import { EdgeDeployment } from '@cqrs/federation/cloud'
+
+const edge = await EdgeDeployment.create({
+  provider: 'cloudflare',
+  locations: ['us-east', 'eu-west', 'ap-south'],
+  federation: federationConfig,
+})
+
+await edge.deploy()
 ```
 
 ### ❓ FAQ
