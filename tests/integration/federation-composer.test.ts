@@ -2,14 +2,14 @@ import { describe, it, expect } from 'vitest'
 import * as Effect from 'effect/Effect'
 import * as Schema from 'effect/Schema'
 import { Duration, Layer } from 'effect'
-import { createEntityBuilder, toFederationEntity, asUntypedEntity } from '@core'
+import { createEntityBuilder, toFederationEntity, asUntypedEntity } from '@runtime/core'
 import { createFederatedSchema, FederationComposerLive } from '@federation'
-import { TestLayerLive } from '@core'
-import type { FederationCompositionConfig, FederationEntity } from '@core'
+import { TestServicesLive } from '../utils/test-layers.js'
+import type { FederationCompositionConfig, FederationEntity } from '@runtime/core'
 
 describe('Federation Composer Integration', () => {
   // Ensure all required services are explicitly provided with correct dependency order
-  const testLayers = TestLayerLive.pipe(
+  const testLayers = TestServicesLive.pipe(
     Layer.provide(FederationComposerLive)
   )
 

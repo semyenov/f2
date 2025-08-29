@@ -27,18 +27,18 @@ import * as Schema from 'effect/Schema'
 import type {
   EntityResolutionError,
   ValidationError
-} from './src/core/types.js'
+} from './src/runtime/core/types/types.js'
 import type {
   ValidatedEntity
-} from './src/experimental/strict.js'
+} from './src/api/advanced/strict.js'
 import {
   createEntityBuilder,
-  DevelopmentLayerLive,
   ErrorFactory,
   FederationErrorBoundaries,
   PerformanceOptimizations,
   SubgraphManagement
 } from './src/index.js'
+import { DevelopmentLayerLive } from './src/runtime/effect/services/layers.js'
 
 // ============================================================================
 // 🏗️ DOMAIN MODELING WITH EFFECT SCHEMA

@@ -2,7 +2,7 @@ import { describe, test, expect } from 'vitest'
 import * as Schema from 'effect/Schema'
 import * as Effect from 'effect/Effect'
 import { GraphQLID, GraphQLString } from 'graphql'
-import { UltraStrictEntityBuilder } from '@experimental'
+import { UltraStrictEntityBuilder } from '@api/advanced'
 import {
   createUltraStrictEntityBuilder,
   withKeys,
@@ -11,7 +11,7 @@ import {
   validateEntityBuilder,
   matchEntityValidationResult,
   type EntityValidationResult,
-} from '@experimental'
+} from '@api/advanced'
 
 type ValidationResult = {
   success: boolean

@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import * as Effect from 'effect/Effect'
 import DataLoader from 'dataloader'
-import { PerformanceOptimizations } from '@federation'
-import type { DataLoaderConfig } from '@core'
+import { PerformanceOptimizations } from '@infrastructure/performance'
+import type { DataLoaderConfig } from '@runtime/core'
 
 // Test helper functions
 const expectEffectSuccess = async <A, E>(effect: Effect.Effect<A, E>): Promise<A> => {

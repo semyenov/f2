@@ -4,7 +4,7 @@ import type {
 	MetricsConfig,
 	PerformanceConfig,
 	QueryPlanCacheConfig,
-} from "@core";
+} from "@runtime/core";
 import {
 	createBasicOptimizedExecutor,
 	createDevelopmentOptimizedExecutor,

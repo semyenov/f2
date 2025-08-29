@@ -1,4 +1,4 @@
-import type { FederatedSchema, FederationCompositionConfig } from "@core";
+import type { FederatedSchema, FederationCompositionConfig } from "@runtime/core";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

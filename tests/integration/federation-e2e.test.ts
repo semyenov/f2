@@ -4,13 +4,11 @@ import type {
 	PerformanceConfig,
 	SchemaMetadata,
 	ServiceDefinition,
-} from "@core";
-import { SchemaFirst } from "@core";
-import {
-	FederationErrorBoundaries,
-	PerformanceOptimizations,
-	SubgraphManagement,
-} from "@federation";
+} from "@runtime/core";
+import { SchemaFirst } from "@runtime/core";
+import { SubgraphManagement } from "@federation";
+import { FederationErrorBoundaries } from "@infrastructure/resilience";
+import { PerformanceOptimizations } from "@infrastructure/performance";
 import { Duration } from "effect";
 import * as Effect from "effect/Effect";
 import * as Either from "effect/Either";

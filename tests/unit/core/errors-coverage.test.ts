@@ -1,4 +1,4 @@
-import { ErrorFactory } from "@core";
+import { ErrorFactory } from "@runtime/core";
 import { describe, expect, it } from "vitest";
 
 describe("Errors Coverage Tests", () => {

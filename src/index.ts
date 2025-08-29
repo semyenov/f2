@@ -83,21 +83,33 @@
  * @see {@link https://effect.website/ | Effect-TS Documentation}
  */
 
-// Core exports
-export * from './core'
+// Re-export commonly used items for backward compatibility
+export { 
+  createEntityBuilder,
+  FederationEntityBuilder,
+  toFederationEntity 
+} from './runtime/core/builders/entity-builder.js'
 
-// Federation exports
-export * from './federation'
+export {
+  ValidationError,
+  FederationError,
+  CompositionError,
+  ErrorFactory
+} from './runtime/core/errors/errors.js'
 
-// Schema exports
-export * from './schema'
+// Export main federation components
+export { FederationComposer } from './federation/composition/composer.js'
+export { SubgraphManagement } from './federation/subgraphs/subgraph.js'
 
-// Experimental features (advanced patterns)
-export * as Experimental from './experimental'
+// Export infrastructure components
+export { FederationErrorBoundaries } from './infrastructure/resilience/error-boundaries.js'
+export { PerformanceOptimizations } from './infrastructure/performance/performance.js'
 
-// Simplified API facade for easier usage
-export { Federation, Presets, Patterns, QuickEntityBuilder } from './facade'
-export type { SimplifiedFederationConfig, SimplifiedEntityConfig } from './facade.js'
+// Re-export submodules for tree-shaking
+export * as Runtime from './runtime'
+export * as Federation from './federation'
+export * as Infrastructure from './infrastructure'
+export * as Api from './api'
 
 /**
  * Framework version

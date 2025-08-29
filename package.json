@@ -10,29 +10,24 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./core": {
-      "types": "./dist/core/index.d.ts",
-      "import": "./dist/core/index.js",
+    "./runtime": {
+      "types": "./dist/runtime/index.d.ts",
+      "import": "./dist/runtime/index.js",
       "require": "./dist/index.cjs"
     },
-    "./core/entity-builder": {
-      "types": "./dist/core/builders/entity-builder.d.ts",
-      "import": "./dist/core/builders/entity-builder.js",
+    "./runtime/core": {
+      "types": "./dist/runtime/core/index.d.ts",
+      "import": "./dist/runtime/core/index.js",
       "require": "./dist/index.cjs"
     },
-    "./core/errors": {
-      "types": "./dist/core/errors.d.ts",
-      "import": "./dist/core/errors.js",
+    "./runtime/effect": {
+      "types": "./dist/runtime/effect/index.d.ts",
+      "import": "./dist/runtime/effect/index.js",
       "require": "./dist/index.cjs"
     },
-    "./core/schema-first": {
-      "types": "./dist/core/schema-first-patterns.d.ts",
-      "import": "./dist/core/schema-first-patterns.js",
-      "require": "./dist/index.cjs"
-    },
-    "./core/types": {
-      "types": "./dist/core/types.d.ts",
-      "import": "./dist/core/types.js",
+    "./runtime/schema": {
+      "types": "./dist/runtime/schema/index.d.ts",
+      "import": "./dist/runtime/schema/index.js",
       "require": "./dist/index.cjs"
     },
     "./federation": {

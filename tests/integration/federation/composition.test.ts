@@ -9,7 +9,7 @@ import {
   withResolvers,
   validateEntityBuilder,
   UltraStrictEntityBuilder,
-} from '@experimental'
+} from '@api/advanced'
 
 describe('Federation Composition Integration', () => {
   describe('Multi-Entity Federation', () => {

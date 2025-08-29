@@ -59,9 +59,14 @@
  * @since 2.0.0
  * @category Federation Components
  */
-export * from './composer.js'
-export * from './subgraph.js'
-export * from './error-boundaries.js'
-export * from './performance.js'
-export * from './subscriptions.js'
-export * from './mesh.js'
+// Composition
+export * from './composition'
+
+// Subgraph management
+export * from './subgraphs'
+
+// Entity management
+export * from './entities'
+
+// Directives (when implemented)
+// export * from './directives'

@@ -1,4 +1,4 @@
-import { createEntityBuilder } from '@core'
+import { createEntityBuilder } from '@runtime/core'
 import * as Effect from 'effect/Effect'
 import * as Schema from 'effect/Schema'
 import { describe, expect, it } from 'vitest'

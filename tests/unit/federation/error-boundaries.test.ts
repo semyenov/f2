@@ -13,7 +13,7 @@ import type {
   ErrorBoundaryConfig, 
   CircuitBreakerConfig,
   PartialFailureConfig
-} from '@core'
+} from '@runtime/core'
 import { type GraphQLResolveInfo, GraphQLObjectType, GraphQLSchema } from 'graphql'
 import { TestServicesLive } from '../../utils/test-layers.js'
 // Simple test data factories inline (removed unused createTestService)
@@ -69,7 +69,7 @@ const timeEffect = async <A, E>(effect: Effect.Effect<A, E>): Promise<{ result: 
   return { result, duration }
 }
 import { TestLayers, MockCircuitBreaker } from '../../utils/test-layers.js'
-import { ErrorFactory, RegistrationError } from '@core'
+import { ErrorFactory, RegistrationError } from '@runtime/core'
 
 describe('Error Boundaries and Circuit Breakers', () => {
   let mockInfo: GraphQLResolveInfo

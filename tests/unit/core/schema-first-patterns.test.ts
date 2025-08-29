@@ -4,7 +4,7 @@ import * as Either from 'effect/Either'
 import * as Match from 'effect/Match'
 import * as Schema from 'effect/Schema'
 import { Kind, type DocumentNode, GraphQLID, GraphQLSchema, GraphQLObjectType, GraphQLString } from 'graphql'
-import type { ValidatedEntity } from '@experimental'
+import type { ValidatedEntity } from '@api/advanced'
 import {
   SchemaFirst,
   SchemaLifecycleState,
@@ -14,7 +14,7 @@ import {
   CodeGenerationError,
   createSchemaFirstService,
   createSchemaFirstWorkflow
-} from '@core'
+} from '@runtime/core'
 
 // Helper functions
 const expectEffectSuccess = async <A, E>(effect: Effect.Effect<A, E>): Promise<A> => {

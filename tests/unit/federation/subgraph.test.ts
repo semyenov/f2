@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import * as Effect from 'effect/Effect'
 import { Duration, Either } from 'effect'
 import { SubgraphManagement } from '@federation'
-import type { HealthStatus, ServiceDefinition } from '@core'
+import type { HealthStatus, ServiceDefinition } from '@runtime/core'
 
 // Simple test data factories inline
 const createTestServices = (count: number) =>

@@ -1,7 +1,14 @@
 import { defineConfig } from "tsdown"
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: [
+    "src/index.ts",
+    "src/runtime/index.ts",
+    "src/federation/index.ts",
+    "src/infrastructure/index.ts",
+    "src/api/index.ts",
+    "src/tooling/index.ts"
+  ],
   format: ["esm", "cjs"],
   dts: true,
   clean: true,
@@ -12,6 +19,8 @@ export default defineConfig({
     "effect",
     "@effect/schema",
     "graphql",
-    "dataloader"
+    "dataloader",
+    "commander",
+    "@graphql-inspector/core"
   ]
 })

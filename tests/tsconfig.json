@@ -16,14 +16,16 @@
     "baseUrl": "../",
     "paths": {
       "@/*": ["./src/*"],
-      "@core": ["./src/core"],
-      "@core/*": ["./src/core/*"],
+      "@runtime": ["./src/runtime"],
+      "@runtime/*": ["./src/runtime/*"],
       "@federation": ["./src/federation"],
       "@federation/*": ["./src/federation/*"],
-      "@experimental": ["./src/experimental"],
-      "@experimental/*": ["./src/experimental/*"],
-      "@schema": ["./src/schema"],
-      "@schema/*": ["./src/schema/*"],
+      "@infrastructure": ["./src/infrastructure"],
+      "@infrastructure/*": ["./src/infrastructure/*"],
+      "@api": ["./src/api"],
+      "@api/*": ["./src/api/*"],
+      "@tooling": ["./src/tooling"],
+      "@tooling/*": ["./src/tooling/*"],
       "@tests/*": ["./tests/*"]
     },
 

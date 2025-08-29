@@ -6,17 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Testing
 
-- `bun test` - Run all tests using Bun's test runner
+- `bun test` - Run all tests using Vitest
 - `bun test tests/unit/federation/subgraph.test.ts` - Run a specific test file
-- `bun test --watch` - Run tests in watch mode
+- `bun test:watch` or `vitest` - Run tests in watch mode
 - `bun test:unit` - Run unit tests only (tests/unit)
 - `bun test:integration` - Run integration tests only (tests/integration)
 - `bun test:coverage` - Generate coverage reports with v8 provider
 - `bun test:complete` - Run comprehensive integration test (test-complete.ts)
-- `bun test:ui` - Run tests with interactive UI (Vitest UI)
-- `vitest` - Run tests in watch mode using Vitest directly
+- `bun test:ui` or `vitest --ui` - Run tests with interactive UI
 - `vitest run` - Run all tests once with Vitest
-- `vitest --ui` - Alternative command for interactive UI
 
 ### Development
 
@@ -51,7 +49,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Documentation
 
-- `bun docs:generate` - Generate TypeDoc documentation
+- `bun run docs:generate` - Generate TypeDoc documentation
 
 ### CLI Commands
 

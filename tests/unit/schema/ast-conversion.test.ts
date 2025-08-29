@@ -14,7 +14,7 @@ import {
 import {
   ASTConversion,
   createConversionContext,
-} from '@schema';
+} from '@runtime/schema';
 
 describe("AST Conversion", () => {
   describe("Basic Type Conversion", () => {

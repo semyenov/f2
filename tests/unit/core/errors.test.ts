@@ -15,8 +15,8 @@ import {
   CompositionError,
   TypeConversionError,
   ErrorFactory
-} from '@core'
-import type { DomainError } from '@core'
+} from '@runtime/core'
+import type { DomainError } from '@runtime/core'
 
 describe('Core Error System', () => {
   describe('BaseDomainError', () => {
