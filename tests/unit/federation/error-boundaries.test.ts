@@ -7,8 +7,8 @@ import {
   createStrictBoundary,
   createResilientBoundary,
   createProductionBoundary
-} from '@federation'
-import type { ErrorContext } from '@federation'
+} from '@infrastructure'
+import type { ErrorContext } from '@infrastructure'
 import type { 
   ErrorBoundaryConfig, 
   CircuitBreakerConfig,
@@ -571,7 +571,7 @@ describe('Error Boundaries and Circuit Breakers', () => {
         timestamp: new Date()
       }
 
-      const transformedError = boundary.transformError(federationError as unknown as import('../../../src/core/types.js').FederationError, context)
+      const transformedError = boundary.transformError(federationError as unknown as import('../../../src/runtime/core/types/types.js').FederationError, context)
 
       expect(transformedError.message).toBe('Test error')
       expect(transformedError.code).toBe('TEST_ERROR')
@@ -606,7 +606,7 @@ describe('Error Boundaries and Circuit Breakers', () => {
         timestamp: new Date()
       }
 
-      const transformedError = boundary.transformError(federationError as unknown as import('../../../src/core/types.js').FederationError, context)
+      const transformedError = boundary.transformError(federationError as unknown as import('../../../src/runtime/core/types/types.js').FederationError, context)
 
       expect(transformedError.message).toBe('Internal server error')
       expect(transformedError.code).toBe('INTERNAL_ERROR')
@@ -642,7 +642,7 @@ describe('Error Boundaries and Circuit Breakers', () => {
         timestamp: new Date()
       }
 
-      const transformedError = boundary.transformError(federationError as unknown as import('../../../src/core/types.js').FederationError, context)
+      const transformedError = boundary.transformError(federationError as unknown as import('../../../src/runtime/core/types/types.js').FederationError, context)
 
       // Custom transformer was used (verified by the custom message)
       expect(transformedError.message).toBe('Custom transformed message')

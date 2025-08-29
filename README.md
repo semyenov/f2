@@ -66,12 +66,14 @@
 ## 📦 **Installation**
 
 ```bash
-npm install @cqrs/federation
+npm install @cqrs/federation@3.0.0
 # or
-yarn add @cqrs/federation
+yarn add @cqrs/federation@3.0.0
 # or
-bun add @cqrs/federation
+bun add @cqrs/federation@3.0.0
 ```
+
+> **Note**: Version 3.0.0 introduces a new module structure. See [MIGRATION.md](./MIGRATION.md) for upgrade instructions.
 
 ## 🚀 **Getting Started**
 
@@ -98,6 +100,20 @@ npx @cqrs/federation devtools
 ### Quick Setup with Facade API
 
 ```typescript
+// New in v3: Cleaner import paths
+import { Federation } from '@cqrs/federation/api/simple'
+
+const federation = await Federation.create({
+  entities: [userEntity, productEntity],
+  services: ['http://users:4001', 'http://products:4002'],
+})
+
+await federation.start()
+```
+
+### Standard Setup with Effect-TS
+
+```typescript
 import { Federation, Presets } from '@cqrs/federation'
 
 // One-line federation setup
@@ -114,8 +130,8 @@ await federation.start()
 
 ```typescript
 import * as Effect from 'effect/Effect'
-import * as Schema from '@effect/schema/Schema'
-import { FederationEntityBuilder, createEntityBuilder } from '@cqrs/federation/core'
+import * as Schema from 'effect/Schema'
+import { FederationEntityBuilder, createEntityBuilder } from '@cqrs/federation'
 
 // Define your domain schema
 const UserSchema = Schema.Struct({
@@ -149,28 +165,26 @@ const userEntity = yield * createUserEntity()
 ### Ultra-Strict Entity with Experimental Features
 
 ```typescript
-import * as Experimental from '@cqrs/federation/experimental'
+import * as Advanced from '@cqrs/federation/api/advanced'
 import { pipe } from 'effect/Function'
 
-// Ultra-strict entity with phantom types (experimental)
+// Ultra-strict entity with phantom types (advanced API)
 const createUltraStrictUserEntity = () =>
   pipe(
-    Experimental.createUltraStrictEntityBuilder('User'),
-    Experimental.withSchema(UserSchema),
-    Experimental.withKeys([
-      Experimental.UltraStrictEntityBuilder.Key.create('id', 'String', false),
+    Advanced.createUltraStrictEntityBuilder('User'),
+    Advanced.withSchema(UserSchema),
+    Advanced.withKeys([Advanced.UltraStrictEntityBuilder.Key.create('id', 'String', false)]),
+    Advanced.withDirectives([
+      Advanced.UltraStrictEntityBuilder.Directive.shareable(),
+      Advanced.UltraStrictEntityBuilder.Directive.tag('user-management'),
     ]),
-    Experimental.withDirectives([
-      Experimental.UltraStrictEntityBuilder.Directive.shareable(),
-      Experimental.UltraStrictEntityBuilder.Directive.tag('user-management'),
-    ]),
-    Experimental.validateEntityBuilder
+    Advanced.validateEntityBuilder
   )
 
 // Handle validation with pattern matching
 const result = createUltraStrictUserEntity()
 console.log(
-  Experimental.matchEntityValidationResult({
+  Advanced.matchEntityValidationResult({
     Valid: ({ entity }) => `✅ Entity '${entity.typename}' is valid!`,
     InvalidSchema: ({ errors }) => `❌ Schema errors: ${errors.join(', ')}`,
     InvalidKeys: ({ errors }) => `❌ Key errors: ${errors.join(', ')}`,

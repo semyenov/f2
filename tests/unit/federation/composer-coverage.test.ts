@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import type { GraphQLSchema } from "graphql";
 import { describe, expect, it, vi } from "vitest";
-import { ErrorFactory } from "../../../src/core/errors.js";
+import { ErrorFactory } from "../../../src/runtime/core/errors/errors.js";
 import {
 	compose,
 	createFederatedSchema,
@@ -12,7 +12,7 @@ import {
 	FederationComposerLive,
 	handleCompositionError,
 	validateConfig,
-} from "../../../src/federation/composer.js";
+} from "../../../src/federation/composition/composer.js";
 
 describe("Federation Composer Coverage Tests", () => {
 	const mockConfig: FederationCompositionConfig = {

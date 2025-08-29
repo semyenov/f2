@@ -29,6 +29,7 @@ export * from './multi-cloud.js'
 export * from './edge.js'
 
 import { Effect, pipe } from 'effect'
+import * as k8s from '@pulumi/kubernetes'
 import { KubernetesOperator, type K8sOperatorConfig } from './kubernetes.js'
 
 /**
@@ -315,7 +316,14 @@ export class CloudDeployment {
    * Get K8s configuration for provider
    */
   private getK8sConfig(provider: CloudProvider): K8sOperatorConfig {
+    // Create provider-specific Pulumi provider
+    const k8sProvider = new k8s.Provider(`${provider}-provider`, {
+      // Provider configuration would be set based on cloud provider
+      // This is a simplified example
+    })
+
     const baseConfig: K8sOperatorConfig = {
+      provider: k8sProvider,
       namespace: `federation-${this.config.environment}`,
       federation: {
         gateway: {
@@ -336,26 +344,7 @@ export class CloudDeployment {
       },
     }
 
-    // Add provider-specific configuration
-    switch (provider) {
-      case 'aws':
-        return {
-          ...baseConfig,
-          cluster: { endpoint: 'https://eks.amazonaws.com' },
-        }
-      case 'gcp':
-        return {
-          ...baseConfig,
-          cluster: { endpoint: 'https://gke.googleapis.com' },
-        }
-      case 'azure':
-        return {
-          ...baseConfig,
-          cluster: { endpoint: 'https://aks.azure.com' },
-        }
-      default:
-        return baseConfig
-    }
+    return baseConfig
   }
 
   /**
@@ -395,7 +384,7 @@ export class CloudDeployment {
   async scale(component: string, replicas: number): Promise<void> {
     await Effect.runPromise(
       Effect.forEach(Array.from(this.operators.values()), operator =>
-        Effect.tryPromise(() => operator.scale(component, replicas))
+        operator.scale(component, replicas)
       )
     )
   }

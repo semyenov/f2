@@ -75,39 +75,32 @@ The codebase follows a layered Effect-TS architecture with strong type safety:
 
 ```
 src/
-├── core/                # Foundation layer - types, builders, errors
-│   ├── builders/        # Entity builders with different strictness levels
-│   ├── types.ts         # Core type definitions using branded types
-│   ├── errors.ts        # Effect-based error hierarchy
-│   ├── schema-first-patterns.ts  # Schema evolution tools
-│   └── services/        # Effect Layers for DI
-│       ├── config.ts    # Configuration service
-│       ├── logger.ts    # Logging service
-│       └── layers.ts    # Layer composition
-├── federation/          # Federation-specific features
-│   ├── composer.ts      # Schema composition with Effect
-│   ├── subgraph.ts      # Registry with service discovery
-│   ├── error-boundaries.ts # Circuit breakers, fault tolerance
-│   ├── performance.ts   # Caching, DataLoader optimizations
-│   ├── subscriptions.ts # GraphQL subscriptions support
-│   └── mesh.ts          # GraphQL Mesh integration
-├── schema/              # Schema processing
-│   └── ast.ts           # Effect Schema → GraphQL conversion
-├── experimental/        # Ultra-strict patterns with phantom types
-│   └── strict.ts        # Ultra-strict entity builder
-├── cloud/               # Cloud-native deployment
-│   ├── kubernetes.ts    # K8s operator & CRDs
-│   ├── multi-cloud.ts   # AWS, GCP, Azure support
-│   └── edge.ts          # Edge deployment (CloudFlare, Lambda@Edge)
-├── devtools/            # Development tools
-│   ├── playground.ts    # GraphQL Playground with federation tabs
-│   ├── profiler.ts      # Performance profiling
-│   └── schema-tools.ts  # Schema visualization & migration
-├── testing/             # Testing utilities
-│   └── index.ts         # TestHarness, mocks, assertions
-├── cli/                 # Command-line interface
-│   └── index.ts         # Project scaffolding & dev tools
-└── facade.ts            # Simplified API for quick setup
+├── runtime/             # Core runtime functionality
+│   ├── core/           # Foundation layer - types, builders, errors
+│   │   ├── builders/   # Entity builders with different strictness levels
+│   │   ├── types/     # Core type definitions using branded types
+│   │   ├── errors/    # Effect-based error hierarchy
+│   │   └── schema-first-patterns.ts  # Schema evolution tools
+│   ├── effect/         # Effect-TS services and layers
+│   │   └── services/   # Configuration, logging, layers
+│   └── schema/         # Schema processing
+│       └── ast/        # Effect Schema → GraphQL conversion
+├── federation/         # Federation-specific features
+│   ├── composition/    # Schema composition with Effect
+│   ├── subgraphs/     # Registry with service discovery
+│   └── entities/      # Entity management and mesh integration
+├── infrastructure/     # Production infrastructure
+│   ├── resilience/    # Circuit breakers, error boundaries
+│   ├── performance/   # Caching, DataLoader optimizations
+│   └── subscriptions/ # GraphQL subscriptions support
+├── api/               # User-facing APIs
+│   ├── simple/        # Simplified API facade for quick setup
+│   └── advanced/      # Ultra-strict patterns with phantom types
+└── tooling/           # Development and deployment tools
+    ├── cli/           # Command-line interface
+    ├── testing/       # TestHarness, mocks, assertions
+    ├── devtools/      # Playground, profiler, schema tools
+    └── cloud/         # K8s, multi-cloud, edge deployment
 ```
 
 ### Key Patterns
@@ -117,9 +110,14 @@ src/
 **Simplified API Facade**: For developers who want quick setup without Effect-TS complexity:
 
 ```typescript
-import { Federation, Presets } from '@cqrs/federation'
+// New v3 import paths
+import { Federation } from '@cqrs/federation/api/simple'
+import { Presets } from '@cqrs/federation/api/simple'
 
 const federation = await Federation.create(Presets.production([userEntity], ['http://users:4001']))
+
+// Or use the main entry for backward compatibility
+import { createEntityBuilder, FederationComposer } from '@cqrs/federation'
 ```
 
 **Error Handling**: Use discriminated unions with exhaustive pattern matching:
@@ -257,16 +255,21 @@ const mockEntity: ValidatedEntity<unknown, unknown, unknown> = {
 - **`tsconfig.json`** - Main configuration for all TypeScript files (strict rules, includes `@/*` path mapping)
 - **`tsconfig.build.json`** - Production build configuration (extends main, excludes test files)
 
-### Path Mappings & Barrel Exports
+### Path Mappings & Module Structure (v3)
 
-The codebase uses barrel exports (index.ts files) with clean import paths:
+The codebase uses a hierarchical module structure with clean import paths:
 
-- `@core` → `./src/core` (barrel export for all core functionality)
-- `@federation` → `./src/federation` (federation features barrel export)
-- `@experimental` → `./src/experimental` (experimental patterns barrel export)
-- `@schema` → `./src/schema` (schema processing barrel export)
-- `@/*` → `./src/*` (fallback for specific file access)
-- `@tests/*` → `./tests/*` (test utilities - tests only)
+- `@runtime` → `./src/runtime` (core runtime functionality)
+- `@runtime/*` → `./src/runtime/*` (core, effect, schema modules)
+- `@federation` → `./src/federation` (federation features)
+- `@federation/*` → `./src/federation/*` (composition, subgraphs, entities)
+- `@infrastructure` → `./src/infrastructure` (production features)
+- `@infrastructure/*` → `./src/infrastructure/*` (resilience, performance)
+- `@api` → `./src/api` (user-facing APIs)
+- `@api/*` → `./src/api/*` (simple facade, advanced patterns)
+- `@tooling` → `./src/tooling` (development tools)
+- `@tooling/*` → `./src/tooling/*` (cli, testing, devtools, cloud)
+- `@tests/*` → `./tests/*` (test utilities)
 
 **Barrel Export Structure**:
 
@@ -274,16 +277,20 @@ The codebase uses barrel exports (index.ts files) with clean import paths:
 - Use `scripts/convert-imports.ts` to convert relative imports to barrel exports
 - Always import from barrel exports (e.g., `@core`) rather than specific files
 
-**Usage Examples**:
+**Usage Examples (v3)**:
 
 ```typescript
-// Preferred: Use barrel exports
-import { ErrorFactory, ValidationError } from '@core'
-import { FederationComposer } from '@federation'
-import { createUltraStrictEntityBuilder } from '@experimental'
+// New modular imports
+import { ErrorFactory, ValidationError } from '@runtime/core'
+import { FederationComposer } from '@federation/composition'
+import { createUltraStrictEntityBuilder } from '@api/advanced'
 
-// Fallback: Specific file access when needed
-import { specificUtility } from '@/core/utils/helper.js'
+// Backward compatibility through main entry
+import { createEntityBuilder, FederationComposer } from '@cqrs/federation'
+
+// Package imports for published modules
+import { Federation } from '@cqrs/federation/api/simple'
+import { PerformanceOptimizations } from '@cqrs/federation/infrastructure/performance'
 ```
 
 ## New Module Documentation

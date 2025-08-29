@@ -6,8 +6,8 @@ import {
 	createBasicOptimizedExecutor,
 	createProductionOptimizedExecutor,
 	PerformanceOptimizations,
-} from "../../../src/federation/performance.js";
-import type { DataLoaderConfig } from "@/core/types.js";
+} from "../../../src/infrastructure/performance/performance.js";
+import type { DataLoaderConfig } from "@runtime/core";
 
 describe("PerformanceOptimizations API Tests", () => {
 	const mockSchema = {

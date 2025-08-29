@@ -5,7 +5,7 @@ import {
 	createDynamicRegistry,
 	createStaticRegistry,
 	SubgraphManagement,
-} from "../../../src/federation/subgraph.js";
+} from "../../../src/federation/subgraphs/subgraph.js";
 
 describe("SubgraphManagement API Tests", () => {
 	describe("Configuration Factories", () => {

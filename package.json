@@ -35,96 +35,81 @@
       "import": "./dist/federation/index.js",
       "require": "./dist/index.cjs"
     },
-    "./federation/subscriptions": {
-      "types": "./dist/federation/subscriptions.d.ts",
-      "import": "./dist/federation/subscriptions.js",
+    "./federation/composition": {
+      "types": "./dist/federation/composition/index.d.ts",
+      "import": "./dist/federation/composition/index.js",
       "require": "./dist/index.cjs"
     },
-    "./federation/mesh": {
-      "types": "./dist/federation/mesh.d.ts",
-      "import": "./dist/federation/mesh.js",
+    "./federation/subgraphs": {
+      "types": "./dist/federation/subgraphs/index.d.ts",
+      "import": "./dist/federation/subgraphs/index.js",
       "require": "./dist/index.cjs"
     },
-    "./cloud": {
-      "types": "./dist/cloud/index.d.ts",
-      "import": "./dist/cloud/index.js",
+    "./federation/entities": {
+      "types": "./dist/federation/entities/index.d.ts",
+      "import": "./dist/federation/entities/index.js",
       "require": "./dist/index.cjs"
     },
-    "./cloud/kubernetes": {
-      "types": "./dist/cloud/kubernetes.d.ts",
-      "import": "./dist/cloud/kubernetes.js",
+    "./infrastructure": {
+      "types": "./dist/infrastructure/index.d.ts",
+      "import": "./dist/infrastructure/index.js",
       "require": "./dist/index.cjs"
     },
-    "./cloud/multi-cloud": {
-      "types": "./dist/cloud/multi-cloud.d.ts",
-      "import": "./dist/cloud/multi-cloud.js",
+    "./infrastructure/resilience": {
+      "types": "./dist/infrastructure/resilience/index.d.ts",
+      "import": "./dist/infrastructure/resilience/index.js",
       "require": "./dist/index.cjs"
     },
-    "./cloud/edge": {
-      "types": "./dist/cloud/edge.d.ts",
-      "import": "./dist/cloud/edge.js",
+    "./infrastructure/performance": {
+      "types": "./dist/infrastructure/performance/index.d.ts",
+      "import": "./dist/infrastructure/performance/index.js",
       "require": "./dist/index.cjs"
     },
-    "./federation/composer": {
-      "types": "./dist/federation/composer.d.ts",
-      "import": "./dist/federation/composer.js",
+    "./infrastructure/subscriptions": {
+      "types": "./dist/infrastructure/subscriptions/index.d.ts",
+      "import": "./dist/infrastructure/subscriptions/index.js",
       "require": "./dist/index.cjs"
     },
-    "./federation/subgraph": {
-      "types": "./dist/federation/subgraph.d.ts",
-      "import": "./dist/federation/subgraph.js",
+    "./api": {
+      "types": "./dist/api/index.d.ts",
+      "import": "./dist/api/index.js",
       "require": "./dist/index.cjs"
     },
-    "./federation/error-boundaries": {
-      "types": "./dist/federation/error-boundaries.d.ts",
-      "import": "./dist/federation/error-boundaries.js",
+    "./api/simple": {
+      "types": "./dist/api/simple/index.d.ts",
+      "import": "./dist/api/simple/index.js",
       "require": "./dist/index.cjs"
     },
-    "./federation/performance": {
-      "types": "./dist/federation/performance.d.ts",
-      "import": "./dist/federation/performance.js",
+    "./api/advanced": {
+      "types": "./dist/api/advanced/index.d.ts",
+      "import": "./dist/api/advanced/index.js",
       "require": "./dist/index.cjs"
     },
-    "./schema": {
-      "types": "./dist/schema/ast.d.ts",
-      "import": "./dist/schema/ast.js",
+    "./tooling/cli": {
+      "types": "./dist/tooling/cli/index.d.ts",
+      "import": "./dist/tooling/cli/index.js",
       "require": "./dist/index.cjs"
     },
-    "./experimental": {
-      "types": "./dist/experimental/index.d.ts",
-      "import": "./dist/experimental/index.js",
+    "./tooling/testing": {
+      "types": "./dist/tooling/testing/index.d.ts",
+      "import": "./dist/tooling/testing/index.js",
       "require": "./dist/index.cjs"
     },
-    "./testing": {
-      "types": "./dist/testing/index.d.ts",
-      "import": "./dist/testing/index.js",
+    "./tooling/devtools": {
+      "types": "./dist/tooling/devtools/index.d.ts",
+      "import": "./dist/tooling/devtools/index.js",
       "require": "./dist/index.cjs"
     },
-    "./cli": {
-      "types": "./dist/cli/index.d.ts",
-      "import": "./dist/cli/index.js",
-      "require": "./dist/index.cjs"
-    },
-    "./devtools": {
-      "types": "./dist/devtools/index.d.ts",
-      "import": "./dist/devtools/index.js",
-      "require": "./dist/index.cjs"
-    },
-    "./devtools/playground": {
-      "types": "./dist/devtools/playground.d.ts",
-      "import": "./dist/devtools/playground.js",
-      "require": "./dist/index.cjs"
-    },
-    "./devtools/schema-tools": {
-      "types": "./dist/devtools/schema-tools.d.ts",
-      "import": "./dist/devtools/schema-tools.js",
+    "./tooling/cloud": {
+      "types": "./dist/tooling/cloud/index.d.ts",
+      "import": "./dist/tooling/cloud/index.js",
       "require": "./dist/index.cjs"
     },
     "./package.json": "./package.json"
   },
   "bin": {
-    "federation": "./dist/cli/index.js",
-    "@cqrs/federation": "./dist/cli/index.js"
+    "federation": "./dist/tooling/cli/index.js",
+    "@cqrs/federation": "./dist/tooling/cli/index.js"
   },
   "files": [
     "dist",
@@ -155,7 +140,7 @@
     "demo:functional": "bun run functional-patterns-standalone.ts",
     "demo:comprehensive": "bun run comprehensive-functional-demo.ts",
     "dev": "bun --watch test-complete.ts",
-    "cli": "bun run src/cli/index.ts",
+    "cli": "bun run src/tooling/cli/index.ts",
     "validate": "bun run typecheck && bun run typecheck:tests && bun run lint && bun run test:complete",
     "prepare": "husky",
     "prepublishOnly": "bun run clean && bun run build && bun run validate",
