@@ -1,6 +1,6 @@
 {
   "name": "@cqrs/federation",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Apollo Federation framework with Effect-TS, ultra-strict TypeScript patterns, schema-first development, and enterprise-grade resilience features",
   "type": "module",
   "sideEffects": false,
