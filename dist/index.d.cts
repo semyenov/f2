@@ -1,9 +1,9 @@
 import { CompositionError, ErrorFactory, FederationError, ValidationError } from "./types-CIKLW6fG.cjs";
-import { FederationEntityBuilder, createEntityBuilder, toFederationEntity } from "./index-Bw6VmEgg.cjs";
-import { index_d_exports as index_d_exports$3 } from "./index-BVG6uCQh.cjs";
+import { FederationEntityBuilder, createEntityBuilder, toFederationEntity } from "./index-BAGW1csM.cjs";
+import { index_d_exports as index_d_exports$3 } from "./index-Bvf4iCPM.cjs";
 import { SubgraphManagement } from "./subgraph-C5txPK7-.cjs";
 import { FederationErrorBoundaries, PerformanceOptimizations } from "./performance-Bq9rd9G9.cjs";
-import { index_d_exports } from "./index-D2nFGhax.cjs";
+import { index_d_exports } from "./index-DswK7Tge.cjs";
 import { FederationComposer, index_d_exports as index_d_exports$1 } from "./index-4g8foWJW.cjs";
 import { index_d_exports as index_d_exports$2 } from "./index-DpJcnxWG.cjs";
 

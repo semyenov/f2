@@ -1,5 +1,5 @@
 import { EntityResolutionError, FederationEntity, ServiceDefinition, ValidationError, __export } from "./types-CIKLW6fG.cjs";
-import { FederationEntityBuilder, createEntityBuilder, index_d_exports as index_d_exports$1 } from "./index-Bw6VmEgg.cjs";
+import { FederationEntityBuilder, createEntityBuilder, index_d_exports as index_d_exports$1 } from "./index-BAGW1csM.cjs";
 import { SubgraphManagement } from "./subgraph-C5txPK7-.cjs";
 import { FederationErrorBoundaries, PerformanceOptimizations } from "./performance-Bq9rd9G9.cjs";
 import * as Effect from "effect/Effect";
@@ -179,4 +179,4 @@ declare namespace index_d_exports {
 }
 //#endregion
 export { Federation, Patterns, Presets, QuickEntityBuilder, SimplifiedEntityConfig, SimplifiedFederationConfig, index_d_exports };
-//# sourceMappingURL=index-D2nFGhax.d.cts.map
+//# sourceMappingURL=index-DswK7Tge.d.cts.map

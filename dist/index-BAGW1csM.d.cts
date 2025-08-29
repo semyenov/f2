@@ -4,8 +4,8 @@ import { GraphQLFieldResolver, GraphQLOutputType, GraphQLResolveInfo } from "gra
 import * as Schema from "effect/Schema";
 import { Effect } from "effect";
 import * as Data from "effect/Data";
-import * as effect_Types0 from "effect/Types";
-import * as effect_Cause2 from "effect/Cause";
+import * as effect_Types2 from "effect/Types";
+import * as effect_Cause5 from "effect/Cause";
 
 //#region src/api/advanced/strict.d.ts
 
@@ -108,7 +108,7 @@ declare const EntityValidationResult: {
     readonly entity: string;
   }) => EntityValidationResult<A, I, R>;
 };
-declare const SchemaValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
+declare const SchemaValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause5.YieldableError & {
   readonly _tag: "SchemaValidationError";
 } & Readonly<A>;
 /**
@@ -120,7 +120,7 @@ declare class SchemaValidationError extends SchemaValidationError_base<{
   readonly schemaPath: readonly string[];
   readonly suggestion?: string;
 }> {}
-declare const KeyValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
+declare const KeyValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause5.YieldableError & {
   readonly _tag: "KeyValidationError";
 } & Readonly<A>;
 /**
@@ -133,7 +133,7 @@ declare class KeyValidationError extends KeyValidationError_base<{
   readonly entityType: string;
   readonly suggestion?: string;
 }> {}
-declare const DirectiveValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
+declare const DirectiveValidationError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause5.YieldableError & {
   readonly _tag: "DirectiveValidationError";
 } & Readonly<A>;
 /**
@@ -146,7 +146,7 @@ declare class DirectiveValidationError extends DirectiveValidationError_base<{
   readonly field?: string;
   readonly suggestion?: string;
 }> {}
-declare const EntityBuilderError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
+declare const EntityBuilderError_base: new <A extends Record<string, any> = {}>(args: effect_Types2.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause5.YieldableError & {
   readonly _tag: "EntityBuilderError";
 } & Readonly<A>;
 /**
@@ -661,4 +661,4 @@ declare namespace index_d_exports {
 }
 //#endregion
 export { FederationEntityBuilder, type ValidatedEntity, createEntityBuilder, index_d_exports, toFederationEntity };
-//# sourceMappingURL=index-Bw6VmEgg.d.cts.map
+//# sourceMappingURL=index-BAGW1csM.d.cts.map

@@ -1,11 +1,11 @@
 import { BaseDomainError, CircuitBreaker, CircuitBreakerConfig, CircuitBreakerError, CircuitBreakerMetrics, CircuitBreakerState, CompositionError, DataLoaderConfig, DeepReadonly, DiscoveryError, DomainError, EntityReferenceResolver, EntityResolutionError, EntityTypename, ErrorBoundaryConfig, ErrorFactory, ErrorMatching, ErrorTransformationConfig, ExtractResolver, FederatedSchema, FederationCompositionConfig, FederationDirective, FederationDirectiveMap, FederationDomainError, FederationEntity, FederationError, FieldName, FieldResolutionError, FieldResolver, FieldResolverMap, HealthCheckError, HealthStatus, HotReloadableSchema, MakeRequired, MetricsConfig, NonEmptyArray, OptionalKeys, PartialFailureConfig, PerformanceConfig, Prettify, QueryHash, QueryPlanCacheConfig, RegistrationError, RequireAtLeastOne, RequiredKeys, SafeResolverMap, SchemaChange, SchemaConflict, SchemaImportResult, SchemaMetadata, SchemaValidationError, SchemaWatcher, ServiceDefinition, ServiceId, SubgraphRegistry, SyncResult, TimeoutError, TypeConversionError, ValidationError, __export, asUntypedEntity } from "./types-CIKLW6fG.cjs";
-import { FederationEntityBuilder, ValidatedEntity, createEntityBuilder, toFederationEntity } from "./index-Bw6VmEgg.cjs";
+import { FederationEntityBuilder, ValidatedEntity, createEntityBuilder, toFederationEntity } from "./index-BAGW1csM.cjs";
 import * as Effect from "effect/Effect";
 import { DocumentNode, GraphQLInputType, GraphQLOutputType, GraphQLScalarType, GraphQLSchema, GraphQLType } from "graphql";
 import * as Schema from "effect/Schema";
 import * as Data from "effect/Data";
-import * as effect_Types3 from "effect/Types";
-import * as effect_Cause6 from "effect/Cause";
+import * as effect_Types0 from "effect/Types";
+import * as effect_Cause2 from "effect/Cause";
 import * as effect_Unify0 from "effect/Unify";
 import * as Context from "effect/Context";
 import * as Layer from "effect/Layer";
@@ -536,7 +536,7 @@ declare const SchemaEvolution: {
     }, cases: Cases & { [K in Exclude<keyof Cases, "AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity">]: never }): effect_Unify0.Unify<ReturnType<Cases["AddField" | "RemoveField" | "ChangeFieldType" | "AddDirective" | "RemoveDirective" | "AddEntity" | "RemoveEntity"]>>;
   };
 };
-declare const SchemaFirstError_base: new <A extends Record<string, any> = {}>(args: effect_Types3.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause6.YieldableError & {
+declare const SchemaFirstError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "SchemaFirstError";
 } & Readonly<A>;
 declare class SchemaFirstError extends SchemaFirstError_base<{
@@ -544,7 +544,7 @@ declare class SchemaFirstError extends SchemaFirstError_base<{
   readonly schemaPath?: readonly string[];
   readonly suggestion?: string;
 }> {}
-declare const SchemaEvolutionError_base: new <A extends Record<string, any> = {}>(args: effect_Types3.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause6.YieldableError & {
+declare const SchemaEvolutionError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "SchemaEvolutionError";
 } & Readonly<A>;
 declare class SchemaEvolutionError extends SchemaEvolutionError_base<{
@@ -552,7 +552,7 @@ declare class SchemaEvolutionError extends SchemaEvolutionError_base<{
   readonly evolution: SchemaEvolution;
   readonly conflictingChanges?: readonly SchemaEvolution[];
 }> {}
-declare const CodeGenerationError_base: new <A extends Record<string, any> = {}>(args: effect_Types3.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause6.YieldableError & {
+declare const CodeGenerationError_base: new <A extends Record<string, any> = {}>(args: effect_Types0.Equals<A, {}> extends true ? void : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }) => effect_Cause2.YieldableError & {
   readonly _tag: "CodeGenerationError";
 } & Readonly<A>;
 declare class CodeGenerationError extends CodeGenerationError_base<{
@@ -1348,4 +1348,4 @@ declare namespace index_d_exports {
 }
 //#endregion
 export { ASTConversion, CodeGenerationError, CoreServicesLive, DevelopmentLayerLive, FederationConfigLive, FederationConfigSchema, FederationConfigService, FederationLogger, FederationLoggerLive, FederationServiceConfig, MinimalLayerLive, ProductionLayerLive, SchemaEvolution, SchemaEvolutionError, SchemaFirst, SchemaFirstError, SchemaFirstService, SchemaFirstWorkflow, SchemaLifecycleState, TestLayerLive, TypeConversionContext, createConversionContext, createEnvironmentLayer, createSchemaFirstService, createSchemaFirstWorkflow, debug, developmentLogger, error, getCacheConfig, getDatabaseConfig, getFederationConfig, getObservabilityConfig, getResilienceConfig, getServerConfig, index_d_exports, info, productionLogger, testLogger, trace, warn, withSpan };
-//# sourceMappingURL=index-BVG6uCQh.d.cts.map
+//# sourceMappingURL=index-Bvf4iCPM.d.cts.map

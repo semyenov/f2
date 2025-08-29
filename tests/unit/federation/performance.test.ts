@@ -10,7 +10,7 @@ import {
 	createDevelopmentOptimizedExecutor,
 	createProductionOptimizedExecutor,
 	PerformanceOptimizations,
-} from "@federation";
+} from "@infrastructure";
 import DataLoader from "dataloader";
 import { Duration } from "effect";
 import * as Effect from "effect/Effect";
