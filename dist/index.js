@@ -1,11 +1,11 @@
 import { CompositionError, ErrorFactory, FederationError, ValidationError } from "./errors-lo2u-uDT.js";
-import { FederationEntityBuilder, createEntityBuilder, toFederationEntity } from "./logger-DxgpqaV1.js";
-import { runtime_exports } from "./runtime-CCTzkf8P.js";
+import { FederationEntityBuilder, createEntityBuilder, toFederationEntity } from "./logger-KTC2xxEE.js";
+import { runtime_exports } from "./runtime-BaqbDDeV.js";
 import { FederationComposer, SubgraphManagement } from "./subgraph-B3gfDbHz.js";
 import { FederationErrorBoundaries, PerformanceOptimizations } from "./performance-DO3JMEEu.js";
 import { federation_exports } from "./federation-tSBvjsJC.js";
 import { infrastructure_exports } from "./infrastructure-DPkN2pqp.js";
-import { api_exports } from "./api-BGBs7yZE.js";
+import { api_exports } from "./api-Ij0uBuEX.js";
 
 //#region src/index.ts
 /**

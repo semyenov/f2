@@ -36,8 +36,14 @@ import type {
   ValidationError,
   EntityReferenceResolver,
 } from '../../runtime/core/types/types.js'
-import { FederationEntityBuilder, toFederationEntity } from '../../runtime/core/builders/entity-builder.js'
-import { FederationComposer, FederationComposerLive } from '../../federation/composition/composer.js'
+import {
+  FederationEntityBuilder,
+  toFederationEntity,
+} from '../../runtime/core/builders/entity-builder.js'
+import {
+  FederationComposer,
+  FederationComposerLive,
+} from '../../federation/composition/composer.js'
 import { FederationLoggerLive } from '../../runtime/effect/services/logger.js'
 import { FederationConfigLive } from '../../runtime/effect/services/config.js'
 import type * as Schema from 'effect/Schema'
@@ -49,7 +55,7 @@ export interface SimplifiedFederationConfig {
   /**
    * Federation entities to compose
    */
-  entities: Array<FederationEntity<unknown, unknown, unknown, unknown, Record<string, unknown>>>
+  entities: Array<FederationEntity<unknown, unknown, unknown, unknown, unknown>>
 
   /**
    * Service URLs or definitions
@@ -490,8 +496,15 @@ export const Patterns = {
 }
 
 // Re-export key types and utilities for convenience
-export { FederationEntityBuilder, createEntityBuilder } from '../../runtime/core/builders/entity-builder.js'
-export type { FederationEntity, ServiceDefinition, EntityResolutionError } from '../../runtime/core/types/types.js'
+export {
+  FederationEntityBuilder,
+  createEntityBuilder,
+} from '../../runtime/core/builders/entity-builder.js'
+export type {
+  FederationEntity,
+  ServiceDefinition,
+  EntityResolutionError,
+} from '../../runtime/core/types/types.js'
 export { SubgraphManagement } from '../../federation/subgraphs/subgraph.js'
 export { FederationErrorBoundaries } from '../../infrastructure/resilience/error-boundaries.js'
 export { PerformanceOptimizations } from '../../infrastructure/performance/performance.js'

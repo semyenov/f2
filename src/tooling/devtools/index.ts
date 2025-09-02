@@ -1,13 +1,13 @@
 /**
  * # Federation DevTools
- * 
+ *
  * Comprehensive development tools for Apollo Federation, including playground,
  * schema visualization, migration analysis, debugging, and performance profiling.
- * 
+ *
  * @example Complete devtools setup
  * ```typescript
  * import { DevTools } from '@cqrs/federation/devtools'
- * 
+ *
  * // Start development environment
  * const devtools = await DevTools.start({
  *   schema: federationSchema,
@@ -15,13 +15,13 @@
  *   visualization: true,
  *   monitoring: true
  * })
- * 
+ *
  * // Access individual tools
  * const playground = devtools.playground
  * const visualizer = devtools.visualizer
  * const profiler = devtools.profiler
  * ```
- * 
+ *
  * @module DevTools
  * @since 2.1.0
  */
@@ -77,32 +77,32 @@ export interface DevToolsConfig {
    * GraphQL schema
    */
   schema: GraphQLSchema
-  
+
   /**
    * GraphQL endpoint
    */
   endpoint?: string
-  
+
   /**
    * Enable playground
    */
   playground?: boolean | { port?: number }
-  
+
   /**
    * Enable visualization
    */
   visualization?: boolean
-  
+
   /**
    * Enable monitoring
    */
   monitoring?: boolean
-  
+
   /**
    * Enable migration tools
    */
   migration?: boolean
-  
+
   /**
    * Development mode
    */
@@ -117,7 +117,7 @@ export interface DevToolsInstance {
   visualizer?: SchemaVisualizer
   versionManager?: SchemaVersionManager
   profiler?: Profiler
-  
+
   stop(): Promise<void>
   getMetrics(): DevToolsMetrics
 }
@@ -158,7 +158,7 @@ export class DevTools {
       },
       getMetrics: () => {
         const metrics: DevToolsMetrics = {}
-        
+
         if (instance.playground) {
           const playgroundMetrics = instance.playground.getMetrics()
           metrics.playground = {
@@ -167,7 +167,7 @@ export class DevTools {
             errorRate: playgroundMetrics.errorRate,
           }
         }
-        
+
         if (instance.visualizer) {
           const complexity = instance.visualizer.calculateComplexity()
           metrics.schema = {
@@ -176,7 +176,7 @@ export class DevTools {
             complexity: complexity.cyclomaticComplexity,
           }
         }
-        
+
         if (instance.profiler) {
           const profilerMetrics = instance.profiler.getMetrics()
           metrics.performance = {
@@ -189,27 +189,34 @@ export class DevTools {
             cpuUsage: process.cpuUsage().user / 1000,
           }
         }
-        
+
         return metrics
       },
     }
-    
+
     // Start playground
     if (config.playground !== false) {
       const port = typeof config.playground === 'object' ? config.playground.port : 4001
-      const playgroundConfig = (config.development ?? false)
-        ? PlaygroundPresets.development(config.schema, config.endpoint ?? 'http://localhost:4000/graphql')
-        : PlaygroundPresets.production(config.schema, config.endpoint ?? 'http://localhost:4000/graphql')
-      
+      const playgroundConfig =
+        (config.development ?? false)
+          ? PlaygroundPresets.development(
+              config.schema,
+              config.endpoint ?? 'http://localhost:4000/graphql'
+            )
+          : PlaygroundPresets.production(
+              config.schema,
+              config.endpoint ?? 'http://localhost:4000/graphql'
+            )
+
       instance.playground = await Playground.create(playgroundConfig)
       await instance.playground.start(port)
     }
-    
+
     // Create visualizer
     if (config.visualization ?? false) {
       instance.visualizer = new SchemaVisualizer(config.schema)
     }
-    
+
     // Create version manager
     if (config.migration ?? false) {
       instance.versionManager = new SchemaVersionManager()
@@ -218,26 +225,25 @@ export class DevTools {
         description: 'Initial schema',
       })
     }
-    
+
     // Create profiler
     if (config.monitoring !== false) {
-      const profilerConfig = config.development ?? false
-        ? ProfilerPresets.development()
-        : ProfilerPresets.production()
-      
+      const profilerConfig =
+        (config.development ?? false) ? ProfilerPresets.development() : ProfilerPresets.production()
+
       instance.profiler = new Profiler(profilerConfig)
     }
-    
+
     // Log startup
     console.log('🛠️  Federation DevTools started:')
     if (config.playground !== false) console.log('   🎮 Playground: http://localhost:4001')
     if (config.visualization !== false) console.log('   📊 Visualization ready')
     if (config.migration !== false) console.log('   🔄 Migration tools ready')
     if (config.monitoring !== false) console.log('   📈 Monitoring enabled')
-    
+
     return instance
   }
-  
+
   /**
    * Quick start for development
    */
@@ -265,19 +271,19 @@ export const SchemaAnalysis = {
     const visualizer = new SchemaVisualizer(schema)
     return visualizer.calculateComplexity()
   },
-  
+
   /**
    * Find circular dependencies
    */
   findCircularDependencies: (schema: GraphQLSchema) => {
     const visualizer = new SchemaVisualizer(schema)
     const relationships = visualizer.analyzeRelationships()
-    
+
     // Simple cycle detection
     const cycles: string[][] = []
     const visited = new Set<string>()
     const stack = new Set<string>()
-    
+
     function dfs(node: string, path: string[] = []): void {
       if (stack.has(node)) {
         const cycleStart = path.indexOf(node)
@@ -286,29 +292,27 @@ export const SchemaAnalysis = {
         }
         return
       }
-      
+
       if (visited.has(node)) return
-      
+
       visited.add(node)
       stack.add(node)
       path.push(node)
-      
-      relationships
-        .filter(r => r.from === node)
-        .forEach(r => dfs(r.to, [...path]))
-      
+
+      relationships.filter(r => r.from === node).forEach(r => dfs(r.to, [...path]))
+
       stack.delete(node)
     }
-    
+
     relationships.forEach(r => {
       if (!visited.has(r.from)) {
         dfs(r.from)
       }
     })
-    
+
     return cycles
   },
-  
+
   /**
    * Get schema statistics
    */
@@ -316,7 +320,7 @@ export const SchemaAnalysis = {
     const visualizer = new SchemaVisualizer(schema)
     const complexity = visualizer.calculateComplexity()
     const relationships = visualizer.analyzeRelationships()
-    
+
     return {
       types: {
         total: complexity.typeCount,
@@ -347,7 +351,7 @@ export const MigrationUtils = {
     const analysis = await SchemaMigration.analyze(oldSchema, newSchema)
     return !analysis.hasBreakingChanges
   },
-  
+
   /**
    * Generate migration script
    */
@@ -355,7 +359,7 @@ export const MigrationUtils = {
     const analysis = await SchemaMigration.analyze(oldSchema, newSchema)
     return SchemaMigration.generateMigrationScript(analysis)
   },
-  
+
   /**
    * Get migration summary
    */

@@ -1,11 +1,13 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "name": "@cqrs/federation - Apollo Federation with Effect-TS",
+  "name": "Federation Framework",
   "entryPoints": [
     "src/index.ts",
-    "src/facade.ts",
-    "src/testing/index.ts",
-    "src/cli/index.ts"
+    "src/runtime/index.ts",
+    "src/federation/index.ts",
+    "src/infrastructure/index.ts",
+    "src/api/index.ts",
+    "src/tooling/index.ts"
   ],
   "entryPointStrategy": "expand",
   "out": "docs",
@@ -72,7 +74,7 @@
   "excludeReferences": false,
   "disableSources": false,
   "sourceLinkTemplate": "https://github.com/cqrs/federation/blob/{gitRevision}/{path}#L{line}",
-  "gitRevision": "main",
+  "gitRevision": "master",
   "gitRemote": "origin",
   "basePath": "./src",
   "hideGenerator": false,

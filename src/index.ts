@@ -84,17 +84,17 @@
  */
 
 // Re-export commonly used items for backward compatibility
-export { 
+export {
   createEntityBuilder,
   FederationEntityBuilder,
-  toFederationEntity 
+  toFederationEntity,
 } from './runtime/core/builders/entity-builder.js'
 
 export {
   ValidationError,
   FederationError,
   CompositionError,
-  ErrorFactory
+  ErrorFactory,
 } from './runtime/core/errors/errors.js'
 
 // Export main federation components

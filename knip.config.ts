@@ -3,7 +3,9 @@ import type { KnipConfig } from 'knip'
 const config: KnipConfig = {
   // Entry points for the library
   entry: [
-    'src/examples/*.ts'  // Include examples as they're runnable demos
+    'src/index.ts',
+    'comprehensive-functional-demo.ts',
+    'test-complete.ts'
   ],
   
   // Project files to analyze
@@ -12,11 +14,33 @@ const config: KnipConfig = {
     'tests/**/*.test.ts'
   ],
   
-  // Ignore unresolved imports in config files
+  // Ignore files and patterns
   ignore: [
-    'package.json',
-    'typedoc.json'
-  ]
+    'coverage/**',
+    'dist/**',
+    'docs/**',
+    'infrastructure/pulumi/**',
+    '**/*.d.ts'
+  ],
+  
+  // Ignore specific dependencies
+  ignoreDependencies: [
+    '@edge-runtime/vm',  // Not needed with happy-dom
+    'husky',  // Git hooks
+    'lint-staged'  // Git hooks
+  ],
+  
+  // Workspaces configuration
+  workspaces: {
+    '.': {
+      entry: ['src/index.ts'],
+      project: ['src/**/*.ts']
+    },
+    'infrastructure/pulumi': {
+      entry: ['index.ts'],
+      project: ['*.ts']
+    }
+  }
 }
 
 export default config

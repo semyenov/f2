@@ -1,11 +1,11 @@
-import { CompositionError, ErrorFactory, FederationError, ValidationError } from "./types-iFJStALn.js";
-import { FederationEntityBuilder, createEntityBuilder, toFederationEntity } from "./index-BN0wk27d.js";
-import { index_d_exports as index_d_exports$3 } from "./index-CeNZnnR9.js";
-import { SubgraphManagement } from "./subgraph-9ib9tnHl.js";
-import { FederationErrorBoundaries, PerformanceOptimizations } from "./performance-zrAYPIlq.js";
-import { index_d_exports } from "./index-TXrG1mc0.js";
-import { FederationComposer, index_d_exports as index_d_exports$1 } from "./index-BM9c9kZb.js";
-import { index_d_exports as index_d_exports$2 } from "./index-B2PyH56_.js";
+import { CompositionError, ErrorFactory, FederationError, ValidationError } from "./types-BUCCN_tb.js";
+import { FederationEntityBuilder, createEntityBuilder, toFederationEntity } from "./index-pSCHpTIu.js";
+import { index_d_exports as index_d_exports$3 } from "./index-90YyqJX7.js";
+import { SubgraphManagement } from "./subgraph-ycMwBhl4.js";
+import { FederationErrorBoundaries, PerformanceOptimizations } from "./performance-DGCDkz9K.js";
+import { index_d_exports } from "./index-r77zUCW2.js";
+import { FederationComposer, index_d_exports as index_d_exports$1 } from "./index-CL5g5wZ9.js";
+import { index_d_exports as index_d_exports$2 } from "./index-J9vZxcW6.js";
 
 //#region src/index.d.ts
 

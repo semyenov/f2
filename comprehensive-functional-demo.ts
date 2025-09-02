@@ -696,14 +696,9 @@ const mainDemo = Effect.gen(function* () {
     maxExecutionMetrics: 100
   })
   
-  const performanceData = {
-    executionMetrics: { totalExecutions: 1, averageDuration: 45 },
-    cacheMetrics: { hitRate: 0.8 },
-    dataLoaderMetrics: { batchSize: 2.5 }
-  }
-
+  // === 7. Performance ===
+  const performanceData = yield* metrics.getMetrics()
   yield* Effect.logInfo(`📈 Metrics: ${performanceData.executionMetrics.totalExecutions} executions, ${performanceData.executionMetrics.averageDuration}ms avg`)
-
   yield* Effect.logInfo('🎉 Federation Framework Functional Patterns Demo completed successfully!')
 
   return {

@@ -465,7 +465,8 @@ export const createSchemaFirstService = (): SchemaFirstService => ({
 export const ${entity.typename}Resolvers = {
   Query: {
     ${entity.typename.toLowerCase()}: async (parent: unknown, args: unknown, context: unknown) => {
-      // TODO: Implement ${entity.typename} query resolver
+      // Default query resolver for ${entity.typename}
+      // Replace this with your actual data fetching logic
       return Effect.runPromise(
         pipe(
           Effect.succeed(args),

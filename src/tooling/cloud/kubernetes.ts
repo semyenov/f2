@@ -308,7 +308,7 @@ class GatewayComponent extends pulumi.ComponentResource {
                     },
                   },
                   ...(args.config.env && {
-                    env: Object.entries(args.config.env).map(([name, value]) => ({ name, value }))
+                    env: Object.entries(args.config.env).map(([name, value]) => ({ name, value })),
                   }),
                   livenessProbe: {
                     httpGet: {
@@ -363,7 +363,8 @@ class GatewayComponent extends pulumi.ComponentResource {
     )
 
     // Create HPA if autoscaling is enabled
-    if (args.config.autoscaling?.enabled) {
+    const autoscaling = args.config.autoscaling ?? { enabled: false }
+    if (autoscaling.enabled ?? false) {
       this.hpa = new k8s.autoscaling.v2.HorizontalPodAutoscaler(
         `${name}-hpa`,
         {
@@ -378,8 +379,8 @@ class GatewayComponent extends pulumi.ComponentResource {
               kind: 'Deployment',
               name: this.deployment.metadata.name,
             },
-            minReplicas: args.config.autoscaling.minReplicas ?? 2,
-            maxReplicas: args.config.autoscaling.maxReplicas ?? 10,
+            minReplicas: autoscaling.minReplicas ?? 2,
+            maxReplicas: autoscaling.maxReplicas ?? 10,
             metrics: [
               {
                 type: 'Resource',
@@ -387,7 +388,7 @@ class GatewayComponent extends pulumi.ComponentResource {
                   name: 'cpu',
                   target: {
                     type: 'Utilization',
-                    averageUtilization: args.config.autoscaling.targetCPUUtilization ?? 70,
+                    averageUtilization: autoscaling.targetCPUUtilization ?? 70,
                   },
                 },
               },
@@ -473,7 +474,7 @@ class SubgraphComponent extends pulumi.ComponentResource {
                     },
                   },
                   ...(args.config.env && {
-                    env: Object.entries(args.config.env).map(([name, value]) => ({ name, value }))
+                    env: Object.entries(args.config.env).map(([name, value]) => ({ name, value })),
                   }),
                   ...(args.config.healthCheck && {
                     livenessProbe: {
@@ -491,7 +492,7 @@ class SubgraphComponent extends pulumi.ComponentResource {
                       },
                       initialDelaySeconds: args.config.healthCheck.initialDelaySeconds ?? 10,
                       periodSeconds: args.config.healthCheck.periodSeconds ?? 5,
-                    }
+                    },
                   }),
                 },
               ],
@@ -706,7 +707,11 @@ scrape_configs:
             },
           },
         },
-        { parent: this, dependsOn: [this.prometheusConfigMap], ...((Boolean(args.provider)) && { provider: args.provider }) }
+        {
+          parent: this,
+          dependsOn: [this.prometheusConfigMap],
+          ...(Boolean(args.provider) && { provider: args.provider }),
+        }
       )
 
       this.prometheusService = new k8s.core.v1.Service(
@@ -924,7 +929,7 @@ export class KubernetesOperator extends pulumi.ComponentResource {
 
   private readonly config: K8sOperatorConfig
   private readonly provider: k8s.Provider
-  
+
   constructor(name: string, config: K8sOperatorConfig, opts?: pulumi.ComponentResourceOptions) {
     super('federation:kubernetes-operator', name, config, opts)
 
@@ -945,11 +950,11 @@ export class KubernetesOperator extends pulumi.ComponentResource {
           },
         },
       },
-      { parent: this, ...((Boolean(this.provider)) && { provider: this.provider }) }
+      { parent: this, ...(Boolean(this.provider) && { provider: this.provider }) }
     )
 
     // Setup RBAC if enabled
-    if ((config.security?.rbac) === true) {
+    if (config.security?.rbac === true) {
       this.serviceAccount = new k8s.core.v1.ServiceAccount(
         `${name}-service-account`,
         {
@@ -958,7 +963,11 @@ export class KubernetesOperator extends pulumi.ComponentResource {
             namespace: namespaceName,
           },
         },
-        { parent: this, dependsOn: [this.namespace], ...(this.provider && { provider: this.provider }) }
+        {
+          parent: this,
+          dependsOn: [this.namespace],
+          ...(this.provider && { provider: this.provider }),
+        }
       )
 
       this.role = new k8s.rbac.v1.Role(
@@ -991,7 +1000,11 @@ export class KubernetesOperator extends pulumi.ComponentResource {
             },
           ],
         },
-        { parent: this, dependsOn: [this.namespace], ...((Boolean(this.provider)) && { provider: this.provider }) }
+        {
+          parent: this,
+          dependsOn: [this.namespace],
+          ...(Boolean(this.provider) && { provider: this.provider }),
+        }
       )
 
       this.roleBinding = new k8s.rbac.v1.RoleBinding(
@@ -1014,7 +1027,11 @@ export class KubernetesOperator extends pulumi.ComponentResource {
             },
           ],
         },
-        { parent: this, dependsOn: [this.role, this.serviceAccount], ...((Boolean(this.provider)) && { provider: this.provider }) }
+        {
+          parent: this,
+          dependsOn: [this.role, this.serviceAccount],
+          ...(Boolean(this.provider) && { provider: this.provider }),
+        }
       )
     }
 
@@ -1025,7 +1042,7 @@ export class KubernetesOperator extends pulumi.ComponentResource {
         {
           namespace: namespaceName,
           config: config.federation.gateway,
-          ...((Boolean(this.provider)) && { provider: this.provider }),
+          ...(Boolean(this.provider) && { provider: this.provider }),
         },
         { parent: this, dependsOn: [this.namespace] }
       )
@@ -1040,7 +1057,7 @@ export class KubernetesOperator extends pulumi.ComponentResource {
             {
               namespace: namespaceName,
               config: subgraph,
-              ...((Boolean(this.provider)) && { provider: this.provider }),
+              ...(Boolean(this.provider) && { provider: this.provider }),
             },
             { parent: this, dependsOn: [this.namespace] }
           )
@@ -1062,7 +1079,8 @@ export class KubernetesOperator extends pulumi.ComponentResource {
             namespace: namespaceName,
             annotations: {
               'nginx.ingress.kubernetes.io/rewrite-target': '/',
-              'nginx.ingress.kubernetes.io/ssl-redirect': ((ingressConfig.tls?.enabled) ?? false) ? 'true' : 'false',
+              'nginx.ingress.kubernetes.io/ssl-redirect':
+                (ingressConfig.tls?.enabled ?? false) ? 'true' : 'false',
               'nginx.ingress.kubernetes.io/proxy-body-size': '10m',
               'nginx.ingress.kubernetes.io/proxy-connect-timeout': '60',
               'nginx.ingress.kubernetes.io/proxy-send-timeout': '60',
@@ -1074,10 +1092,12 @@ export class KubernetesOperator extends pulumi.ComponentResource {
             ...(ingressConfig.tls?.enabled && {
               tls: [
                 {
-                  hosts: ingressConfig.tls.hosts ?? [ingressConfig.host ?? 'federation.example.com'],
+                  hosts: ingressConfig.tls.hosts ?? [
+                    ingressConfig.host ?? 'federation.example.com',
+                  ],
                   secretName: ingressConfig.tls.secretName ?? 'federation-tls',
                 },
-              ]
+              ],
             }),
             rules: [
               {
@@ -1102,7 +1122,11 @@ export class KubernetesOperator extends pulumi.ComponentResource {
             ],
           },
         },
-        { parent: this, dependsOn: [this.namespace, ...(this.gateway ? [this.gateway] : [])], ...((Boolean(this.provider)) && { provider: this.provider }) }
+        {
+          parent: this,
+          dependsOn: [this.namespace, ...(this.gateway ? [this.gateway] : [])],
+          ...(Boolean(this.provider) && { provider: this.provider }),
+        }
       )
     }
 
@@ -1112,26 +1136,30 @@ export class KubernetesOperator extends pulumi.ComponentResource {
         `${name}-monitoring`,
         {
           namespace: namespaceName,
-          ...((config.monitoring?.prometheus !== undefined) && { prometheus: config.monitoring?.prometheus }),
-          ...((config.monitoring?.grafana !== undefined) && { grafana: config.monitoring?.grafana }),
-          ...((Boolean(this.provider)) && { provider: this.provider }),
+          ...(config.monitoring?.prometheus !== undefined && {
+            prometheus: config.monitoring?.prometheus,
+          }),
+          ...(config.monitoring?.grafana !== undefined && { grafana: config.monitoring?.grafana }),
+          ...(Boolean(this.provider) && { provider: this.provider }),
         },
         { parent: this, dependsOn: [this.namespace] }
       )
     }
 
     // Setup service mesh
-    if ((config.federation.serviceMesh?.enabled ?? false)) {
+    if (config.federation.serviceMesh?.enabled ?? false) {
       this.serviceMesh = new ServiceMeshComponent(
         `${name}-service-mesh`,
         {
           namespace: namespaceName,
-          ...((Boolean(this.provider)) && { provider: this.provider }),
+          ...(Boolean(this.provider) && { provider: this.provider }),
           meshProvider: config.federation.serviceMesh?.provider ?? 'istio',
           gateway: {
             name: config.federation.gateway?.name ?? 'federation-gateway',
           },
-          ...((config.federation.subgraphs) !== undefined && { subgraphs: config.federation.subgraphs.map(s => ({ name: s.name })) }),
+          ...(config.federation.subgraphs !== undefined && {
+            subgraphs: config.federation.subgraphs.map(s => ({ name: s.name })),
+          }),
         },
         { parent: this, dependsOn: [this.namespace, ...(this.gateway ? [this.gateway] : [])] }
       )
@@ -1155,33 +1183,34 @@ export class KubernetesOperator extends pulumi.ComponentResource {
       Effect.tryPromise({
         try: async () => {
           const outputs = {
-            namespace: await this.namespace.metadata.name,
+            namespace: this.namespace.metadata.name,
             gateway: this.gateway
               ? {
-                  deployment: await this.gateway.deployment.metadata.name,
-                  service: await this.gateway.service.metadata.name,
-                  replicas: await this.gateway.deployment.spec.replicas,
+                  deployment: this.gateway.deployment.metadata.name,
+                  service: this.gateway.service.metadata.name,
+                  replicas: this.gateway.deployment.spec.replicas,
                 }
               : undefined,
             subgraphs: await Promise.all(
               this.subgraphs.map(async sg => ({
-                deployment: await sg.deployment.metadata.name,
-                service: await sg.service.metadata.name,
-                replicas: await sg.deployment.spec.replicas,
+                deployment: sg.deployment.metadata.name,
+                service: sg.service.metadata.name,
+                replicas: sg.deployment.spec.replicas,
               }))
             ),
-            ingress: ((Boolean(this.ingress)) === true)
-              ? {
-                  name: await this.ingress?.metadata.name,
-                  host: await this.ingress?.spec.rules?.[0]?.host,
-                }
-              : undefined,
+            ingress:
+              Boolean(this.ingress) === true
+                ? {
+                    name: this.ingress?.metadata.name,
+                    host: this.ingress?.spec.rules?.[0]?.host,
+                  }
+                : undefined,
             monitoring: {
-              prometheus: ((Boolean(this.monitoring?.prometheusDeployment)) === true),
-              grafana: ((Boolean(this.monitoring?.grafanaDeployment)) === true),
+              prometheus: Boolean(this.monitoring?.prometheusDeployment) === true,
+              grafana: Boolean(this.monitoring?.grafanaDeployment) === true,
             },
             serviceMesh: {
-              enabled: (Boolean(this.serviceMesh)) === true,
+              enabled: Boolean(this.serviceMesh) === true,
               provider: this.config.federation.serviceMesh?.provider,
             },
           }
@@ -1201,13 +1230,18 @@ export class KubernetesOperator extends pulumi.ComponentResource {
       Effect.tryPromise({
         try: async () => {
           // Find the component to scale
-          if (this.gateway && (this.config.federation.gateway?.name ?? 'federation-gateway') === componentName) {
+          if (
+            this.gateway &&
+            (this.config.federation.gateway?.name ?? 'federation-gateway') === componentName
+          ) {
             // In Pulumi, we would typically update the config and run `pulumi up`
             // For demonstration, we'll log the intent
             console.log(`Scaling gateway ${componentName} to ${replicas} replicas`)
             console.log('Run `pulumi up` to apply the scaling change')
           } else {
-            const subgraph = this.subgraphs.find(sg => sg.deployment.metadata.name === pulumi.output(componentName))
+            const subgraph = this.subgraphs.find(
+              sg => sg.deployment.metadata.name === pulumi.output(componentName)
+            )
             if (subgraph) {
               console.log(`Scaling subgraph ${componentName} to ${replicas} replicas`)
               console.log('Run `pulumi up` to apply the scaling change')
@@ -1280,8 +1314,7 @@ export const K8sPresets = {
     gatewayImage: string,
     subgraphImages: Array<{ name: string; image: string }>,
     provider: k8s.Provider
-  ): K8sOperatorConfig => (
-    {
+  ): K8sOperatorConfig => ({
     namespace: 'federation-prod',
     federation: {
       gateway: {

@@ -1,9 +1,9 @@
 /**
  * Effect-TS Patterns and Services
- * 
+ *
  * This module provides Effect-TS patterns, layers, and services
  * for dependency injection and functional composition.
- * 
+ *
  * @module Runtime/Effect
  * @since 3.0.0
  */

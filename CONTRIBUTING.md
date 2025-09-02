@@ -1,5 +1,35 @@
 # Contributing to Federation Framework v2
 
+<!--toc:start-->
+
+- [Contributing to Federation Framework v2](#contributing-to-federation-framework-v2)
+  - [🚀 Quick Start for Contributors](#🚀-quick-start-for-contributors)
+    - [Prerequisites](#prerequisites)
+    - [Setting Up Development Environment](#setting-up-development-environment)
+  - [🧪 Development Workflow](#🧪-development-workflow)
+    - [Running Tests](#running-tests)
+    - [Code Quality](#code-quality)
+    - [Building & Documentation](#building-documentation)
+  - [📝 Code Standards](#📝-code-standards)
+    - [TypeScript Guidelines](#typescript-guidelines)
+    - [JSDoc Documentation](#jsdoc-documentation)
+    - [Error Handling Patterns](#error-handling-patterns)
+  - [🎯 Contribution Guidelines](#🎯-contribution-guidelines)
+    - [Pull Request Process](#pull-request-process)
+    - [Commit Message Format](#commit-message-format)
+    - [Testing Requirements](#testing-requirements)
+    - [Documentation Requirements](#documentation-requirements)
+  - [🔍 Code Review Criteria](#🔍-code-review-criteria)
+    - [Functionality](#functionality)
+    - [Code Quality](#code-quality)
+    - [Testing](#testing)
+    - [Documentation](#documentation)
+  - [🛡️ Security Guidelines](#🛡️-security-guidelines)
+  - [📖 Resources](#📖-resources)
+  - [💬 Getting Help](#💬-getting-help)
+  - [📄 License](#📄-license)
+  <!--toc:end-->
+
 Thank you for your interest in contributing to Federation Framework v2! This document provides guidelines for contributing to the project.
 
 ## 🚀 Quick Start for Contributors

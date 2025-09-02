@@ -61,11 +61,11 @@ export type {
  * ```
  */
 export interface FederationEntity<
-  TSource = Record<string, unknown>,
-  TContext = Record<string, unknown>,
-  TResult = Partial<TSource>,
+  TSource = unknown,
+  TContext = unknown,
+  TResult = TSource,
   TReference = Partial<TSource>,
-  TExtensions = Record<string, unknown>,
+  TExtensions = unknown,
 > {
   /** GraphQL type name - must match the type name in your schema */
   readonly typename: string

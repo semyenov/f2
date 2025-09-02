@@ -608,18 +608,24 @@ import * as Effect from 'effect/Effect'
 
 export const ${name}Schema = Schema.Struct({
   id: Schema.String,
-  // TODO: Add your fields here
+  name: Schema.String,
+  createdAt: Schema.Date,
+  updatedAt: Schema.Date,
 })
 
 export type ${name} = Schema.Schema.Type<typeof ${name}Schema>
 
 export const ${name.toLowerCase()}Entity = Federation.entity('${name}', ${name}Schema)
   .keys('id')
-  // TODO: Configure federation directives
+  .shareable()
   .resolver(async (reference: { id: string }) => {
-    // TODO: Implement resolution logic
+    // Implement your entity resolution logic here
+    // This resolver is called when other services reference this entity
     return Effect.succeed({
       id: reference.id,
+      name: \`${name} \${reference.id}\`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     })
   })
   .build()

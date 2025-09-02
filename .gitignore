@@ -1,2 +1,40 @@
-/bin/
+# Dependencies
 /node_modules/
+/bin/
+
+# Build outputs
+/dist/
+*.tsbuildinfo
+
+# Test coverage
+/coverage/
+*.lcov
+
+# Documentation (regenerated on release)
+/docs/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+*.tmp
+.temp/
+
+# Pulumi
+.pulumi/
+*.pulumi.yaml.lock

@@ -941,7 +941,7 @@ describe("End-to-End Federation Integration Tests", () => {
 					return {
 						totalServices: services.length,
 						healthyServices: healthStatuses.filter((h) => h.healthy).length,
-						partialResultsHandled: !!processedResults.data,
+						partialResultsHandled: processedResults.data,
 						nonCriticalErrorsIgnored: processedResults.errors.length === 1,
 					};
 				}),

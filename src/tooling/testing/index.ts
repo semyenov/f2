@@ -1,18 +1,18 @@
 /**
  * # Federation Testing Utilities
- * 
+ *
  * This module provides comprehensive testing utilities for federation services,
  * including test harnesses, mock services, assertion helpers, and performance testing tools.
- * 
+ *
  * @example Basic test harness usage
  * ```typescript
  * import { TestHarness } from '@cqrs/federation/testing'
- * 
+ *
  * const harness = TestHarness.create()
  *   .withEntity(userEntity)
  *   .withMockService('users', mockUserData)
  *   .build()
- * 
+ *
  * const result = await harness.query(`
  *   query GetUser {
  *     user(id: "123") {
@@ -21,10 +21,10 @@
  *     }
  *   }
  * `)
- * 
+ *
  * expect(result.data.user.name).toBe('John Doe')
  * ```
- * 
+ *
  * @module Testing
  * @since 2.1.0
  */
@@ -42,7 +42,10 @@ import type {
   ServiceDefinition,
   FederationCompositionConfig,
 } from '../../runtime/core/types/types.js'
-import { FederationComposer, FederationComposerLive } from '../../federation/composition/composer.js'
+import {
+  FederationComposer,
+  FederationComposerLive,
+} from '../../federation/composition/composer.js'
 import { FederationLoggerLive } from '../../runtime/effect/services/logger.js'
 import { FederationConfigLive } from '../../runtime/effect/services/config.js'
 
@@ -54,22 +57,22 @@ export interface TestHarnessConfig {
    * Entities to test
    */
   entities: FederationEntity<unknown, unknown, unknown, unknown>[]
-  
+
   /**
    * Mock service data
    */
   mockServices?: Map<string, MockServiceConfig>
-  
+
   /**
    * Enable debug logging
    */
   debug?: boolean
-  
+
   /**
    * Custom test context
    */
   context?: Record<string, unknown>
-  
+
   /**
    * Performance testing configuration
    */
@@ -88,17 +91,17 @@ export interface MockServiceConfig {
    * Service URL
    */
   url: string
-  
+
   /**
    * Mock data by query
    */
   mockData?: Map<string, unknown>
-  
+
   /**
    * Response delay for latency testing
    */
   delay?: Duration.Duration
-  
+
   /**
    * Failure configuration for resilience testing
    */
@@ -107,7 +110,7 @@ export interface MockServiceConfig {
     errorMessage?: string
     errorCode?: string
   }
-  
+
   /**
    * Schema SDL for the mock service
    */
@@ -132,7 +135,7 @@ export class TestHarness {
   private readonly config: TestHarnessConfig
   private schema: GraphQLSchema | null = null
   private readonly metrics: TestMetrics = new TestMetrics()
-  
+
   private constructor(config: TestHarnessConfig) {
     this.config = {
       entities: config.entities ?? [],
@@ -142,14 +145,14 @@ export class TestHarness {
       performance: config.performance ?? {},
     }
   }
-  
+
   /**
    * Create a new test harness
    */
   static create(): TestHarnessBuilder {
     return new TestHarnessBuilder()
   }
-  
+
   /**
    * Build the test harness
    */
@@ -158,32 +161,31 @@ export class TestHarness {
     await harness.initialize()
     return harness
   }
-  
+
   /**
    * Initialize the test harness
    */
   private async initialize(): Promise<void> {
     this.schema = await this.composeSchema()
   }
-  
+
   /**
    * Compose the federation schema
    */
   private async composeSchema(): Promise<GraphQLSchema> {
-    const services: ServiceDefinition[] = Array.from(this.config.mockServices?.entries() ?? [])
-      .map(([id, config]) => ({ id, url: config.url }))
-    
+    const services: ServiceDefinition[] = Array.from(this.config.mockServices?.entries() ?? []).map(
+      ([id, config]) => ({ id, url: config.url })
+    )
+
     if (services.length === 0) {
       services.push({ id: 'default-mock', url: 'http://localhost:4001' })
     }
-    
+
     const config: FederationCompositionConfig = {
       entities: this.config.entities,
       services,
       errorBoundaries: {
-        subgraphTimeouts: Object.fromEntries(
-          services.map(s => [s.id, Duration.seconds(5)])
-        ),
+        subgraphTimeouts: Object.fromEntries(services.map(s => [s.id, Duration.seconds(5)])),
         circuitBreakerConfig: {
           failureThreshold: 10,
           resetTimeout: Duration.seconds(10),
@@ -210,22 +212,18 @@ export class TestHarness {
         },
       },
     }
-    
-    const layer = Layer.mergeAll(
-      FederationComposerLive,
-      FederationLoggerLive,
-      FederationConfigLive,
-    )
-    
+
+    const layer = Layer.mergeAll(FederationComposerLive, FederationLoggerLive, FederationConfigLive)
+
     const effect = pipe(
       FederationComposer,
       Effect.flatMap(composer => composer.compose(config)),
       Effect.map(result => result.schema)
     )
-    
+
     return Effect.runPromise(Effect.provide(effect, layer))
   }
-  
+
   /**
    * Execute a GraphQL query
    */
@@ -237,9 +235,9 @@ export class TestHarness {
     if (!this.schema) {
       throw new Error('Test harness not initialized')
     }
-    
+
     const startTime = performance.now()
-    
+
     const result = await graphql({
       schema: this.schema,
       source: query,
@@ -247,31 +245,28 @@ export class TestHarness {
       operationName,
       contextValue: this.config.context,
     })
-    
+
     if (this.config.performance?.measureLatency === true) {
       this.metrics.recordLatency(performance.now() - startTime)
     }
-    
+
     return result
   }
-  
+
   /**
    * Execute a GraphQL mutation
    */
-  async mutate(
-    mutation: string,
-    variables?: Record<string, unknown>
-  ): Promise<ExecutionResult> {
+  async mutate(mutation: string, variables?: Record<string, unknown>): Promise<ExecutionResult> {
     return this.query(mutation, variables)
   }
-  
+
   /**
    * Get test metrics
    */
   getMetrics(): TestMetrics {
     return this.metrics
   }
-  
+
   /**
    * Reset test state
    */
@@ -288,7 +283,7 @@ export class TestHarnessBuilder {
     entities: [],
     mockServices: new Map(),
   }
-  
+
   /**
    * Add an entity to test
    */
@@ -296,7 +291,7 @@ export class TestHarnessBuilder {
     this.config.entities = [...(this.config.entities ?? []), entity]
     return this
   }
-  
+
   /**
    * Add multiple entities
    */
@@ -304,7 +299,7 @@ export class TestHarnessBuilder {
     this.config.entities = [...(this.config.entities ?? []), ...entities]
     return this
   }
-  
+
   /**
    * Add a mock service
    */
@@ -320,11 +315,11 @@ export class TestHarnessBuilder {
       },
       schema: config.schema ?? '',
     }
-    
+
     this.config.mockServices?.set(id, mockConfig)
     return this
   }
-  
+
   /**
    * Enable debug mode
    */
@@ -332,7 +327,7 @@ export class TestHarnessBuilder {
     this.config.debug = true
     return this
   }
-  
+
   /**
    * Set custom context
    */
@@ -340,7 +335,7 @@ export class TestHarnessBuilder {
     this.config.context = context
     return this
   }
-  
+
   /**
    * Enable performance metrics
    */
@@ -352,7 +347,7 @@ export class TestHarnessBuilder {
     }
     return this
   }
-  
+
   /**
    * Build the test harness
    */
@@ -370,35 +365,35 @@ export class TestMetrics {
   private errors: Error[] = []
   private queryCount = 0
   private mutationCount = 0
-  
+
   /**
    * Record query latency
    */
   recordLatency(ms: number): void {
     this.latencies.push(ms)
   }
-  
+
   /**
    * Record an error
    */
   recordError(error: Error): void {
     this.errors.push(error)
   }
-  
+
   /**
    * Increment query count
    */
   incrementQueryCount(): void {
     this.queryCount++
   }
-  
+
   /**
    * Increment mutation count
    */
   incrementMutationCount(): void {
     this.mutationCount++
   }
-  
+
   /**
    * Get average latency
    */
@@ -406,7 +401,7 @@ export class TestMetrics {
     if (this.latencies.length === 0) return 0
     return this.latencies.reduce((a, b) => a + b, 0) / this.latencies.length
   }
-  
+
   /**
    * Get P95 latency
    */
@@ -416,7 +411,7 @@ export class TestMetrics {
     const index = Math.floor(sorted.length * 0.95)
     return sorted[index] ?? 0
   }
-  
+
   /**
    * Get error rate
    */
@@ -425,7 +420,7 @@ export class TestMetrics {
     if (total === 0) return 0
     return this.errors.length / total
   }
-  
+
   /**
    * Get summary
    */
@@ -439,7 +434,7 @@ export class TestMetrics {
       errorRate: this.getErrorRate(),
     }
   }
-  
+
   /**
    * Reset metrics
    */
@@ -485,9 +480,9 @@ export const Assertions = {
         }
       }
     `
-    
+
     const result = await harness.query(query)
-    
+
     if (result.errors) {
       return {
         passed: false,
@@ -495,9 +490,12 @@ export const Assertions = {
         actual: result.errors,
       }
     }
-    
-    const entity = (result.data as { _entities?: unknown[] })?._entities?.[0] as Record<string, unknown>
-    
+
+    const entity = (result.data as { _entities?: unknown[] })?._entities?.[0] as Record<
+      string,
+      unknown
+    >
+
     for (const [field, expected] of Object.entries(expectedFields)) {
       if (entity?.[field] !== expected) {
         return {
@@ -509,13 +507,13 @@ export const Assertions = {
         }
       }
     }
-    
+
     return {
       passed: true,
       message: 'Entity resolved successfully',
     }
   },
-  
+
   /**
    * Assert federation directive
    */
@@ -526,7 +524,7 @@ export const Assertions = {
   ): TestAssertionResult {
     const directives = entity.directives?.[field] ?? []
     const hasDirective = Array.isArray(directives) && directives.includes(directive)
-    
+
     return {
       passed: hasDirective,
       message: hasDirective
@@ -536,7 +534,7 @@ export const Assertions = {
       actual: directives,
     }
   },
-  
+
   /**
    * Assert schema composition
    */
@@ -544,10 +542,8 @@ export const Assertions = {
     entities: FederationEntity<unknown, unknown, unknown, unknown>[]
   ): Promise<TestAssertionResult> {
     try {
-      await TestHarness.create()
-        .withEntities(entities)
-        .build()
-      
+      await TestHarness.create().withEntities(entities).build()
+
       return {
         passed: true,
         message: 'Schema composed successfully',
@@ -573,7 +569,7 @@ export const MockGenerators = {
     __typename: typename,
     ...fields,
   }),
-  
+
   /**
    * Generate mock user
    */
@@ -584,18 +580,21 @@ export const MockGenerators = {
     email: overrides?.email ?? `user${id}@example.com`,
     age: overrides?.age ?? 25,
   }),
-  
+
   /**
    * Generate mock product
    */
-  product: (id: string, overrides?: Partial<{ name: string; price: number; inStock: boolean }>) => ({
+  product: (
+    id: string,
+    overrides?: Partial<{ name: string; price: number; inStock: boolean }>
+  ) => ({
     __typename: 'Product',
     id,
     name: overrides?.name ?? `Product ${id}`,
     price: overrides?.price ?? 99.99,
     inStock: overrides?.inStock ?? true,
   }),
-  
+
   /**
    * Generate mock list
    */
@@ -614,25 +613,22 @@ export const TestScenarios = {
     name: 'Entity Resolution',
     setup: async (harness: TestHarnessBuilder) => {
       // Add test entities and mock data
-      return harness
-        .withMockService('users', {
-          mockData: new Map([
-            ['user:1', MockGenerators.user('1')],
-            ['user:2', MockGenerators.user('2')],
-          ]),
-        })
+      return harness.withMockService('users', {
+        mockData: new Map([
+          ['user:1', MockGenerators.user('1')],
+          ['user:2', MockGenerators.user('2')],
+        ]),
+      })
     },
     test: async (harness: TestHarness) => {
-      const result = await Assertions.assertEntityResolution(
-        harness,
-        'User',
-        '1',
-        { id: '1', name: 'User 1' }
-      )
+      const result = await Assertions.assertEntityResolution(harness, 'User', '1', {
+        id: '1',
+        name: 'User 1',
+      })
       return result
     },
   }),
-  
+
   /**
    * Test federation directives scenario
    */
@@ -640,7 +636,7 @@ export const TestScenarios = {
     name: 'Federation Directives',
     test: (entity: FederationEntity<unknown, unknown, unknown, unknown>) => {
       const results: TestAssertionResult[] = []
-      
+
       // Test @key directive
       if (Reflect.has(entity as object, 'key')) {
         results.push({
@@ -648,38 +644,37 @@ export const TestScenarios = {
           message: 'Entity has @key directive',
         })
       }
-      
+
       return results
     },
   }),
-  
+
   /**
    * Test error handling scenario
    */
   errorHandling: () => ({
     name: 'Error Handling',
     setup: async (harness: TestHarnessBuilder) => {
-      return harness
-        .withMockService('failing', {
-          failures: {
-            rate: 0.5,
-            errorMessage: 'Service unavailable',
-            errorCode: 'SERVICE_ERROR',
-          },
-        })
+      return harness.withMockService('failing', {
+        failures: {
+          rate: 0.5,
+          errorMessage: 'Service unavailable',
+          errorCode: 'SERVICE_ERROR',
+        },
+      })
     },
     test: async (harness: TestHarness) => {
       const results: ExecutionResult[] = []
-      
+
       // Run multiple queries to test error rate
       for (let i = 0; i < 10; i++) {
         const result = await harness.query('{ test }')
         results.push(result)
       }
-      
+
       const errorCount = results.filter(r => r.errors).length
       const errorRate = errorCount / results.length
-      
+
       return {
         passed: errorRate > 0.3 && errorRate < 0.7,
         message: `Error rate: ${errorRate}`,

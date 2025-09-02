@@ -1,13 +1,13 @@
 /**
  * # GraphQL Playground Integration
- * 
+ *
  * This module provides GraphQL Playground integration for development and debugging,
  * with federation-aware features, query history, performance tracking, and schema exploration.
- * 
+ *
  * @example Basic playground setup
  * ```typescript
  * import { Playground } from '@cqrs/federation/devtools'
- * 
+ *
  * const playground = await Playground.create({
  *   schema: federationSchema,
  *   endpoint: 'http://localhost:4000/graphql',
@@ -16,10 +16,10 @@
  *     'tracing.hideTracingResponse': false
  *   }
  * })
- * 
+ *
  * await playground.start(4001) // Playground at http://localhost:4001
  * ```
- * 
+ *
  * @module DevTools
  * @since 2.1.0
  */
@@ -36,22 +36,22 @@ export interface PlaygroundConfig {
    * GraphQL schema to explore
    */
   schema: GraphQLSchema
-  
+
   /**
    * GraphQL endpoint URL
    */
   endpoint: string
-  
+
   /**
    * Playground settings
    */
   settings?: PlaygroundSettings
-  
+
   /**
    * Custom tabs to open
    */
   tabs?: PlaygroundTab[]
-  
+
   /**
    * Enable federation features
    */
@@ -60,7 +60,7 @@ export interface PlaygroundConfig {
     queryPlan?: boolean
     serviceMap?: boolean
   }
-  
+
   /**
    * Development features
    */
@@ -144,70 +144,68 @@ export class Playground {
     errorRate: 0,
     queryHistory: [],
   }
-  
-  private constructor(
-    private readonly config: PlaygroundConfig
-  ) {}
-  
+
+  private constructor(private readonly config: PlaygroundConfig) {}
+
   /**
    * Create a new playground instance
    */
   static async create(config: PlaygroundConfig): Promise<Playground> {
     return new Playground(config)
   }
-  
+
   /**
    * Start the playground server
    */
   async start(port: number = 4000): Promise<void> {
     const html = await this.generatePlaygroundHTML()
-    
+
     this.server = http.createServer((req, res) => {
       // Handle CORS
       res.setHeader('Access-Control-Allow-Origin', '*')
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-      
+
       if (req.method === 'OPTIONS') {
         res.writeHead(200)
         res.end()
         return
       }
-      
+
       // Serve playground HTML
       if (req.url === '/' || req.url === '/playground') {
         res.writeHead(200, { 'Content-Type': 'text/html' })
         res.end(html)
         return
       }
-      
+
       // Serve schema SDL
       if (req.url === '/graphql' && req.method === 'GET') {
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(printSchema(this.config.schema))
         return
       }
-      
+
       // Serve query history
       if (req.url === '/history') {
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify(this.queryHistory))
         return
       }
-      
+
       // Serve metrics
       if (req.url === '/metrics') {
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify(this.metrics))
         return
       }
-      
+
       // 404 for other routes
       res.writeHead(404)
       res.end('Not found')
     })
-    
-    await new Promise<void>((resolve) => {
+
+    await new Promise<void>(resolve => {
       this.server!.listen(port, () => {
         console.log(`🎮 GraphQL Playground running at http://localhost:${port}`)
         console.log(`📊 Schema explorer at http://localhost:${port}/schema.graphql`)
@@ -216,13 +214,13 @@ export class Playground {
       })
     })
   }
-  
+
   /**
    * Stop the playground server
    */
   async stop(): Promise<void> {
     if (this.server) {
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         this.server!.close(() => {
           console.log('🛑 GraphQL Playground stopped')
           resolve()
@@ -231,7 +229,7 @@ export class Playground {
       this.server = null
     }
   }
-  
+
   /**
    * Generate playground HTML
    */
@@ -280,13 +278,13 @@ query GetUserWithProducts {
 }`,
       },
     ]
-    
+
     const settings = {
       ...this.config.settings,
       'schema.polling.enable': this.config.devFeatures?.schemaPolling ?? false,
       'tracing.tracingSupported': this.config.federationFeatures?.tracing ?? true,
     }
-    
+
     return `
 <!DOCTYPE html>
 <html>
@@ -384,8 +382,8 @@ query GetUserWithProducts {
     <div class="federation-title">
       🚀 Federation Playground
       <span class="federation-badge">v2.1.0</span>
-      ${((this.config.federationFeatures?.queryPlan) ?? false) ? '<span class="federation-badge">Query Plan</span>' : ''}
-      ${((this.config.federationFeatures?.tracing) ?? false) ? '<span class="federation-badge">Tracing</span>' : ''}
+      ${(this.config.federationFeatures?.queryPlan ?? false) ? '<span class="federation-badge">Query Plan</span>' : ''}
+      ${(this.config.federationFeatures?.tracing ?? false) ? '<span class="federation-badge">Tracing</span>' : ''}
     </div>
     <div class="federation-actions">
       <button class="federation-button" onclick="toggleMetrics()">📊 Metrics</button>
@@ -429,8 +427,8 @@ query GetUserWithProducts {
         settings: ${JSON.stringify(settings, null, 2)},
         tabs: ${JSON.stringify(defaultTabs, null, 2)},
         workspaceName: 'Federation Workspace',
-        ${((this.config.federationFeatures?.queryPlan) ?? false) ? 'queryPlan: true,' : ''}
-        ${((this.config.federationFeatures?.tracing) ?? false) ? 'tracing: true,' : ''}
+        ${(this.config.federationFeatures?.queryPlan ?? false) ? 'queryPlan: true,' : ''}
+        ${(this.config.federationFeatures?.tracing ?? false) ? 'tracing: true,' : ''}
         onEditQuery: (query) => {
           // Track query for history
           fetch('/track-query', {
@@ -483,7 +481,7 @@ query GetUserWithProducts {
 </html>
 `
   }
-  
+
   /**
    * Track a query execution
    */
@@ -492,39 +490,39 @@ query GetUserWithProducts {
       ...entry,
       id: Math.random().toString(36).substring(2, 9),
     }
-    
+
     this.queryHistory.push(historyEntry)
-    
+
     // Update metrics
     this.metrics.totalQueries++
-    
+
     if (entry.duration !== undefined) {
-      const latencies = this.queryHistory
-        .map(h => h.duration)
-        .filter(Boolean) as number[]
-      
+      const latencies = this.queryHistory.map(h => h.duration).filter(Boolean) as number[]
+
       this.metrics.averageLatency = latencies.reduce((a, b) => a + b, 0) / latencies.length
-      
+
       const sorted = [...latencies].sort((a, b) => a - b)
       this.metrics.p95Latency = sorted[Math.floor(sorted.length * 0.95)] ?? 0
       this.metrics.p99Latency = sorted[Math.floor(sorted.length * 0.99)] ?? 0
     }
-    
+
     if (entry.errors !== undefined && entry.errors.length > 0) {
-      const errorCount = this.queryHistory.filter(h => h.errors !== undefined && h.errors.length > 0).length
+      const errorCount = this.queryHistory.filter(
+        h => h.errors !== undefined && h.errors.length > 0
+      ).length
       this.metrics.errorRate = errorCount / this.metrics.totalQueries
     }
-    
+
     this.metrics.queryHistory = this.queryHistory.slice(-100) // Keep last 100
   }
-  
+
   /**
    * Get current metrics
    */
   getMetrics(): PlaygroundMetrics {
     return { ...this.metrics }
   }
-  
+
   /**
    * Clear query history
    */
@@ -552,7 +550,7 @@ export const FederationTabs = {
   }
 }`,
   }),
-  
+
   /**
    * Entity resolution tab
    */
@@ -569,7 +567,7 @@ export const FederationTabs = {
   }
 }`,
   }),
-  
+
   /**
    * Query plan visualization tab
    */
@@ -584,7 +582,7 @@ query FederatedQuery {
       'Apollo-Query-Plan-Experimental': '1',
     },
   }),
-  
+
   /**
    * Performance tracing tab
    */
@@ -631,13 +629,9 @@ export const PlaygroundPresets = {
       performanceTracking: true,
       schemaPolling: true,
     },
-    tabs: [
-      FederationTabs.healthCheck(),
-      FederationTabs.queryPlan(),
-      FederationTabs.tracing(),
-    ],
+    tabs: [FederationTabs.healthCheck(), FederationTabs.queryPlan(), FederationTabs.tracing()],
   }),
-  
+
   /**
    * Production preset with security and performance focus
    */
@@ -664,5 +658,3 @@ export const PlaygroundPresets = {
   }),
 }
 
-// Re-export GraphQL utilities
-export { printSchema, introspectionFromSchema } from 'graphql'

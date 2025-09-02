@@ -1,5 +1,10 @@
 import { Effect, pipe, Schedule, Duration } from 'effect'
-import type { SubgraphRegistry, ServiceDefinition, HealthStatus, CompositionError } from '@runtime/core'
+import type {
+  SubgraphRegistry,
+  ServiceDefinition,
+  HealthStatus,
+  CompositionError,
+} from '@runtime/core'
 import { ErrorFactory, HealthCheckError, DiscoveryError, RegistrationError } from '@runtime/core'
 
 /**

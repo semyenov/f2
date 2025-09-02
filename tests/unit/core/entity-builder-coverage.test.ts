@@ -1,4 +1,4 @@
-import { createEntityBuilder, toFederationEntity } from '@runtime/core/builders'
+import { createEntityBuilder, toFederationEntity } from '@runtime/core'
 import * as Effect from 'effect/Effect'
 import * as Schema from 'effect/Schema'
 import { describe, expect, it } from 'vitest'

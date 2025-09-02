@@ -714,9 +714,7 @@ export const toFederationEntity = <
   TResult = TSource,
   TReference = Record<string, unknown>,
 >(
-  validatedEntity: ValidatedEntity<TSource, TContext, TResult> & {
-    key: string[]
-  },
+  validatedEntity: ValidatedEntity<TSource, TContext, TResult>,
   referenceResolver?: EntityReferenceResolver<TResult, TContext, TReference>
 ): FederationEntity<TSource, TContext, TResult, TReference> => {
   // Build directives map
@@ -750,7 +748,7 @@ export const toFederationEntity = <
 
   return {
     typename: validatedEntity.typename,
-    key: validatedEntity.key,
+    key: validatedEntity.keys.map(k => k.field),
     schema: validatedEntity.schema as unknown as Schema.Schema<TSource, TResult>,
     resolveReference: referenceResolver ?? (() => Effect.succeed({} as TResult)),
     fields: undefined,
